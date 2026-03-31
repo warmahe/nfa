@@ -1,18 +1,24 @@
 import React from 'react';
 import { Hero } from '../components/home/Hero';
 import { AboutBrand } from '../components/home/AboutBrand';
-import { Recommended } from '../components/home/Recommended';
+import { ExpeditionGrid } from '../components/home/ExpeditionGrid';
+import { TheJourney } from '../components/home/TheJourney';
+import { Voices } from '../components/home/Voices';
+import { OracleCTA } from '../components/home/OracleCTA';
+import { FinalCTA } from '../components/home/FinalCTA';
 import { Testimonials } from '../components/home/Testimonials';
-import { HistoryGallery } from '../components/home/HistoryGallery';
+
 export const Home = () => {
   return (
-    <div className="bg-white overflow-hidden">
+    <div className="w-full overflow-hidden">
       <Hero />
       <AboutBrand />
-      <Recommended />
+      <ExpeditionGrid />
+      <TheJourney />
+      <Voices />
+      <OracleCTA />
       <Testimonials/>
-      <HistoryGallery/>
-
+      <FinalCTA />
     </div>
   );
 };
