@@ -29,7 +29,7 @@ export const Hero = () => {
       {/* 1. Infinite Ticker Tape Mantra */}
       <motion.div 
         style={{ opacity: opacityOut }}
-        className="border-b-4 border-nfa-charcoal bg-nfa-gold py-2 flex whitespace-nowrap overflow-hidden items-center mt-[-2px] relative z-20"
+        className="border-b-4 border-nfa-charcoal bg-nfa-gold py-2 flex whitespace-nowrap overflow-hidden items-center -mt-0.5 relative z-20"
       >
         <motion.div 
           animate={{ x: ["0%", "-50%"] }}
@@ -38,7 +38,7 @@ export const Hero = () => {
         >
           {[...Array(6)].map((_, i) => (
             <span key={i} className="flex gap-4 items-center">
-              MORE SOUL <span className="text-[#9E1B1D]">✦</span> MORE DEPTH <span className="text-[#9E1B1D]">✦</span> MORE CONNECTION <span className="text-[#9E1B1D]">✦</span>
+              MORE SOUL <span className="text-nfa-burgundy">✦</span> MORE DEPTH <span className="text-nfa-burgundy">✦</span> MORE CONNECTION <span className="text-nfa-burgundy">✦</span>
             </span>
           ))}
         </motion.div>
@@ -61,7 +61,7 @@ export const Hero = () => {
              <motion.div 
                 animate={{ opacity: [1, 0, 1] }} 
                 transition={{ duration: 2, repeat: Infinity }} 
-                className="size-2 rounded-full bg-[#9E1B1D] border border-[#121212]" 
+                className="size-2 rounded-full bg-nfa-burgundy border border-nfa-charcoal" 
              />
           </div>
 
@@ -106,7 +106,7 @@ export const Hero = () => {
                 initial={{ scaleX: 0, opacity: 0 }}
                 animate={{ scaleX: 1, opacity: 1 }}
                 transition={{ duration: 0.4, delay: 0.8, ease: "easeOut" }}
-                className="absolute top-[45%] left-[-5%] w-[110%] h-[8px] md:h-[12px] bg-[#9E1B1D] origin-left shadow-[2px_4px_0px_rgba(18,18,18,0.2)] rotate-[-2deg]"
+                className="absolute top-[45%] left-[-5%] w-[110%] h-2 md:h-3 bg-nfa-burgundy origin-left shadow-[2px_4px_0px_rgba(18,18,18,0.2)] -rotate-2"
               />
             </div>
           </div>
@@ -118,13 +118,13 @@ export const Hero = () => {
             className="mt-10 lg:mt-16 border-t-4 border-nfa-charcoal pt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-6"
           >
              <div className="flex flex-col gap-2">
-               <p className="font-sans font-bold uppercase tracking-widest text-[9px] md:text-xs text-nfa-charcoal max-w-[200px] leading-relaxed">
+               <p className="font-sans font-bold uppercase tracking-widest text-[9px] md:text-xs text-nfa-charcoal max-w-50 leading-relaxed">
                  For travelers who refuse the standard script.
                </p>
                {/* Decorative Barcode / ID Line */}
                <div className="flex items-center gap-2 text-nfa-charcoal/40 mt-2">
                  <Fingerprint size={16} />
-                 <div className="h-4 w-[1px] bg-nfa-charcoal/40" />
+                 <div className="h-4 w-px bg-nfa-charcoal/40" />
                  <div className="font-mono text-[8px] tracking-[0.4em] uppercase font-bold">AUTH_REQ_77X</div>
                </div>
              </div>
@@ -137,7 +137,7 @@ export const Hero = () => {
                <div className="w-12 h-12 bg-nfa-charcoal flex items-center justify-center rounded-none border-2 border-transparent group-hover:bg-nfa-cream group-hover:border-nfa-charcoal transition-all shadow-[4px_4px_0px_0px_#9E1B1D] active:translate-x-1 active:translate-y-1 active:shadow-none">
                   <ArrowDownRight size={24} className="text-nfa-cream group-hover:text-nfa-charcoal transition-colors" />
                </div>
-               <span className="font-sans font-black text-xs uppercase tracking-widest text-nfa-charcoal border-b-2 border-transparent group-hover:border-[#9E1B1D] transition-colors pb-1">
+               <span className="font-sans font-black text-xs uppercase tracking-widest text-nfa-charcoal border-b-2 border-transparent group-hover:border-nfa-burgundy transition-colors pb-1">
                  Manifesto
                </span>
              </motion.div>
@@ -160,11 +160,11 @@ export const Hero = () => {
              <motion.div 
                 whileHover={{ x: 8, y: 8 }}
                 transition={{ type: "spring", stiffness: 300 }}
-                className="absolute inset-0 bg-nfa-gold translate-x-4 translate-y-4 md:translate-x-6 md:translate-y-6 border-4 border-[#121212]" 
+                className="absolute inset-0 bg-nfa-gold translate-x-4 translate-y-4 md:translate-x-6 md:translate-y-6 border-4 border-nfa-charcoal" 
              />
              
              {/* Actual Image Box */}
-             <div className="absolute inset-0 border-4 border-[#121212] bg-[#121212] overflow-hidden">
+             <div className="absolute inset-0 border-4 border-nfa-charcoal bg-nfa-charcoal overflow-hidden">
                <motion.img 
                  style={{ scale: scaleImage }}
                  src="https://static.wixstatic.com/media/bac227_5e350ad8886048cd8be917eab76f0555~mv2.jpg/v1/fill/w_1351,h_542,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/bac227_5e350ad8886048cd8be917eab76f0555~mv2.jpg"
@@ -173,7 +173,7 @@ export const Hero = () => {
                />
                
                {/* Internal dark vignette & targeting UI elements */}
-               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 mix-blend-multiply" />
+               <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-black/20 mix-blend-multiply" />
                <Crosshair size={32} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-nfa-cream/30 mix-blend-overlay" strokeWidth={1} />
              </div>
            </motion.div>
