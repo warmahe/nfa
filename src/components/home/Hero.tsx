@@ -28,7 +28,7 @@ export const Hero = () => {
 
       <div
         className="
-          relative z-10 mx-auto w-full max-w-[1400px]
+          relative z-10 mx-auto w-full max-w-350
           min-h-[calc(100svh-72px-40px)] md:min-h-[calc(100svh-80px-56px)]
           grid items-center gap-[clamp(20px,3vw,48px)]
           lg:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.85fr)]
@@ -89,7 +89,7 @@ export const Hero = () => {
               className="
                 relative mt-3 sm:mt-4
                 ml-0 sm:ml-[6%]
-                w-fit max-w-full -rotate-[2deg]
+                w-fit max-w-full -rotate-2
               "
             >
               <div
@@ -134,7 +134,7 @@ export const Hero = () => {
             className="
               mt-[clamp(18px,3vw,34px)]
               ml-0 sm:ml-[6%]
-              flex max-w-[34rem] flex-col gap-4
+              flex max-w-136 flex-col gap-4
             "
           >
             <p
@@ -157,7 +157,7 @@ export const Hero = () => {
                 px-[clamp(18px,2.3vw,28px)] py-[clamp(12px,1.4vw,18px)]
                 text-[clamp(0.72rem,0.9vw,0.86rem)] font-sans font-black uppercase tracking-[0.18em]
                 shadow-[5px_5px_0px_0px_#F4BF4B]
-                transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[3px_3px_0px_0px_#F4BF4B]
+                transition-all hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[3px_3px_0px_0px_#F4BF4B]
               "
             >
               View Expeditions
@@ -183,10 +183,10 @@ export const Hero = () => {
               sm:max-w-[min(70vw,420px)]
               md:max-w-[min(46vw,500px)]
               lg:max-w-[min(34vw,520px)]
-              aspect-[4/5]
+              aspect-4/5
             "
           >
-            <div className="absolute inset-0 translate-x-[10px] translate-y-[10px] border-[3px] border-nfa-burgundy pointer-events-none" />
+            <div className="absolute inset-0 translate-x-2.5 translate-y-2.5 border-[3px] border-nfa-burgundy pointer-events-none" />
 
             <div className="absolute inset-0 border-[3px] border-nfa-charcoal bg-nfa-charcoal p-2 md:p-3 shadow-[8px_8px_0px_0px_#121212]">
               <img
@@ -197,7 +197,7 @@ export const Hero = () => {
 
               <div
                 className="
-                  absolute -left-2 bottom-[-10px] z-20
+                  absolute -left-2 bottom-2.5 z-20
                   flex max-w-[78%] items-center gap-2
                   rotate-[-8deg]
                   border-2 border-nfa-charcoal bg-nfa-gold
