@@ -1,196 +1,224 @@
-import React, { useRef } from 'react';
-import { motion, useScroll, useTransform } from 'motion/react';
-import { ArrowDownRight, Crosshair, Activity, Fingerprint } from 'lucide-react';
+import React from 'react';
+import { motion } from 'motion/react';
+import { Crosshair, ArrowRight, Zap } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export const Hero = () => {
-  const containerRef = useRef(null);
-
-  // Setup Scroll-based "Out" Animations
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start start", "end start"] // Triggers as container leaves top of screen
-  });
-
-  // Transform values for scrolling away
-  const yText = useTransform(scrollYProgress, [0, 1], ["0%", "40%"]);
-  const opacityOut = useTransform(scrollYProgress, [0, 0.7], [1, 0]);
-  const yImageWrapper = useTransform(scrollYProgress, [0, 1], ["0%", "20%"]);
-  const scaleImage = useTransform(scrollYProgress, [0, 1], [1, 1.1]);
-
-  // Hard, "snapping" animation curves for the initial load
-  const brutalistSnap = { duration: 0.6, ease: [0.19, 1, 0.22, 1] };
-
   return (
-    <section 
-      ref={containerRef}
-      className="relative min-h-[90vh] flex flex-col bg-nfa-cream border-b-4 border-nfa-charcoal overflow-hidden pt-20 lg:pt-0 text-nfa-charcoal"
+    <section
+      className="
+        relative w-full overflow-x-clip bg-nfa-cream border-b-4 border-nfa-charcoal
+        min-h-[calc(100svh-72px)] md:min-h-[calc(100svh-80px)]
+        px-[clamp(16px,3vw,48px)]
+        pt-[clamp(20px,4vw,40px)]
+        pb-[clamp(24px,4vw,48px)]
+      "
     >
-      
-      {/* 1. Infinite Ticker Tape Mantra */}
-      <motion.div 
-        style={{ opacity: opacityOut }}
-        className="border-b-4 border-nfa-charcoal bg-nfa-gold py-2 flex whitespace-nowrap overflow-hidden items-center -mt-0.5 relative z-20"
+      {/* Grid background */}
+      <div
+        className="absolute inset-0 z-0 opacity-[0.12] pointer-events-none"
+        style={{
+          backgroundImage: `
+            linear-gradient(to right, #121212 1px, transparent 1px),
+            linear-gradient(to bottom, #121212 1px, transparent 1px)
+          `,
+          backgroundSize: 'clamp(18px,2.4vw,34px) clamp(18px,2.4vw,34px)',
+        }}
+      />
+
+      <div
+        className="
+          relative z-10 mx-auto w-full max-w-[1400px]
+          min-h-[calc(100svh-72px-40px)] md:min-h-[calc(100svh-80px-56px)]
+          grid items-center gap-[clamp(20px,3vw,48px)]
+          lg:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.85fr)]
+        "
       >
-        <motion.div 
-          animate={{ x: ["0%", "-50%"] }}
-          transition={{ repeat: Infinity, ease: "linear", duration: 15 }}
-          className="flex gap-4 font-sans font-black text-[10px] md:text-xs uppercase tracking-[0.2em] md:tracking-[0.4em]"
-        >
-          {[...Array(6)].map((_, i) => (
-            <span key={i} className="flex gap-4 items-center">
-              MORE SOUL <span className="text-nfa-burgundy">✦</span> MORE DEPTH <span className="text-nfa-burgundy">✦</span> MORE CONNECTION <span className="text-nfa-burgundy">✦</span>
-            </span>
-          ))}
-        </motion.div>
-      </motion.div>
-
-      {/* 2. Main Dossier Grid */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 w-full h-full relative z-10">
-        
-        {/* Left Typography Block */}
-        <motion.div 
-          style={{ y: yText, opacity: opacityOut }}
-          className="lg:col-span-6 flex flex-col justify-center p-6 md:p-10 lg:p-16 xl:p-24 relative lg:border-r-4 border-nfa-charcoal"
-        >
-          
-          {/* Top Dossier Label with Flashing "Live" dot */}
-          <div className="absolute top-6 left-6 md:top-8 md:left-8 flex items-center gap-3">
-             <div className="font-sans font-bold uppercase tracking-widest text-[8px] md:text-[10px] border border-nfa-charcoal px-3 py-1 shadow-[2px_2px_0px_0px_#121212] bg-nfa-cream">
-               Dossier No. 01 // Objective
-             </div>
-             <motion.div 
-                animate={{ opacity: [1, 0, 1] }} 
-                transition={{ duration: 2, repeat: Infinity }} 
-                className="size-2 rounded-full bg-nfa-burgundy border border-nfa-charcoal" 
-             />
-          </div>
-
-          <div className="mt-12 md:mt-8 relative">
-            <div className="overflow-hidden pb-2">
-              <motion.h1 
-                initial={{ y: "110%", rotateZ: 2 }}
-                animate={{ y: 0, rotateZ: 0 }}
-                transition={brutalistSnap}
-                className="font-brand font-black text-[15vw] lg:text-[7.5vw] xl:text-[8vw] uppercase leading-[0.85] tracking-tighter"
-              >
-                WE ARE <br className="hidden md:block"/>
-                NOT A
-              </motion.h1>
-            </div>
-            
-            <div className="overflow-hidden flex items-end gap-4 mt-2 md:mt-0 pb-2">
-              <motion.h1 
-                initial={{ y: "110%", rotateZ: 2 }}
-                animate={{ y: 0, rotateZ: 0 }}
-                transition={{ ...brutalistSnap, delay: 0.1 }}
-                className="font-brand font-black text-[15vw] lg:text-[7.5vw] xl:text-[8vw] uppercase leading-[0.85] tracking-tighter text-transparent bg-clip-text"
-                style={{ WebkitTextStroke: '2px #121212' }}
-              >
-                TRAVEL
-              </motion.h1>
-            </div>
-
-            {/* The Crossed-out "AGENCY" word */}
-            <div className="relative inline-block mt-1">
-              <motion.h1 
-                initial={{ y: "110%" }}
-                animate={{ y: 0 }}
-                transition={{ ...brutalistSnap, delay: 0.2 }}
-                className="font-brand font-black text-[15vw] lg:text-[8vw] xl:text-[9vw] uppercase leading-[0.85] tracking-tighter text-nfa-charcoal/20"
-              >
-                AGENCY.
-              </motion.h1>
-              
-              {/* Aggressive Red Strikethrough Animation */}
-              <motion.div 
-                initial={{ scaleX: 0, opacity: 0 }}
-                animate={{ scaleX: 1, opacity: 1 }}
-                transition={{ duration: 0.4, delay: 0.8, ease: "easeOut" }}
-                className="absolute top-[45%] left-[-5%] w-[110%] h-2 md:h-3 bg-nfa-burgundy origin-left shadow-[2px_4px_0px_rgba(18,18,18,0.2)] -rotate-2"
-              />
-            </div>
-          </div>
-
-          <motion.div 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 1, duration: 0.4 }}
-            className="mt-10 lg:mt-16 border-t-4 border-nfa-charcoal pt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-6"
+        {/* LEFT */}
+        <div className="min-w-0 self-center">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45 }}
+            className="
+              mb-[clamp(14px,2vw,24px)] inline-flex w-fit items-center gap-2
+              bg-nfa-burgundy text-nfa-cream
+              px-3 py-1.5 border-2 border-nfa-charcoal
+              shadow-[4px_4px_0px_0px_#121212]
+            "
           >
-             <div className="flex flex-col gap-2">
-               <p className="font-sans font-bold uppercase tracking-widest text-[9px] md:text-xs text-nfa-charcoal max-w-50 leading-relaxed">
-                 For travelers who refuse the standard script.
-               </p>
-               {/* Decorative Barcode / ID Line */}
-               <div className="flex items-center gap-2 text-nfa-charcoal/40 mt-2">
-                 <Fingerprint size={16} />
-                 <div className="h-4 w-px bg-nfa-charcoal/40" />
-                 <div className="font-mono text-[8px] tracking-[0.4em] uppercase font-bold">AUTH_REQ_77X</div>
-               </div>
-             </div>
-             
-             {/* Read Manifesto Prompt */}
-             <motion.div 
-               whileHover={{ x: 10 }}
-               className="flex items-center gap-4 cursor-pointer group"
-             >
-               <div className="w-12 h-12 bg-nfa-charcoal flex items-center justify-center rounded-none border-2 border-transparent group-hover:bg-nfa-cream group-hover:border-nfa-charcoal transition-all shadow-[4px_4px_0px_0px_#9E1B1D] active:translate-x-1 active:translate-y-1 active:shadow-none">
-                  <ArrowDownRight size={24} className="text-nfa-cream group-hover:text-nfa-charcoal transition-colors" />
-               </div>
-               <span className="font-sans font-black text-xs uppercase tracking-widest text-nfa-charcoal border-b-2 border-transparent group-hover:border-nfa-burgundy transition-colors pb-1">
-                 Manifesto
-               </span>
-             </motion.div>
+            <Crosshair size={14} className="animate-pulse" />
+            <span className="font-sans text-[clamp(10px,0.85vw,12px)] font-black uppercase tracking-[0.22em]">
+              Objective 01
+            </span>
           </motion.div>
-        </motion.div>
 
-        {/* Right Defender Image Frame */}
-        <motion.div 
-          style={{ y: yImageWrapper }}
-          className="lg:col-span-6 relative w-full h-[50vh] lg:h-auto border-t-4 lg:border-t-0 border-nfa-charcoal overflow-hidden p-6 md:p-12 lg:p-16 bg-nfa-charcoal nfa-texture flex flex-col items-center justify-center"
+          <div className="min-w-0">
+            <motion.h1
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.45 }}
+              className="
+                font-brand font-black uppercase tracking-tight
+                text-transparent leading-[0.88]
+                text-[clamp(3rem,7.2vw,7.2rem)]
+              "
+              style={{ WebkitTextStroke: '2px #121212' }}
+            >
+              WE ARE
+            </motion.h1>
+
+            <motion.h1
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.45, delay: 0.08 }}
+              className="
+                font-brand font-black uppercase tracking-tight text-nfa-charcoal
+                leading-[0.86]
+                text-[clamp(3rem,6.8vw,6.8rem)]
+                ml-0 sm:ml-[4%]
+              "
+            >
+              NOT A
+            </motion.h1>
+
+            <motion.div
+              initial={{ scale: 0.96, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.45, delay: 0.16 }}
+              className="
+                relative mt-3 sm:mt-4
+                ml-0 sm:ml-[6%]
+                w-fit max-w-full -rotate-[2deg]
+              "
+            >
+              <div
+                className="
+                  relative bg-nfa-gold border-[3px] md:border-4 border-nfa-charcoal
+                  px-[clamp(14px,2.4vw,34px)]
+                  py-[clamp(10px,1.6vw,22px)]
+                  shadow-[6px_6px_0px_0px_#121212]
+                  max-w-full overflow-hidden
+                "
+              >
+                <h1
+                  className="
+                    font-brand font-black uppercase text-nfa-charcoal
+                    leading-[0.82] tracking-tight
+                    text-[clamp(2.3rem,5.7vw,5.8rem)]
+                    whitespace-normal sm:whitespace-nowrap
+                  "
+                >
+                  <span className="block sm:block">TRAVEL</span>
+                  <span className="block">AGENCY</span>
+                </h1>
+              </div>
+
+              <motion.div
+                initial={{ scaleX: 0 }}
+                animate={{ scaleX: 1 }}
+                transition={{ duration: 0.35, delay: 0.35, ease: 'easeOut' }}
+                className="
+                  pointer-events-none absolute left-0 right-0 top-1/2 z-20
+                  h-[clamp(8px,1vw,14px)] -translate-y-1/2 origin-left rotate-[4deg]
+                  border-y-2 border-nfa-charcoal bg-nfa-burgundy
+                "
+              />
+            </motion.div>
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.26 }}
+            className="
+              mt-[clamp(18px,3vw,34px)]
+              ml-0 sm:ml-[6%]
+              flex max-w-[34rem] flex-col gap-4
+            "
+          >
+            <p
+              className="
+                w-fit max-w-full bg-nfa-cream/90 p-3 leading-snug text-nfa-charcoal
+                shadow-sm backdrop-blur-sm border border-nfa-charcoal/10
+                font-sans font-bold text-[clamp(0.9rem,1.05vw,1rem)]
+              "
+            >
+              We build demanding, high-reward expeditions. <br />
+              The adventure is the framework. <br />
+              <span className="text-nfa-burgundy">The connection is the magic.</span>
+            </p>
+
+            <Link
+              to="/destinations"
+              className="
+                group inline-flex w-fit items-center justify-center gap-3
+                bg-nfa-charcoal text-nfa-cream border-2 border-nfa-charcoal
+                px-[clamp(18px,2.3vw,28px)] py-[clamp(12px,1.4vw,18px)]
+                text-[clamp(0.72rem,0.9vw,0.86rem)] font-sans font-black uppercase tracking-[0.18em]
+                shadow-[5px_5px_0px_0px_#F4BF4B]
+                transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[3px_3px_0px_0px_#F4BF4B]
+              "
+            >
+              View Expeditions
+              <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" />
+            </Link>
+          </motion.div>
+        </div>
+
+        {/* RIGHT */}
+        <div
+          className="
+            flex min-w-0 items-center justify-center lg:justify-end
+            mt-2 lg:mt-0
+          "
         >
-                      
-           <motion.div 
-             initial={{ scale: 0.9, opacity: 0, rotate: -2 }}
-             animate={{ scale: 1, opacity: 1, rotate: 0 }}
-             transition={{ delay: 0.4, duration: 0.8, type: "spring", bounce: 0.4 }}
-             className="w-full h-full md:h-[85%] relative z-10 group cursor-crosshair"
-           >
-             {/* Offset brutalist yellow shadow box */}
-             <motion.div 
-                whileHover={{ x: 8, y: 8 }}
-                transition={{ type: "spring", stiffness: 300 }}
-                className="absolute inset-0 bg-nfa-gold translate-x-4 translate-y-4 md:translate-x-6 md:translate-y-6 border-4 border-nfa-charcoal" 
-             />
-             
-             {/* Actual Image Box */}
-             <div className="absolute inset-0 border-4 border-nfa-charcoal bg-nfa-charcoal overflow-hidden">
-               <motion.img 
-                 style={{ scale: scaleImage }}
-                 src="https://static.wixstatic.com/media/bac227_5e350ad8886048cd8be917eab76f0555~mv2.jpg/v1/fill/w_1351,h_542,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/bac227_5e350ad8886048cd8be917eab76f0555~mv2.jpg"
-                 className="w-full h-full object-cover object-center filter sepia-[0.2] contrast-125 saturate-50"
-                 alt="Offroad Expedition Vehicle"
-               />
-               
-               {/* Internal dark vignette & targeting UI elements */}
-               <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-black/20 mix-blend-multiply" />
-               <Crosshair size={32} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-nfa-cream/30 mix-blend-overlay" strokeWidth={1} />
-             </div>
-           </motion.div>
-           
-           {/* Classified markings & Out Animations text */}
-           <motion.div 
-              style={{ opacity: opacityOut }}
-              className="absolute bottom-6 left-6 flex items-end gap-4 text-white opacity-40 mix-blend-overlay"
-           >
-              <Activity size={32} className="text-[#D83333]" />
-              <span className="font-mono text-[8px] md:text-[10px] tracking-[0.4em] uppercase font-bold flex flex-col">
-                <span>COORD_LK: N 64.13 // W 21.94</span>
-                <span className="text-nfa-gold mt-1">STATUS: OPERATIONAL</span>
-              </span>
-           </motion.div>
-        </motion.div>
+          <motion.div
+            initial={{ opacity: 0, rotate: 0 }}
+            animate={{ opacity: 1, rotate: 3 }}
+            transition={{ duration: 0.55, delay: 0.12 }}
+            className="
+              relative w-full
+              max-w-[min(82vw,360px)]
+              sm:max-w-[min(70vw,420px)]
+              md:max-w-[min(46vw,500px)]
+              lg:max-w-[min(34vw,520px)]
+              aspect-[4/5]
+            "
+          >
+            <div className="absolute inset-0 translate-x-[10px] translate-y-[10px] border-[3px] border-nfa-burgundy pointer-events-none" />
 
+            <div className="absolute inset-0 border-[3px] border-nfa-charcoal bg-nfa-charcoal p-2 md:p-3 shadow-[8px_8px_0px_0px_#121212]">
+              <img
+                src="https://static.wixstatic.com/media/bac227_5e350ad8886048cd8be917eab76f0555~mv2.jpg/v1/fill/w_1351,h_542,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/bac227_5e350ad8886048cd8be917eab76f0555~mv2.jpg"
+                alt="NFA Expedition Vehicle"
+                className="h-full w-full object-cover object-center transition-all duration-700 hover:grayscale-0"
+              />
+
+              <div
+                className="
+                  absolute -left-2 bottom-[-10px] z-20
+                  flex max-w-[78%] items-center gap-2
+                  rotate-[-8deg]
+                  border-2 border-nfa-charcoal bg-nfa-gold
+                  px-[clamp(8px,1vw,14px)] py-[clamp(8px,1vw,14px)]
+                  shadow-[4px_4px_0px_0px_#121212]
+                  sm:-left-4 sm:-bottom-4
+                "
+              >
+                <Zap
+                  size={18}
+                  className="shrink-0 text-nfa-burgundy w-[clamp(14px,1.5vw,20px)]"
+                  fill="currentColor"
+                />
+                <span className="font-brand font-black uppercase leading-[0.9] tracking-tight text-nfa-charcoal text-[clamp(0.9rem,1.5vw,1.35rem)]">
+                  Raw Earth <br />
+                  Only.
+                </span>
+              </div>
+            </div>
+          </motion.div>
+        </div>
       </div>
     </section>
   );

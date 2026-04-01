@@ -14,7 +14,7 @@ export const AboutBrand = () => {
     <section className="bg-nfa-charcoal text-nfa-cream py-24 md:py-40 px-6 lg:px-12 border-b border-nfa-cream/10 relative overflow-hidden">
       
       {/* Ambient background glow */}
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-nfa-gold/5 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute top-0 right-0 w-125 h-125 bg-nfa-gold/5 blur-[120px] rounded-full pointer-events-none" />
 
       <div className="max-w-screen-2xl mx-auto">
         
@@ -43,7 +43,7 @@ export const AboutBrand = () => {
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
             transition={{ duration: 1 }}
-            className="relative order-2 lg:order-1 h-[500px] md:h-[700px] w-full"
+            className="relative order-2 lg:order-1 h-125 md:h-175 w-full"
           >
             <div className="absolute inset-0 border border-nfa-gold/30 translate-x-4 translate-y-4" />
             <img 
