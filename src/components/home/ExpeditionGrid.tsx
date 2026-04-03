@@ -24,10 +24,7 @@ export const ExpeditionGrid = () => {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 md:gap-[clamp(1rem,4vw,3rem)] mb-8 md:mb-16 px-2">
            
            <div className="relative pt-6 w-full max-w-4xl">
-             <div className="absolute top-0 left-0 flex items-center gap-2 bg-nfa-burgundy px-2 py-1 border border-nfa-cream/20">
-               <Crosshair size={10} className="text-nfa-cream" />
-               <span className="text-[9px] md:text-[10px] uppercase font-black tracking-[0.3em] text-nfa-cream">Authorized Personnel Only</span>
-             </div>
+
              
              <h2 className="font-brand font-black text-[clamp(2rem,7vw,7.5rem)] leading-[0.85] text-nfa-cream uppercase tracking-tighter drop-shadow-xl mt-4">
                 LOCATE YOUR <br className="hidden md:block"/><span className="text-nfa-gold">DROP ZONE.</span>
