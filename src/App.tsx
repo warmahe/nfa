@@ -6,6 +6,9 @@ import { Wishlist } from "./pages/Wishlist";
 import { PriceAlerts } from "./pages/PriceAlerts";
 import { Gallery } from "./pages/Gallery";
 import { BlogPost } from "./pages/BlogPost";
+import { EditorialGallery } from "./pages/EditorialGallery";
+
+// Adjust these imports based on how you export them from your Pages file
 import {
   Destinations,
   ItineraryDetail,
@@ -24,18 +27,26 @@ export default function App() {
     <Router>
       <Routes>
         <Route path="/" element={<MainLayout />}>
+          {/* Core Pages */}
           <Route index element={<Home />} />
-          <Route path="packages" element={<PackageBrowse />} />
+          <Route path="about" element={<About />} />
           <Route path="destinations" element={<Destinations />} />
-          <Route path="gallery" element={<Gallery />} />
+          <Route path="packages" element={<PackageBrowse />} />
           <Route path="itinerary/:id" element={<ItineraryDetail />} />
           <Route path="booking/:id" element={<Booking />} />
-          <Route path="about" element={<About />} />
-          <Route path="contact" element={<Contact />} />
+          
+          {/* Editorial Gallery System */}
+          <Route path="gallery" element={<Gallery />} />
+          <Route path="gallery/:id" element={<EditorialGallery />} />
+          
+          {/* Community & Resources */}
+          <Route path="testimonials" element={<Testimonials />} />
           <Route path="blog" element={<Blog />} />
           <Route path="blog/:slug" element={<BlogPost />} />
           <Route path="faq" element={<FAQ />} />
-          <Route path="testimonials" element={<Testimonials />} />
+          <Route path="contact" element={<Contact />} />
+          
+          {/* Utility & Dashboards */}
           <Route path="wishlist" element={<Wishlist />} />
           <Route path="price-alerts" element={<PriceAlerts />} />
           <Route path="dashboard" element={<Dashboard />} />

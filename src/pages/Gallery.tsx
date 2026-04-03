@@ -1,242 +1,100 @@
-import React, { useState, useMemo } from "react";
-import { X, ChevronLeft, ChevronRight, Filter } from "lucide-react";
+import React, { useMemo } from "react";
+import { Link } from "react-router-dom";
+import { Database, FolderKanban, Map } from "lucide-react";
 import { GALLERY_IMAGES } from "../constants";
 
 export const Gallery = () => {
-  const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
-  const [selectedDestination, setSelectedDestination] = useState<string>("ALL");
-  const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
-
-  const destinations = ["ALL", ...Array.from(new Set(GALLERY_IMAGES.map(img => img.destination)))];
-  const categories = ["ALL", ...Array.from(new Set(GALLERY_IMAGES.map(img => img.category)))];
-
-  const filteredImages = useMemo(() => {
-    return GALLERY_IMAGES.filter(img => {
-      const destMatch = selectedDestination === "ALL" || img.destination === selectedDestination;
-      const catMatch = selectedCategory === "ALL" || img.category === selectedCategory;
-      return destMatch && catMatch;
+  // Automatically group all images by their destination
+  const archivedTrips = useMemo(() => {
+    const groups: { [key: string]: { coverImage: string, totalFiles: number } } = {};
+    
+    GALLERY_IMAGES.forEach(img => {
+      if (!groups[img.destination]) {
+        groups[img.destination] = { coverImage: img.url, totalFiles: 0 };
+      }
+      groups[img.destination].totalFiles++;
     });
-  }, [selectedDestination, selectedCategory]);
 
-  const selectedImage = GALLERY_IMAGES.find(img => img.id === selectedImageId);
-  const selectedImageIndex = GALLERY_IMAGES.findIndex(img => img.id === selectedImageId);
-
-  const handlePrevImage = () => {
-    if (selectedImageIndex > 0) {
-      setSelectedImageId(GALLERY_IMAGES[selectedImageIndex - 1].id);
-    } else {
-      setSelectedImageId(GALLERY_IMAGES[GALLERY_IMAGES.length - 1].id);
-    }
-  };
-
-  const handleNextImage = () => {
-    if (selectedImageIndex < GALLERY_IMAGES.length - 1) {
-      setSelectedImageId(GALLERY_IMAGES[selectedImageIndex + 1].id);
-    } else {
-      setSelectedImageId(GALLERY_IMAGES[0].id);
-    }
-  };
+    return Object.entries(groups).map(([destination, data]) => ({
+      destination,
+      slug: destination.toLowerCase(),
+      coverImage: data.coverImage,
+      totalFiles: data.totalFiles
+    }));
+  }, []);
 
   return (
-    <div className="pt-20 min-h-screen bg-white text-gray-900">
-      <div className="max-w-7xl mx-auto px-4 md:px-6 py-20">
-        {/* Header */}
-        <div className="mb-16">
-          <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-4">EXPEDITION GALLERY</h1>
-          <p className="text-xl text-gray-600 max-w-2xl">
-            Visual stories from our most extraordinary expeditions. Glimpses of the moments that transform travelers.
-          </p>
+    <div className="min-h-screen bg-nfa-cream text-nfa-charcoal nfa-texture selection:bg-nfa-gold selection:text-nfa-charcoal pt-4 md:pt-10 pb-24">
+      
+      <div className="max-w-[1440px] mx-auto px-[clamp(0.5rem,3vw,3rem)]">
+        
+        {/* ================================== */}
+        {/* HEADER: VAULT MAINFRAME            */}
+        {/* ================================== */}
+        <div className="flex flex-col md:flex-row justify-between md:items-end gap-6 mb-12 md:mb-20 border-b-[4px] border-nfa-charcoal pb-8 px-2 md:px-0">
+           <div className="relative">
+             <div className="inline-flex items-center gap-2 bg-[#121212] text-[#F4BF4B] px-3 py-1.5 border-[2px] border-[#121212] shadow-[3px_3px_0px_0px_#9E1B1D] mb-4">
+               <Database size={14} />
+               <span className="font-sans font-black text-[10px] md:text-xs uppercase tracking-[0.3em]">Central Database</span>
+             </div>
+             
+             <h1 className="font-brand font-black uppercase text-[clamp(2.5rem,8vw,7rem)] leading-[0.8] tracking-tighter text-[#121212]">
+                CLASSIFIED <br/> <span className="text-[#9E1B1D]">GALLERY.</span>
+             </h1>
+           </div>
+
+           <p className="font-sans font-bold uppercase tracking-[0.1em] text-[10px] md:text-sm text-[#121212]/70 max-w-sm border-l-[3px] border-[#9E1B1D] pl-3 md:pl-4 mt-4 md:mt-0">
+             Digital extraction zones organized by sector. Access files to review geographic conditions prior to deployment.
+           </p>
         </div>
 
-        {/* Filters */}
-        <div className="mb-12 space-y-6">
-          {/* Destination Filter */}
-          <div>
-            <h3 className="text-sm font-bold tracking-tight text-teal-700 mb-4 flex items-center gap-2">
-              <Filter size={16} /> DESTINATION
-            </h3>
-            <div className="flex flex-wrap gap-3">
-              {destinations.map(dest => (
-                <button
-                  key={dest}
-                  onClick={() => setSelectedDestination(dest)}
-                  className={`px-4 py-2 text-xs font-bold tracking-tight rounded-full transition-all ${
-                    selectedDestination === dest
-                      ? "bg-teal-700 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
-                >
-                  {dest}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Category Filter */}
-          <div>
-            <h3 className="text-sm font-bold tracking-tight text-orange-600 mb-4 flex items-center gap-2">
-              <Filter size={16} /> CATEGORY
-            </h3>
-            <div className="flex flex-wrap gap-3">
-              {categories.map(cat => (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`px-4 py-2 text-xs font-bold tracking-tight rounded-full transition-all ${
-                    selectedCategory === cat
-                      ? "bg-orange-500 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Result count */}
-          <p className="text-sm text-gray-600 font-medium">
-            {filteredImages.length} images
-            {selectedDestination !== "ALL" || selectedCategory !== "ALL"
-              ? ` (filtered from ${GALLERY_IMAGES.length})`
-              : ""}
-          </p>
-        </div>
-
-        {/* Gallery Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-20">
-          {filteredImages.map((image, idx) => (
-            <div
-              key={image.id}
-              onClick={() => setSelectedImageId(image.id)}
-              className="group cursor-pointer overflow-hidden rounded-lg border border-gray-200 hover:border-teal-500 hover:shadow-lg transition-all"
+        {/* ================================== */}
+        {/* STRICT ARCHIVE GRID (2 on mobile)  */}
+        {/* ================================== */}
+        {/* Grid forces 2 columns on mobile, 3 on md, 4 on xl */}
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2 md:gap-8 w-full">
+          {archivedTrips.map((trip) => (
+            <Link 
+              key={trip.slug}
+              to={`/gallery/${trip.slug}`} 
+              className="group border-[2px] md:border-[4px] border-nfa-charcoal bg-[#FCFBF7] p-2 md:p-3 shadow-[4px_4px_0px_0px_#121212] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] active:translate-x-[4px] active:translate-y-[4px] transition-all flex flex-col"
             >
-              <div className="relative h-64 overflow-hidden bg-gray-900">
-                <img
-                  src={image.url}
-                  alt={image.title}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                  referrerPolicy="no-referrer"
-                />
-                <div className="absolute inset-0 bg-linear-to-t from-black via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
-                  <h3 className="text-white font-bold text-lg mb-2">{image.title}</h3>
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs font-medium text-gray-300">{image.destination}</span>
-                    <span className="px-2 py-1 bg-orange-500 text-white text-xs font-semibold rounded">
-                      {image.category}
-                    </span>
-                  </div>
-                </div>
+              
+              {/* Folder Header - Tightly scaled for 2x2 mobile */}
+              <div className="flex justify-between items-center mb-2 md:mb-3 px-1 md:px-2">
+                 <div className="flex items-center gap-1.5 text-nfa-charcoal overflow-hidden">
+                    <FolderKanban size={14} className="text-[#9E1B1D] shrink-0 hidden sm:block" />
+                    <span className="font-sans font-black text-[10px] sm:text-xs md:text-sm uppercase tracking-widest truncate">{trip.destination}</span>
+                 </div>
+                 <div className="font-mono text-[8px] sm:text-[10px] uppercase font-bold text-nfa-charcoal/60 shrink-0">
+                   {trip.totalFiles} <span className="hidden sm:inline">FILES</span>
+                 </div>
               </div>
 
-              {/* Card Footer */}
-              <div className="p-4 bg-white">
-                <p className="text-sm font-semibold text-gray-900 mb-1">{image.title}</p>
-                <p className="text-xs text-gray-600">
-                  {image.destination} • {image.category}
-                </p>
-                {image.location && (
-                  <p className="text-xs text-gray-500 mt-2">📍 {image.location}</p>
-                )}
+              {/* Cover Image - 4/3 Aspect ensures uniform scaling */}
+              <div className="relative aspect-[4/3] border-[2px] md:border-[3px] border-nfa-charcoal bg-[#121212] overflow-hidden mb-2 md:mb-4">
+                 <img 
+                   src={trip.coverImage} 
+                   className="w-full h-full object-cover filter contrast-[1.1] grayscale-[40%] group-hover:grayscale-0 group-hover:scale-105 transition-all duration-[600ms]" 
+                   alt={`Archive for ${trip.destination}`}
+                 />
+                 <div className="absolute inset-0 bg-linear-to-t from-[#121212]/50 to-transparent pointer-events-none mix-blend-multiply" />
               </div>
-            </div>
+
+              {/* Action Strip - Minimal padding for mobile 2x2 constraint */}
+              <div className="border-t-[2px] md:border-t-[3px] border-nfa-charcoal/20 pt-2 pb-1 md:pt-3 px-1 md:px-2 flex justify-between items-center group-hover:border-[#9E1B1D] transition-colors mt-auto">
+                <span className="flex items-center gap-1.5 font-sans font-bold text-[8px] sm:text-[9px] uppercase tracking-[0.1em] sm:tracking-[0.2em] text-[#9E1B1D] truncate">
+                  <Map size={10} className="shrink-0 hidden sm:block" />
+                  View Sector <span className="hidden md:inline">Archives</span>
+                </span>
+                <span className="text-[#121212] font-brand font-black text-sm sm:text-lg md:text-xl leading-none">→</span>
+              </div>
+
+            </Link>
           ))}
         </div>
 
-        {/* Empty State */}
-        {filteredImages.length === 0 && (
-          <div className="text-center py-20">
-            <p className="text-gray-600 text-lg mb-4">No images found with current filters</p>
-            <button
-              onClick={() => {
-                setSelectedDestination("ALL");
-                setSelectedCategory("ALL");
-              }}
-              className="px-6 py-2 bg-teal-700 text-white font-semibold rounded-lg hover:bg-teal-800 transition-colors"
-            >
-              Reset Filters
-            </button>
-          </div>
-        )}
       </div>
-
-      {/* Lightbox Modal */}
-      {selectedImage && (
-        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 md:p-8">
-          <div className="relative w-full max-w-5xl">
-            {/* Close Button */}
-            <button
-              onClick={() => setSelectedImageId(null)}
-              className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors"
-            >
-              <X size={24} />
-            </button>
-
-            {/* Image Container */}
-            <div className="relative">
-              <img
-                src={selectedImage.url}
-                alt={selectedImage.title}
-                className="w-full h-auto max-h-[80vh] object-cover rounded-lg"
-                referrerPolicy="no-referrer"
-              />
-
-              {/* Navigation Arrows */}
-              <button
-                onClick={handlePrevImage}
-                className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 text-white p-3 rounded-full transition-all transform hover:scale-110"
-              >
-                <ChevronLeft size={24} />
-              </button>
-              <button
-                onClick={handleNextImage}
-                className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 text-white p-3 rounded-full transition-all transform hover:scale-110"
-              >
-                <ChevronRight size={24} />
-              </button>
-
-              {/* Image Counter */}
-              <div className="absolute bottom-4 left-4 bg-black/60 text-white px-4 py-2 rounded-full text-sm font-medium">
-                {selectedImageIndex + 1} / {GALLERY_IMAGES.length}
-              </div>
-            </div>
-
-            {/* Image Info */}
-            <div className="bg-white p-6 mt-6 rounded-lg">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2">{selectedImage.title}</h2>
-                  <p className="text-gray-600 mb-4">
-                    {selectedImage.destination} • {selectedImage.category}
-                  </p>
-                  {selectedImage.location && (
-                    <p className="text-gray-700 mb-2">
-                      <span className="font-semibold">Location:</span> {selectedImage.location}
-                    </p>
-                  )}
-                </div>
-                <div className="md:text-right">
-                  {selectedImage.photographer && (
-                    <p className="text-gray-700">
-                      <span className="font-semibold">Photographer:</span> {selectedImage.photographer}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Tag Display */}
-              <div className="flex gap-2 mt-4 pt-4 border-t border-gray-200">
-                <span className="px-3 py-1 bg-teal-100 text-teal-700 text-xs font-medium rounded-full">
-                  {selectedImage.destination}
-                </span>
-                <span className="px-3 py-1 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">
-                  {selectedImage.category}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
