@@ -5,7 +5,6 @@ import { ExpeditionGrid } from '../components/home/ExpeditionGrid';
 import { TheJourney } from '../components/home/TheJourney';
 import { Voices } from '../components/home/Voices';
 import { OracleCTA } from '../components/home/OracleCTA';
-import { FinalCTA } from '../components/home/FinalCTA';
 import { Testimonials } from '../components/home/Testimonials';
 
 export const Home = () => {
@@ -17,8 +16,6 @@ export const Home = () => {
       <TheJourney />
       <Voices />
       <OracleCTA />
-      <Testimonials/>
-      <FinalCTA />
     </div>
   );
 };

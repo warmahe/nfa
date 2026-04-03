@@ -9,8 +9,8 @@ export const TheJourney = () => {
   ];
 
   return (
-    <section className="bg-[#D83333] py-20 md:py-32 px-4 lg:px-12 text-nfa-cream border-t border-[#9E1B1D]">
-      <div className="max-w-screen-xl mx-auto flex flex-col items-center">
+    <section className="bg-[#D83333] py-20 md:py-32 px-4 lg:px-12 text-nfa-cream border-t border-burugundy">
+      <div className="max-w-7xl mx-auto flex flex-col items-center">
         
         <h2 className="font-brand font-black text-6xl md:text-8xl lg:text-9xl tracking-tighter uppercase text-center mb-16 shadow-nfa-charcoal/10 drop-shadow-md">
           THE JOURNEY.

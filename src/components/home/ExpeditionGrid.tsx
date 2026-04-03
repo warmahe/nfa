@@ -1,61 +1,127 @@
 import React from 'react';
 import { DESTINATIONS } from '../../constants';
-import { ArrowRight } from 'lucide-react';
+import { ArrowUpRight, Crosshair, Map } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export const ExpeditionGrid = () => {
   return (
-    <section className="bg-nfa-charcoal py-20 md:py-32 px-4 lg:px-12 text-nfa-cream">
-      <div className="max-w-screen-7xl mx-auto">
-        
-        {/* Header Block */}
-        <div className="flex flex-col md:flex-row justify-between md:items-end gap-8 mb-16 border-t border-nfa-cream/20 pt-10 relative">
-           <div className="absolute top-0 left-0 text-[8px] uppercase font-bold tracking-[0.3em] bg-nfa-charcoal -translate-y-1/2 px-2 text-nfa-gold">Active Expeditions</div>
-           
-           <h2 className="font-brand font-black text-5xl md:text-7xl lg:text-8xl xl:text-[7rem] leading-[0.85] text-nfa-cream uppercase tracking-tighter max-w-3xl">
-              SELECT YOUR <br/><span className="text-nfa-gold">FRONTIER.</span>
-           </h2>
+    <section className="bg-nfa-charcoal py-16 md:py-24 px-[clamp(0.5rem,3vw,3rem)] text-nfa-cream border-t-[6px] border-nfa-gold relative overflow-hidden">
+      
+      {/* Immersive background architectural mesh */}
+      <div 
+        className="absolute inset-0 opacity-[0.05] pointer-events-none mix-blend-overlay"
+        style={{ 
+          backgroundImage: `radial-gradient(circle at 1px 1px, #FCFBF7 1px, transparent 0)`,
+          backgroundSize: '24px 24px' 
+        }}
+      />
 
-           <p className="font-sans text-xs uppercase font-medium tracking-wider text-nfa-cream/60 max-w-xs md:text-right border-l md:border-l-0 md:border-r border-nfa-cream/20 pl-4 md:pl-0 md:pr-4">
-              Limited slots available for the 2026 season. All expeditions are group-led by veteran nomads.
+      <div className="max-w-360 mx-auto relative z-10">
+        
+        {/* ======================= */}
+        {/* EDITORIAL HEADER BLOCK  */}
+        {/* ======================= */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 md:gap-[clamp(1rem,4vw,3rem)] mb-8 md:mb-16 px-2">
+           
+           <div className="relative pt-6 w-full max-w-4xl">
+             <div className="absolute top-0 left-0 flex items-center gap-2 bg-nfa-burgundy px-2 py-1 border border-nfa-cream/20">
+               <Crosshair size={10} className="text-nfa-cream" />
+               <span className="text-[9px] md:text-[10px] uppercase font-black tracking-[0.3em] text-nfa-cream">Authorized Personnel Only</span>
+             </div>
+             
+             <h2 className="font-brand font-black text-[clamp(2rem,7vw,7.5rem)] leading-[0.85] text-nfa-cream uppercase tracking-tighter drop-shadow-xl mt-4">
+                LOCATE YOUR <br className="hidden md:block"/><span className="text-nfa-gold">DROP ZONE.</span>
+             </h2>
+           </div>
+
+           <p className="font-sans text-[clamp(0.6rem,1.2vw,0.85rem)] uppercase font-bold tracking-[0.15em] text-nfa-cream/60 max-w-70 leading-relaxed md:text-right border-l-[3px] border-nfa-burgundy pl-3 md:border-l-0 md:pl-0 mt-4 md:mt-0">
+              No scripts. No safety nets. These coordinates represent total isolation. Evaluate readiness before engagement.
            </p>
         </div>
 
-        {/* 2x2 Grid Layout */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
-           {DESTINATIONS.slice(0, 4).map((dest) => (
-             <div key={dest.id} className="group relative border-2 md:border-4 border-nfa-gold overflow-hidden h-100 md:h-125 flex flex-col justify-end bg-nfa-charcoal shadow-[8px_8px_0px_0px_rgba(244,191,75,0.2)]">
-                
-                {/* Red Arrow Button inside Card */}
-                <button className="absolute top-4 right-4 z-20 w-10 h-10 md:w-12 md:h-12 border-2 border-nfa-cream bg-[#D83333] flex items-center justify-center text-nfa-cream hover:bg-nfa-gold transition-colors">
-                  <ArrowRight size={20} />
-                </button>
 
-                {/* FULL COLOR Image */}
-                <div className="absolute inset-0 z-0">
-                  <img src={dest.image} className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700" alt={dest.name}/>
-                  <div className="absolute inset-0 bg-linear-to-b from-transparent via-black/20 to-[#111111]" />
+        {/* ============================== */}
+        {/* STRICT 2x2 RESPONSIVE CARD GRID */}
+        {/* ============================== */}
+        {/* base is grid-cols-2 forcing mobile into 2 columns */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 lg:gap-8 w-full">
+           {DESTINATIONS.slice(0, 4).map((dest) => (
+             <Link 
+               to={`/itinerary/${dest.id}`} 
+               key={dest.id} 
+               className="group relative border-2 sm:border-[3px] border-nfa-gold overflow-hidden bg-nfa-charcoal aspect-4/5 flex flex-col justify-between shadow-[4px_4px_0px_0px_#9E1B1D] sm:shadow-[6px_6px_0px_0px_#9E1B1D] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all duration-200"
+             >
+                
+                {/* 1. Upper Data Strip */}
+                <div className="absolute top-0 w-full flex justify-between items-start z-30 p-2 sm:p-4">
+                  <span className="bg-nfa-gold border border-nfa-charcoal text-nfa-charcoal px-1.5 py-0.5 sm:px-3 sm:py-1 text-[6px] sm:text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] shadow-[1px_1px_0px_0px_#121212] md:shadow-[2px_2px_0px_0px_#121212]">
+                    [ {dest.region} ]
+                  </span>
+                  
+                  {/* Div used instead of button since it's inside a Link anchor */}
+                  <div className="w-6 h-6 sm:w-10 sm:h-10 border-[1.5px] border-nfa-charcoal bg-nfa-cream group-hover:bg-nfa-burgundy group-hover:text-nfa-cream text-nfa-charcoal flex items-center justify-center transition-colors">
+                    <ArrowUpRight className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
+                  </div>
                 </div>
 
-                {/* Card Content Footer */}
-                <div className="relative z-10 p-6 md:p-8 flex justify-between items-end">
-                   <div className="flex-1 pr-4">
-                     {/* The distinct left yellow line block */}
-                     <div className="border-l-4 border-nfa-gold pl-4 mb-4">
-                        <span className="text-[10px] uppercase font-bold text-nfa-gold tracking-[0.2em]">{dest.region}</span>
-                        <h3 className="font-brand font-black text-2xl md:text-3xl lg:text-4xl text-nfa-cream uppercase mt-1 leading-none warp-break-words">{dest.name}</h3>
-                     </div>
-                     <p className="font-sans text-[10px] md:text-xs text-nfa-cream/60 uppercase font-medium tracking-wide border-t border-nfa-cream/20 pt-4 leading-relaxed max-w-xs line-clamp-2">
-                        {dest.description}
-                     </p>
+                {/* 2. Background Media */}
+                <div className="absolute inset-0 z-0 bg-nfa-charcoal">
+                  <img 
+                    src={dest.image} 
+                    className="w-full h-full object-cover transform scale-100 group-hover:scale-105 opacity-80 group-hover:opacity-100 transition-all duration-600" 
+                    alt={dest.name}
+                  />
+                  <div className="absolute inset-0 bg-linear-to-b from-nfa-charcoal/30 via-transparent to-nfa-charcoal/95" />
+                </div>
+
+                {/* 3. Aggressively Compact Payload for 2x2 Fitting */}
+                <div className="relative z-10 mt-auto p-2 sm:p-5 md:p-6 w-full flex flex-col">
+                   
+                   <div className="border-t-2 sm:border-t-[3px] border-nfa-burgundy pt-2 sm:pt-4 mb-3 sm:mb-6">
+                     <h3 className="font-brand font-black text-lg sm:text-2xl md:text-3xl lg:text-4xl text-nfa-cream uppercase leading-[0.9] tracking-tight w-full drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] truncate">
+                        {dest.name}
+                     </h3>
                    </div>
                    
-                   <div className="text-right">
-                     <p className="text-[8px] uppercase tracking-widest text-nfa-cream/50 mb-1">Starting At</p>
-                     <p className="font-brand font-black text-2xl md:text-3xl text-nfa-gold">{dest.price}</p>
+                   <div className="grid grid-cols-2 items-end border-t border-nfa-cream/15 pt-2 sm:pt-4">
+                      
+                      {/* Left: Duration */}
+                      <div className="flex flex-col gap-1 sm:gap-2">
+                        <Map className="text-nfa-burgundy w-3 h-3 sm:w-4 sm:h-4 hidden sm:block" />
+                        <span className="font-sans text-[7px] sm:text-[9px] md:text-xs font-black tracking-widest sm:tracking-[0.2em] uppercase text-nfa-cream">
+                           {dest.duration}
+                        </span>
+                      </div>
+                      
+                      {/* Right: Pricing */}
+                      <div className="text-right">
+                        <span className="block text-[5px] sm:text-[7px] md:text-[9px] text-nfa-cream/60 tracking-[0.2em] uppercase mb-0.5 sm:mb-1">Engage</span>
+                        <span className="font-brand font-black text-[12px] sm:text-xl md:text-2xl lg:text-3xl leading-none text-nfa-gold">
+                          {dest.price}
+                        </span>
+                      </div>
+                      
                    </div>
                 </div>
-             </div>
+
+             </Link>
            ))}
+        </div>
+
+        {/* ==================================== */}
+        {/* VIEW ITINERARIES GLOBAL CALL TO ACTION */}
+        {/* ==================================== */}
+        <div className="mt-10 sm:mt-16 md:mt-24 w-full flex justify-center px-2">
+           <Link 
+             to="/destinations" 
+             className="w-full md:w-auto relative group bg-nfa-gold border-2 sm:border-[3px] border-nfa-cream text-nfa-charcoal flex items-center justify-center p-[clamp(1rem,2vw,1.5rem)] overflow-hidden shadow-[4px_4px_0px_0px_#9E1B1D] sm:shadow-[clamp(6px,1vw,8px)_clamp(6px,1vw,8px)_0px_0px_#9E1B1D] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 active:translate-x-0.75 active:translate-y-0.75 active:shadow-none transition-all duration-200"
+           >
+              <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_4px,rgba(0,0,0,0.1)_4px,rgba(0,0,0,0.1)_8px)] z-0 pointer-events-none" />
+              
+              <span className="relative z-10 font-sans font-black text-[clamp(0.7rem,1.2vw,1.1rem)] uppercase tracking-[0.15em] sm:tracking-[0.25em] text-center">
+                 ACCESS ALL ITINERARY FILES
+              </span>
+           </Link>
         </div>
 
       </div>
