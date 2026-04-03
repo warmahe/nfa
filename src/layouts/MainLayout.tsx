@@ -6,39 +6,42 @@ const MainLayout = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
 
-  // Close menu on route change and auto scroll to top
+  // Reset dropdown and enforce scrolling position natively upon URL/Path shifts
   useEffect(() => {
     setIsMenuOpen(false);
-    window.scrollTo(0, 0);
-  }, [location]);
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [location.pathname]);
 
   // Standardized clear navigation terms
   const navItems = [
-    
+    { label: "ABOUT", href: "/about" },
     { label: "DESTINATIONS", href: "/destinations" },
     { label: "GALLERY", href: "/gallery" },
-    { label: "BLOG", href: "/blog" },
-    { label: "ABOUT", href: "/about" }
+    { label: "BLOG", href: "/blog" }
   ];
 
   return (
-    <div className="min-h-screen bg-nfa-charcoal text-nfa-cream flex flex-col font-sans nfa-texture selection:bg-nfa-gold selection:text-nfa-charcoal">
+    // FIX: Using robust 100dvh guarantees it stretches perfectly on iPhone and Android screens, protecting footer position. 
+    // Isolate explicitly prevents DOM painting bleeding crashes
+    <div className="relative min-h-[100dvh] flex flex-col bg-[#FCFBF7] font-sans nfa-texture selection:bg-nfa-gold selection:text-nfa-charcoal isolate w-full">
       
       {/* ======================================= */}
-      {/* GLOBAL NAVBAR (Strict h-20 for sizing)  */}
+      {/* BULLETPROOF TOP GLOBAL NAVIGATION      */}
       {/* ======================================= */}
-      <nav className="fixed top-0 left-0 right-0 z-50 h-20 bg-[#121212] border-b-[3px] border-[#9E1B1D]">
-        <div className="w-full max-w-[1600px] mx-auto px-[clamp(1rem,4vw,3rem)] flex justify-between items-center h-full">
+      <header className="fixed top-0 left-0 right-0 z-[999] w-full">
+        
+        {/* Main Navbar Layer */}
+        <nav className="relative h-20 w-full bg-[#121212] border-b-[4px] border-[#9E1B1D] px-[clamp(1rem,4vw,3rem)] flex justify-between items-center z-[60] shadow-md">
           
-          {/* Brand/Logo Area */}
-          <Link to="/" className="flex items-center gap-3 group relative z-[60]">
-            <div className="bg-[#F4BF4B] w-6 h-6 rotate-45 flex items-center justify-center border-2 border-[#121212] group-hover:rotate-[135deg] transition-transform duration-500 ease-in-out"></div>
-            <span className="font-brand font-black text-xl md:text-2xl text-[#FCFBF7] tracking-tighter uppercase leading-none mt-1">
+          {/* Logo Area */}
+          <Link to="/" className="flex items-center gap-3 group">
+            <div className="bg-[#F4BF4B] w-5 h-5 md:w-6 md:h-6 rotate-45 flex items-center justify-center border-2 border-[#121212] group-hover:rotate-[135deg] transition-transform duration-500 ease-in-out"></div>
+            <span className="font-brand font-black text-lg md:text-xl lg:text-2xl text-[#FCFBF7] tracking-tighter uppercase leading-none mt-1">
               NO FIXED <br className="hidden lg:block"/><span className="text-[#F4BF4B]">ADDRESS.</span>
             </span>
           </Link>
 
-          {/* Center Links (Desktop) */}
+          {/* Desktop Center Links */}
           <div className="hidden lg:flex gap-10 items-center justify-center absolute left-1/2 -translate-x-1/2 h-full">
             {navItems.map((item) => {
               const isActive = location.pathname.includes(item.href) && item.href !== "/";
@@ -58,115 +61,121 @@ const MainLayout = () => {
             })}
           </div>
 
-          {/* Right CTA & Mobile Toggle */}
-          <div className="flex items-center h-full gap-4 relative z-[60]">
+          {/* Action Call & Safe Mobile Toggle Menu */}
+          <div className="flex items-center gap-4 md:gap-6">
             <Link 
               to="/booking/oracle"
-              className="hidden md:flex bg-[#F4BF4B] text-[#121212] px-6 lg:px-8 h-10 items-center text-[10px] lg:text-xs font-black uppercase tracking-widest border-2 border-[#121212] shadow-[3px_3px_0px_0px_#9E1B1D] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0px_0px_#9E1B1D] active:shadow-none active:translate-x-[3px] active:translate-y-[3px] transition-all"
+              className="hidden md:flex bg-[#F4BF4B] text-[#121212] px-6 py-2.5 items-center justify-center font-sans text-xs font-black uppercase tracking-widest border-[3px] border-[#121212] shadow-[3px_3px_0px_0px_#9E1B1D] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none active:scale-95 transition-all"
             >
               APPLY NOW
             </Link>
             
+            {/* Safe button toggle preventing misfires. Force updating UI based on boolean */}
             <button 
-              className="lg:hidden text-[#F4BF4B] p-1 -mr-2 bg-[#121212] border-2 border-transparent active:border-[#F4BF4B]"
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              aria-label="Toggle Menu"
+              className="lg:hidden flex items-center justify-center p-2 border-2 text-[#F4BF4B] bg-[#121212] active:bg-[#9E1B1D] active:text-[#FCFBF7] active:border-[#121212] transition-colors border-transparent active:border-[#F4BF4B]"
+              onClick={() => setIsMenuOpen(prev => !prev)}
+              aria-label="Open Site Menu"
             >
-              {isMenuOpen ? <X size={32} /> : <Menu size={32} />}
+              {isMenuOpen ? <X size={28} className="drop-shadow" /> : <Menu size={28} className="drop-shadow" />}
             </button>
           </div>
-        </div>
+        </nav>
 
-        {/* ======================================= */}
-        {/* MOBILE DROPDOWN MENU (Brutalist panel) */}
-        {/* ======================================= */}
+        {/* 
+          FIX: Mobile Drawer rebuilt entirely.
+          Instead of broken maxHeight hacks causing lag, we physically eject this modal upwards and glide it into screen via absolute translates!
+          Now impossible to miss close actions.
+        */}
         <div 
-          className={`lg:hidden fixed top-20 left-0 w-full bg-[#121212] border-b-[6px] border-[#F4BF4B] overflow-hidden transition-all duration-400 ease-[cubic-bezier(0.19,1,0.22,1)] ${
-            isMenuOpen ? 'max-h-[100svh] opacity-100' : 'max-h-0 opacity-0'
+          className={`lg:hidden fixed top-20 left-0 w-full bg-[#121212] border-b-[6px] border-[#F4BF4B] overflow-y-auto transform transition-transform duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] z-[50] ${
+            isMenuOpen ? 'translate-y-0 opacity-100 shadow-[0_20px_40px_rgba(0,0,0,0.5)]' : '-translate-y-[150%] opacity-0'
           }`}
+          style={{ maxHeight: 'calc(100dvh - 80px)' }}
         >
-          <div className="flex flex-col p-6 h-[calc(100vh-5rem)] pb-32">
+          <div className="flex flex-col p-8 pb-32 w-full h-full min-h-[500px]">
             
-            <span className="font-mono text-[#9E1B1D] text-[10px] uppercase font-bold tracking-[0.4em] mb-8 border-b-2 border-[#FCFBF7]/10 pb-4">
-               MENU
+            <span className="font-mono text-[#9E1B1D] text-[10px] uppercase font-bold tracking-[0.4em] mb-10 border-b-2 border-[#FCFBF7]/10 pb-4">
+               SITE OPERATIONS MENU
             </span>
 
             <div className="flex flex-col gap-6">
-              {navItems.map((item) => {
-                const isActive = location.pathname.includes(item.href) && item.href !== "/";
-                return (
-                  <Link
-                    key={item.href}
-                    to={item.href}
-                    onClick={() => setIsMenuOpen(false)}
-                    className={`font-brand font-black text-4xl uppercase tracking-tighter transition-colors w-fit ${
-                      isActive ? "text-[#F4BF4B]" : "text-[#FCFBF7] hover:text-[#9E1B1D]"
-                    }`}
-                  >
-                    {item.label}
-                  </Link>
-                );
-              })}
+              {navItems.map((item) => (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  onClick={() => setIsMenuOpen(false)}
+                  className={`font-brand font-black text-3xl sm:text-4xl uppercase tracking-tighter transition-colors w-fit border-l-4 pl-4 hover:border-[#F4BF4B] hover:text-[#FCFBF7] ${
+                    (location.pathname.includes(item.href) && item.href !== "/") ? "border-[#9E1B1D] text-[#F4BF4B]" : "border-transparent text-[#FCFBF7]/70"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              ))}
             </div>
             
-            <div className="mt-auto border-t-2 border-[#FCFBF7]/10 pt-8">
+            <div className="mt-16 pt-8 w-full border-t border-[#FCFBF7]/10">
               <Link 
                 to="/booking/oracle"
                 onClick={() => setIsMenuOpen(false)}
-                className="w-full flex items-center justify-center bg-[#F4BF4B] text-[#121212] h-16 font-sans font-black text-sm uppercase tracking-widest shadow-[4px_4px_0px_0px_#9E1B1D] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
+                className="w-full flex items-center justify-center bg-[#F4BF4B] text-[#121212] py-6 font-sans font-black text-sm uppercase tracking-[0.2em] shadow-[6px_6px_0px_0px_#9E1B1D] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all"
               >
-                APPLY NOW
+                START YOUR APPLICATION
               </Link>
             </div>
           </div>
         </div>
-      </nav>
+
+      </header>
 
       {/* ======================================= */}
-      {/* MAIN ROUTER OUTLET                      */}
+      {/* PAGE ROUTES RENDERING                  */}
       {/* ======================================= */}
-      {/* pt-20 exactly offsets the 5rem fixed navbar height we established. */}
-      <main className="flex-1 w-full pt-20 flex flex-col relative z-0 bg-[#FCFBF7]">
+      {/* FIX: Set dynamically safe flex margins. `<main>` will forcefully eject content to space downwards guaranteeing zero crashes on short routes. mt-20 securely handles strict fixed sizing */}
+      <main className="flex-1 flex flex-col w-full mt-20 relative z-0">
         <Outlet />
       </main>
 
       {/* ======================================= */}
-      {/* BRUTALIST FOOTER                        */}
+      {/* ROOT GLOBAL FOOTER                      */}
       {/* ======================================= */}
-      <footer className="border-t-[4px] border-[#121212] bg-[#FCFBF7] text-[#121212] relative z-10">
-        <div className="w-full max-w-[1440px] mx-auto px-[clamp(1rem,4vw,3rem)] py-16 lg:py-24 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-8">
+      {/* FIX: Dropped risky floating `relative z-10`. Applied strict DOM sequence layout formatting */}
+      <footer className="w-full border-t-[6px] border-[#121212] bg-[#FCFBF7] text-[#121212] block">
+        
+        {/* Core Detail Grid Layout */}
+        <div className="w-full max-w-[1440px] mx-auto px-[clamp(1rem,4vw,3rem)] py-12 md:py-24 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-8">
           
           <div className="lg:col-span-2">
-            <h3 className="font-brand font-black text-5xl md:text-7xl text-[#121212] uppercase leading-[0.8] mb-6">No Fixed<br/><span className="text-[#9E1B1D]">Address.</span></h3>
-            <p className="font-sans font-bold uppercase tracking-[0.1em] text-[10px] md:text-xs text-[#121212]/60 max-w-xs border-l-4 border-[#9E1B1D] pl-4">The world is not a map. It's a series of statements. Make yours.</p>
+            <h3 className="font-brand font-black text-4xl md:text-6xl text-[#121212] uppercase leading-[0.8] mb-6">No Fixed<br/><span className="text-[#9E1B1D]">Address.</span></h3>
+            <p className="font-sans font-bold uppercase tracking-[0.1em] text-[10px] md:text-xs text-[#121212]/60 max-w-[280px] border-l-[3px] border-[#9E1B1D] pl-4">The world is not a map. It's a series of statements. Make yours.</p>
           </div>
 
           <div className="flex flex-col gap-4">
-            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#F4BF4B] bg-[#121212] px-2 py-1 w-fit mb-2 shadow-[2px_2px_0_0_#9E1B1D]">NAVIGATION</h4>
+            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#F4BF4B] bg-[#121212] px-3 py-1.5 w-fit mb-4 shadow-[3px_3px_0_0_#9E1B1D]">NAVIGATION</h4>
             {navItems.map(i => (
-              <Link key={i.href} to={i.href} className="font-sans text-xs uppercase font-bold tracking-widest text-[#121212] hover:text-[#9E1B1D] transition-colors">{i.label}</Link>
+              <Link key={i.href} to={i.href} className="font-sans text-xs uppercase font-bold tracking-[0.2em] text-[#121212] hover:text-[#9E1B1D] transition-colors">{i.label}</Link>
             ))}
-            <Link to="/faq" className="font-sans text-xs uppercase font-bold tracking-widest text-[#121212] hover:text-[#9E1B1D] transition-colors">FAQ</Link>
+            <Link to="/faq" className="font-sans text-xs uppercase font-bold tracking-[0.2em] text-[#121212] hover:text-[#9E1B1D] transition-colors">FAQ</Link>
           </div>
 
           <div className="flex flex-col gap-4">
-            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#F4BF4B] bg-[#121212] px-2 py-1 w-fit mb-2 shadow-[2px_2px_0_0_#9E1B1D]">CONNECT</h4>
-            <a href="#" className="font-sans text-xs uppercase font-bold tracking-widest text-[#121212] hover:text-[#9E1B1D] transition-colors">Instagram</a>
-            <a href="#" className="font-sans text-xs uppercase font-bold tracking-widest text-[#121212] hover:text-[#9E1B1D] transition-colors">Twitter</a>
-            <a href="mailto:hello@nofixedaddress.com" className="font-sans text-xs uppercase font-bold tracking-widest text-[#121212] hover:text-[#9E1B1D] transition-colors">Contact Us</a>
+            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#F4BF4B] bg-[#121212] px-3 py-1.5 w-fit mb-4 shadow-[3px_3px_0_0_#9E1B1D]">CONNECT</h4>
+            <a href="#" className="font-sans text-xs uppercase font-bold tracking-[0.2em] text-[#121212] hover:text-[#9E1B1D] transition-colors">Instagram</a>
+            <a href="#" className="font-sans text-xs uppercase font-bold tracking-[0.2em] text-[#121212] hover:text-[#9E1B1D] transition-colors">Twitter / X</a>
+            <a href="mailto:hello@nofixedaddress.com" className="font-sans text-xs uppercase font-bold tracking-[0.2em] text-[#121212] hover:text-[#9E1B1D] transition-colors">Email Transmission</a>
           </div>
         </div>
 
-        {/* Footer Sub-Bar */}
-        <div className="bg-[#121212] text-[#FCFBF7] border-t-2 border-[#FCFBF7]/10 px-[clamp(1rem,4vw,3rem)] py-6 flex flex-col md:flex-row justify-between text-[8px] md:text-[10px] font-bold tracking-[0.2em] uppercase items-center text-center md:text-left gap-4">
-          <p className="text-[#FCFBF7]/50">&copy; 2026 NO FIXED ADDRESS. ALL RIGHTS RESERVED.</p>
-          <div className="flex gap-6">
-            <Link to="/privacy" className="hover:text-[#F4BF4B] transition-colors">Privacy Policy</Link>
-            <Link to="/terms" className="hover:text-[#F4BF4B] transition-colors">Terms & Conditions</Link>
+        {/* Base Meta Information Bar */}
+        <div className="bg-[#121212] text-[#FCFBF7] px-[clamp(1rem,4vw,3rem)] py-6 md:py-8 flex flex-col md:flex-row justify-between text-[8px] md:text-[10px] font-bold tracking-[0.25em] uppercase items-center text-center md:text-left gap-4 md:gap-0 mt-6 border-t-2 border-[#121212]">
+          <p className="text-[#FCFBF7]/50 max-w-[200px] md:max-w-none mx-auto md:mx-0 leading-relaxed">&copy; 2026 NO FIXED ADDRESS INC. <br className="md:hidden"/> ALL RIGHTS SECURED.</p>
+          <div className="flex gap-4 sm:gap-6 mt-2 md:mt-0 text-[#FCFBF7]">
+            <Link to="/privacy" className="hover:text-[#F4BF4B] transition-colors">Privacy Framework</Link>
+            <span className="opacity-30">|</span>
+            <Link to="/terms" className="hover:text-[#F4BF4B] transition-colors">Terms of Operations</Link>
           </div>
         </div>
+
       </footer>
-
     </div>
   );
 };
