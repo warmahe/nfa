@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { X, ChevronLeft, ChevronRight, ArrowLeft, Database, Maximize2 } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { GALLERY_IMAGES } from "../constants";
 
 export const EditorialGallery = () => {
@@ -31,10 +32,10 @@ export const EditorialGallery = () => {
   if (tripData.length === 0) {
     return (
       <div className="min-h-screen bg-nfa-cream pt-32 pb-24 px-8 text-center flex flex-col items-center justify-center text-nfa-charcoal">
-         <Database size={64} className="text-[#9E1B1D] mb-6 opacity-30" />
+         <Database size={64} className="text-nfa-burgundy mb-6 opacity-30" />
          <h1 className="font-brand font-black text-6xl uppercase tracking-tighter mb-4">CORRUPT ARCHIVE</h1>
          <p className="font-sans font-bold tracking-widest uppercase mb-8">No visual data located for sector: {id}</p>
-         <Link to="/gallery" className="bg-nfa-charcoal text-nfa-cream px-8 py-4 font-black uppercase text-xs tracking-widest shadow-[4px_4px_0px_0px_#9E1B1D]">Return to Vault</Link>
+         <Link to="/gallery" className="bg-nfa-charcoal text-nfa-cream px-8 py-4 font-black uppercase text-xs tracking-widest shadow-[4px_4px_0px_0px_nfa-burgundy]">Return to Vault</Link>
       </div>
     );
   }
@@ -133,51 +134,68 @@ export const EditorialGallery = () => {
       {/* ================================== */}
       {/* CINEMATIC LIGHTBOX VIEWER        */}
       {/* ================================== */}
-      {selectedLightboxImage && (
-        <div 
-          className="fixed inset-0 z-100 bg-nfa-charcoal/95 backdrop-blur-md flex flex-col items-center justify-center p-4 md:p-8"
-          onClick={() => setSelectedLightboxImage(null)}
-        >
-          <div className="absolute top-0 w-full flex justify-between items-center p-4 md:p-6 border-b border-nfa-cream/10 bg-nfa-charcoal shadow-2xl z-50">
-            <span className="font-sans font-black text-nfa-gold text-[10px] md:text-xs uppercase tracking-[0.3em]">
-              <span className="hidden sm:inline">VIEWER // </span> LOG {activeIndex + 1} OF {tripData.length}
-            </span>
-            <button className="border-2 border-nfa-cream/20 bg-nfa-charcoal text-nfa-cream p-2 hover:bg-nfa-burgundy hover:border-nfa-burgundy transition-colors"><X size={20}/></button>
-          </div>
-
-          {/* Central Image Viewer Wrapper */}
-          <div className="w-full max-w-[1200px] h-full pt-16 flex flex-col justify-center items-center relative pointer-events-none">
-            
-            <div className="w-full max-h-[75vh] flex justify-center p-2 relative pointer-events-auto" onClick={(e) => e.stopPropagation()}>
-              
-              {/* Massive Prev Button overlaid over left half */}
-              <button onClick={prevImage} className="absolute left-[-1rem] md:-left-8 top-1/2 -translate-y-1/2 bg-[#121212] border-[3px] border-[#FCFBF7]/20 p-3 md:p-5 text-[#FCFBF7] hover:bg-[#F4BF4B] hover:text-[#121212] hover:border-[#121212] shadow-xl group transition-all z-20 hover:scale-110 active:scale-95">
-                <ChevronLeft size={28} className="group-hover:-translate-x-1 transition-transform" />
-              </button>
-              
-              {/* The high res image */}
-              <img src={selectedLightboxImage.url} alt={selectedLightboxImage.title} className="max-w-full max-h-[75vh] object-contain border-[4px] border-[#121212] bg-[#111]" />
-              
-               {/* Massive Next Button overlaid over right half */}
-               <button onClick={nextImage} className="absolute right-[-1rem] md:-right-8 top-1/2 -translate-y-1/2 bg-[#121212] border-[3px] border-[#FCFBF7]/20 p-3 md:p-5 text-[#FCFBF7] hover:bg-[#F4BF4B] hover:text-[#121212] hover:border-[#121212] shadow-xl group transition-all z-20 hover:scale-110 active:scale-95">
-                <ChevronRight size={28} className="group-hover:translate-x-1 transition-transform" />
+      <AnimatePresence>
+        {selectedLightboxImage && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-[#050505]/98 backdrop-blur-md flex flex-col items-center justify-center"
+            onClick={() => setSelectedLightboxImage(null)}
+          >
+            {/* 1. TOP STATUS & CLOSE (Fixed to top always) */}
+            <div className="absolute top-0 w-full flex justify-between items-center p-24 md:p-22 z-50">
+              <div className="font-sans font-bold text-nfa-gold text-[10px] uppercase tracking-[0.3em]">
+                LOG {activeIndex + 1} OF {tripData.length}
+              </div>
+              <button
+                onClick={() => setSelectedLightboxImage(null)}
+                className="bg-nfa-charcoal border-2 border-nfa-cream/20 p-2 text-nfa-cream hover:bg-[#D83333] transition-all"
+              >
+                <X size={24} />
               </button>
             </div>
 
-            {/* Information Sub-banner */}
-            <div className="w-full max-w-[90%] md:max-w-none mx-auto bg-[#121212] border-[4px] border-[#121212] shadow-xl mt-[-10px] md:mt-4 p-4 md:p-6 z-10 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
-               <h2 className="font-brand font-black uppercase text-2xl md:text-3xl text-[#FCFBF7] mb-2">{selectedLightboxImage.title}</h2>
-               <div className="flex gap-4 items-center">
-                  <span className="font-sans font-bold text-[8px] md:text-[10px] uppercase tracking-widest text-[#F4BF4B] bg-[#F4BF4B]/10 px-2 py-1">Class: {selectedLightboxImage.category}</span>
-                  {selectedLightboxImage.location && (
-                    <span className="font-mono text-[8px] md:text-[10px] uppercase text-[#FCFBF7]/50">{selectedLightboxImage.location}</span>
-                  )}
+            {/* 2. IMAGE STAGE (Centered) */}
+            <div className="relative w-full h-full flex items-center justify-center p-4 md:p-12" onClick={(e) => e.stopPropagation()}>
+              
+              <img
+                src={selectedLightboxImage.url}
+                alt={selectedLightboxImage.title}
+                className="max-w-full max-h-[70vh] object-contain border-4 border-nfa-charcoal shadow-2xl"
+              />
+
+              {/* 3. REFINED NAV BUTTONS (Responsive size) */}
+              <button
+                onClick={prevImage}
+                className="absolute left-2 md:left-8 top-1/2 -translate-y-1/2 bg-nfa-charcoal border-2 border-nfa-cream/20 p-2 md:p-4 text-nfa-cream hover:bg-nfa-gold hover:text-nfa-charcoal transition-all active:scale-90"
+              >
+                <ChevronLeft size={20} className="md:size-8" />
+              </button>
+              
+              <button
+                onClick={nextImage}
+                className="absolute right-2 md:right-8 top-1/2 -translate-y-1/2 bg-nfa-charcoal border-2 border-nfa-cream/20 p-2 md:p-4 text-nfa-cream hover:bg-nfa-gold hover:text-nfa-charcoal transition-all active:scale-90"
+              >
+                <ChevronRight size={20} className="md:size-8" />
+              </button>
+            </div>
+
+            {/* 4. FOOTER PLAQUE */}
+            <div className="absolute bottom-0 w-full p-6 md:p-12 bg-linear-to-t from-black/80 to-transparent">
+               <div className="max-w-[1200px] mx-auto">
+                 <h2 className="font-brand font-black uppercase text-2xl md:text-5xl text-nfa-cream leading-none mb-2">
+                   {selectedLightboxImage.title}
+                 </h2>
+                 <p className="font-sans font-bold text-[9px] md:text-xs uppercase tracking-[0.2em] text-nfa-gold">
+                    {selectedLightboxImage.category} // {selectedLightboxImage.location}
+                 </p>
                </div>
             </div>
 
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
