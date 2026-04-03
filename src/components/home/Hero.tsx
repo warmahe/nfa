@@ -36,22 +36,7 @@ export const Hero = () => {
       >
         {/* LEFT */}
         <div className="min-w-0 self-center">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45 }}
-            className="
-              mb-[clamp(14px,2vw,24px)] inline-flex w-fit items-center gap-2
-              bg-nfa-burgundy text-nfa-cream
-              px-3 py-1.5 border-2 border-nfa-charcoal
-              shadow-[4px_4px_0px_0px_#121212]
-            "
-          >
-            <Crosshair size={14} className="animate-pulse" />
-            <span className="font-sans text-[clamp(10px,0.85vw,12px)] font-black uppercase tracking-[0.22em]">
-              Objective 01
-            </span>
-          </motion.div>
+          
 
           <div className="min-w-0">
             <motion.h1
