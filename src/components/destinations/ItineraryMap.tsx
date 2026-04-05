@@ -8,124 +8,37 @@ interface ItineraryMapProps {
   height?: string;
 }
 
-export const ItineraryMap: React.FC<ItineraryMapProps> = ({
-  destination,
-  height = "500px",
-}) => {
-  const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<L.Map | null>(null);
-  const markersRef = useRef<L.Marker[]>([]);
-  const polylineRef = useRef<L.Polyline | null>(null);
+export const ItineraryMap: React.FC<ItineraryMapProps> = ({ destination, height = "450px" }) => {
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstance = useRef<L.Map | null>(null);
 
   useEffect(() => {
-    if (!mapContainer.current) return;
+    if (!mapRef.current) return;
+    const routes = ITINERARY_ROUTES[destination] || [];
+    if (routes.length === 0) return;
 
-    const routes = ITINERARY_ROUTES[destination];
-    if (!routes || routes.length === 0) return;
-
-    // Initialize map
-    if (!map.current) {
-      map.current = L.map(mapContainer.current).setView(
-        [routes[0].lat, routes[0].lng],
-        8
-      );
-
-      L.tileLayer(MAP_CONFIG.tileLayer, {
-        attribution: MAP_CONFIG.attribution,
-        maxZoom: MAP_CONFIG.maxZoom,
-      }).addTo(map.current);
+    if (!mapInstance.current) {
+      mapInstance.current = L.map(mapRef.current, { scrollWheelZoom: false }).setView([routes[0].lat, routes[0].lng], 8);
+      L.tileLayer(MAP_CONFIG.tileLayer).addTo(mapInstance.current);
     }
 
-    // Clear existing markers
-    markersRef.current.forEach((marker) => marker.remove());
-    markersRef.current = [];
-
-    // Remove existing polyline
-    if (polylineRef.current) {
-      polylineRef.current.remove();
-    }
-
-    // Add route markers
-    const coordinates: [number, number][] = [];
-    routes.forEach((route) => {
-      coordinates.push([route.lat, route.lng]);
-
-      // Create day marker
-      const iconHtml = `
-        <div style="
-          background: linear-gradient(135deg, #0F766E 0%, #0d5f5b 100%);
-          color: white;
-          border-radius: 50%;
-          width: 44px;
-          height: 44px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: bold;
-          font-size: 16px;
-          border: 3px solid #FFF4ED;
-          box-shadow: 0 4px 12px rgba(15, 118, 110, 0.4);
-          cursor: pointer;
-        ">
-          Day ${route.day}
-        </div>
-      `;
-
+    // Clear and redraw
+    const coords: [number, number][] = [];
+    routes.forEach((r) => {
+      coords.push([r.lat, r.lng]);
       const icon = L.divIcon({
-        html: iconHtml,
-        iconSize: [44, 44],
-        className: "itinerary-marker",
+        className: 'custom-nfa-marker',
+        html: `<div style="background:#121212; color:#F4BF4B; border:2px solid #F4BF4B; width:30px; height:30px; border-radius:0; transform:rotate(45deg); display:flex; align-items:center; justify-center; font-weight:bold; font-size:12px;"><span style="transform:rotate(-45deg); display:block; width:100%; text-align:center;">${r.day}</span></div>`,
+        iconSize: [30, 30]
       });
-
-      const marker = L.marker([route.lat, route.lng], {
-        icon,
-      })
-        .bindPopup(
-          `<div>
-            <div style="font-weight: bold; color: #0F766E; margin-bottom: 4px;">Day ${route.day}: ${route.location}</div>
-            <div style="color: #666; font-size: 12px;">${route.description}</div>
-          </div>`,
-          { maxWidth: 250 }
-        )
-        .addTo(map.current!);
-
-      markersRef.current.push(marker);
-
-      // Open popup for Day 1
-      if (route.day === 1) {
-        marker.openPopup();
-      }
+      L.marker([r.lat, r.lng], { icon }).addTo(mapInstance.current!).bindPopup(`Day ${r.day}: ${r.location}`);
     });
 
-    // Draw polyline connecting all points
-    if (coordinates.length > 1) {
-      polylineRef.current = L.polyline(coordinates, {
-        color: "#F97316",
-        weight: 3,
-        opacity: 0.7,
-        dashArray: "5, 10",
-      }).addTo(map.current!);
-    }
-
-    // Fit map to bounds
-    if (markersRef.current.length > 0) {
-      const bounds = L.latLngBounds(
-        markersRef.current.map((m) => m.getLatLng())
-      );
-      map.current!.fitBounds(bounds, { padding: [50, 50] });
-    }
+    L.polyline(coords, { color: "#9E1B1D", weight: 4, dashArray: "10, 10" }).addTo(mapInstance.current!);
+    mapInstance.current.fitBounds(L.latLngBounds(coords), { padding: [40, 40] });
   }, [destination]);
 
   return (
-    <div
-      ref={mapContainer}
-      style={{
-        height,
-        borderRadius: "12px",
-        overflow: "hidden",
-        boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-        border: "1px solid #e5e7eb",
-      }}
-    />
+    <div ref={mapRef} className="border-4 border-[#121212] shadow-[8px_8px_0px_0px_#121212]" style={{ height }} />
   );
 };
