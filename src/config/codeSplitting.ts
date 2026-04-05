@@ -40,19 +40,19 @@ export const lazyLoad = (
 export const routeSplitting = {
   // Core pages
   home: () => import('../pages/Home').then(m => ({ default: m.Home })),
-  destinations: () => import('../pages/Pages').then(m => ({ default: m.Destinations })),
+  destinations: () => import('../pages/dPages').then(m => ({ default: m.Destinations })),
   packages: () => import('../pages/PackageBrowse').then(m => ({ default: m.PackageBrowse })),
   gallery: () => import('../pages/Gallery').then(m => ({ default: m.Gallery })),
-  books: () => import('../pages/Pages').then(m => ({ default: m.Blog })),
-  about: () => import('../pages/Pages').then(m => ({ default: m.About })),
-  contact: () => import('../pages/Pages').then(m => ({ default: m.Contact })),
-  faq: () => import('../pages/Pages').then(m => ({ default: m.FAQ })),
-  testimonials: () => import('../pages/Pages').then(m => ({ default: m.Testimonials })),
+  books: () => import('../pages/dPages').then(m => ({ default: m.Blog })),
+  about: () => import('../pages/dPages').then(m => ({ default: m.About })),
+  contact: () => import('../pages/dPages').then(m => ({ default: m.Contact })),
+  faq: () => import('../pages/dPages').then(m => ({ default: m.FAQ })),
+  testimonials: () => import('../pages/dPages').then(m => ({ default: m.Testimonials })),
   
   // User-specific pages
-  dashboard: () => import('../pages/Pages').then(m => ({ default: m.Dashboard })),
-  admin: () => import('../pages/Pages').then(m => ({ default: m.Admin })),
-  booking: () => import('../pages/Pages').then(m => ({ default: m.Booking })),
+  dashboard: () => import('../pages/dPages').then(m => ({ default: m.Dashboard })),
+  admin: () => import('../pages/dPages').then(m => ({ default: m.Admin })),
+  booking: () => import('../pages/dPages').then(m => ({ default: m.Booking })),
   
   // Detail pages
   itinerary: () => import('../pages/ItineraryDetail').then(m => ({ default: m.default })),
