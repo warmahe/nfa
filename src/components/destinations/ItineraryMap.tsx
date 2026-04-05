@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { ITINERARY_ROUTES, MAP_CONFIG } from "../utils/mapConstants";
+import { ITINERARY_ROUTES, MAP_CONFIG } from '../../utils/mapConstants';
 
 interface ItineraryMapProps {
   destination: string;

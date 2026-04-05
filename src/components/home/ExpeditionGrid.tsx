@@ -1,5 +1,5 @@
 import React from 'react';
-import { DESTINATIONS } from '../../constants';
+import { DESTINATIONS } from '../../utils/constants';
 import { ArrowUpRight, Crosshair, Map } from 'lucide-react';
 import { Link } from 'react-router-dom';
 

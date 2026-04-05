@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Star, Send } from "lucide-react";
-import { analytics } from "../utils/analytics";
+import { analytics } from '../../utils/analytics';
 
 interface ReviewSubmissionProps {
   packageId: string;

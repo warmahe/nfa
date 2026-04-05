@@ -1,17 +1,17 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Star, Clock, MapPin, Filter, ChevronDown, Scale, Bell, Heart } from "lucide-react";
-import { PACKAGES } from "../constants";
+import { PACKAGES } from '../../utils/constants';
 import { motion } from "motion/react";
 import {
   addToComparison,
   getComparisonCount,
   isInComparison,
   getMaxComparisonItems,
-} from "../services/comparisonService";
-import { addToWishlist, removeFromWishlist, isInWishlist } from "../services/wishlistService";
-import { ComparisonModal } from "../components/ComparisonModal";
-import { PriceAlertModal } from "../components/PriceAlertModal";
+} from '../../services/comparisonService';
+import { addToWishlist, removeFromWishlist, isInWishlist } from '../../services/wishlistService';
+import { ComparisonModal } from '../../components/shared/ComparisonModal';
+import { PriceAlertModal } from '../../components/shared/PriceAlertModal';
 
 export const PackageBrowse = () => {
   const [sortBy, setSortBy] = useState("popularity");

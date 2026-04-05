@@ -1,5 +1,5 @@
 import React from 'react';
-import { REVIEWS } from '../../constants';
+import { REVIEWS } from '../../utils/constants';
 import { Quote } from 'lucide-react';
 
 export const Testimonials = () => {

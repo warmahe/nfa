@@ -2,7 +2,7 @@ import React, { useState, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { X, ChevronLeft, ChevronRight, ArrowLeft, Database, Maximize2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { GALLERY_IMAGES } from "../constants";
+import { GALLERY_IMAGES } from '../../utils/constants';
 
 export const EditorialGallery = () => {
   // Capture dynamic ID from the URL (e.g., 'iceland' or 'nepal')

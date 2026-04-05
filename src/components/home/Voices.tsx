@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { REVIEWS } from '../../constants';
+import { REVIEWS } from '../../utils/constants';
 import { Quote, ArrowLeft, ArrowRight, BookOpen } from 'lucide-react';
 import { Link } from 'react-router-dom';
 

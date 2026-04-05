@@ -1,16 +1,25 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import MainLayout from "./layouts/MainLayout";
-import { Home } from "./pages/Home";
-import { Gallery } from "./pages/Gallery";
-import { EditorialGallery } from "./pages/EditorialGallery";
-import { PackageBrowse } from "./pages/PackageBrowse";
-import { BlogPost } from "./pages/BlogPost";
+import { Home } from "./pages/public/Home";
+import { Destinations } from "./pages/public/Destinations";
+import { Gallery } from "./pages/public/Gallery";
+import { EditorialGallery } from "./pages/public/EditorialGallery";
+import { About } from "./pages/public/About";
+import { Contact } from "./pages/public/Contact";
+import { BlogPost as Blog } from "./pages/public/Blog";
+import { PackageBrowse } from "./pages/public/PackageBrowse";
+import ItineraryDetail from "./pages/public/ItineraryDetail";
 
-// Use these placeholders to stop the build from crashing
-import { 
-  Destinations, Booking, About, Contact, Blog, FAQ, 
-  Testimonials, Dashboard, Admin, Wishlist, PriceAlerts, ItineraryDetail 
-} from "./pages/PlaceholderPages";
+import Booking from "./pages/user/Booking";
+import { Wishlist } from "./pages/user/Wishlist";
+import { PriceAlerts } from "./pages/user/PriceAlerts";
+import { Dashboard } from "./pages/user/Dashboard";
+
+import { Admin } from "./pages/system/Admin";
+
+// Stubs for missing pages
+const FAQ = () => <div>FAQ</div>;
+const Testimonials = () => <div>Testimonials</div>;
 
 export default function App() {
   return (
@@ -26,7 +35,7 @@ export default function App() {
           <Route path="booking/:id" element={<Booking />} />
           <Route path="about" element={<About />} />
           <Route path="blog" element={<Blog />} />
-          <Route path="blog/:slug" element={<BlogPost />} />
+          <Route path="blog/:slug" element={<Blog />} />
           <Route path="testimonials" element={<Testimonials />} />
           <Route path="faq" element={<FAQ />} />
           <Route path="contact" element={<Contact />} />

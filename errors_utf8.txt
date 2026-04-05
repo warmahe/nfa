@@ -1,0 +1,19 @@
+﻿
+> react-example@0.0.0 lint
+> tsc --noEmit
+
+src/components/admin/AdminMediaManager.tsx(52,30): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'Blob'.
+  Type '{}' is missing the following properties from type 'Blob': size, type, arrayBuffer, bytes, and 3 more.
+src/components/admin/AdminMediaManager.tsx(113,30): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'Blob'.
+  Type '{}' is missing the following properties from type 'Blob': size, type, arrayBuffer, bytes, and 3 more.
+src/components/shared/ComparisonModal.tsx(8,3): error TS2305: Module '"../../services/comparisonService"' has no exported member 'any'.
+src/utils/codeSplitting.ts(43,78): error TS2339: Property 'Destinations' does not exist on type 'typeof import("E:/nfa/no-fixed-address-1design/src/pages/public/Home")'.
+src/utils/codeSplitting.ts(46,71): error TS2339: Property 'Blog' does not exist on type 'typeof import("E:/nfa/no-fixed-address-1design/src/pages/public/Home")'.
+src/utils/codeSplitting.ts(47,71): error TS2339: Property 'About' does not exist on type 'typeof import("E:/nfa/no-fixed-address-1design/src/pages/public/Home")'.
+src/utils/codeSplitting.ts(48,73): error TS2339: Property 'Contact' does not exist on type 'typeof import("E:/nfa/no-fixed-address-1design/src/pages/public/Home")'.
+src/utils/codeSplitting.ts(49,69): error TS2339: Property 'FAQ' does not exist on type 'typeof import("E:/nfa/no-fixed-address-1design/src/pages/public/Home")'.
+src/utils/codeSplitting.ts(50,78): error TS2339: Property 'Testimonials' does not exist on type 'typeof import("E:/nfa/no-fixed-address-1design/src/pages/public/Home")'.
+src/utils/codeSplitting.ts(53,75): error TS2339: Property 'Dashboard' does not exist on type 'typeof import("E:/nfa/no-fixed-address-1design/src/pages/public/Home")'.
+src/utils/codeSplitting.ts(54,71): error TS2339: Property 'Admin' does not exist on type 'typeof import("E:/nfa/no-fixed-address-1design/src/pages/public/Home")'.
+src/utils/codeSplitting.ts(55,73): error TS2339: Property 'Booking' does not exist on type 'typeof import("E:/nfa/no-fixed-address-1design/src/pages/public/Home")'.
+src/utils/codeSplitting.ts(72,89): error TS2339: Property 'AdminPackageCRUD' does not exist on type 'typeof import("E:/nfa/no-fixed-address-1design/src/components/admin/AdminDashboard")'.

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "motion/react";
 import { Heart, ArrowRight, Download, Trash2, MapPin, Star, Calendar, DollarSign, AlertCircle, Package as PackageIcon } from "lucide-react";
-import { getWishlist, getWishlistByCategory, removeFromWishlist, clearWishlist, exportWishlistAsCSV, getWishlistStats, WishlistItem } from "../services/wishlistService";
+import { getWishlist, getWishlistByCategory, removeFromWishlist, clearWishlist, exportWishlistAsCSV, getWishlistStats, WishlistItem } from '../../services/wishlistService';
 
 export const Wishlist = () => {
   const [wishlisted, setWishlisted] = useState<WishlistItem[]>([]);
@@ -239,7 +239,7 @@ export const Wishlist = () => {
         ) : viewMode === 'category' ? (
           // Category View
           <div className="space-y-12 mb-12">
-            {Object.entries(wishlistedByCategory).map(([category, items]) => (
+            {Object.entries(wishlistedByCategory).map(([category, items]: [any, any[]]) => (
               items.length > 0 && (
                 <motion.div
                   key={category}

@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Mail, Share2, Heart, MessageCircle } from "lucide-react";
-import { BLOG_POSTS } from "../constants";
+import { BLOG_POSTS } from '../../utils/constants';
 
 export const BlogPost = () => {
   const { slug } = useParams<{ slug: string }>();

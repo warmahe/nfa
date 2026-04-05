@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { DESTINATIONS } from "../constants";
+import { DESTINATIONS } from '../utils/constants';
 
 export const useDestinations = (initialRegion = "ALL") => {
   const [filterRegion, setFilterRegion] = useState(initialRegion);

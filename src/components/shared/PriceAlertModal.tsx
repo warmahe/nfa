@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { X, Check, AlertCircle } from "lucide-react";
-import { createAlert, hasAlertForPackage, deleteAlert, getAlertsByPackage } from "../services/priceAlertService";
+import { createAlert, hasAlertForPackage, deleteAlert, getAlertsByPackage } from '../../services/priceAlertService';
 
 interface PriceAlertModalProps {
   isOpen: boolean;

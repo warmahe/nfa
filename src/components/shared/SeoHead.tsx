@@ -1,6 +1,6 @@
 import React from "react";
 import { Helmet } from "react-helmet-async";
-import { SeoMetadata, generateStructuredData, SEO_CONFIG } from "../utils/seo";
+import { SeoMetadata, generateStructuredData, SEO_CONFIG } from '../../utils/seo';
 
 interface SeoHeadProps {
   metadata: SeoMetadata;

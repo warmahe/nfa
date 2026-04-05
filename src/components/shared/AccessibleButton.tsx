@@ -1,5 +1,5 @@
 import React from "react";
-import { AccessibleButtonProps } from "../utils/accessibility";
+import { AccessibleButtonProps } from '../../utils/accessibility';
 
 /**
  * Accessible Button Component

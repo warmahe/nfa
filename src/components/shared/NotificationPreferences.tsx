@@ -8,7 +8,7 @@ import {
   formatPhoneNumber,
   UserNotificationPreferences,
   NotificationMethod,
-} from "../services/smsService";
+} from '../../services/smsService';
 
 interface NotificationPreferencesProps {
   onSaved?: (preferences: UserNotificationPreferences) => void;

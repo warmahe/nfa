@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Star, Clock, MapPin, X, ChevronDown, ChevronUp, Calendar as CalIcon, Users, ArrowRight, ThumbsUp, ChevronLeft, ChevronRight, Scale, Bell, Plus } from "lucide-react";
-import { PACKAGES, DESTINATIONS, REVIEWS, FAQ_DATA } from "../constants";
+import { PACKAGES, DESTINATIONS, REVIEWS, FAQ_DATA } from '../../utils/constants';
 import {
   addToComparison,
   getComparisonCount,
   isInComparison,
-} from "../services/comparisonService";
-import { ComparisonModal } from "../components/ComparisonModal";
-import { PriceAlertModal } from "../components/PriceAlertModal";
-import { ItineraryMap } from "../components/ItineraryMap";
-import { JoiningPointsDisplay } from "../components/JoiningPointsDisplay";
-import { InclusionsLayout } from "../components/InclusionsLayout";
+} from '../../services/comparisonService';
+import { ComparisonModal } from '../../components/shared/ComparisonModal';
+import { PriceAlertModal } from '../../components/shared/PriceAlertModal';
+import { ItineraryMap } from '../../components/destinations/ItineraryMap';
+import { JoiningPointsDisplay } from '../../components/destinations/JoiningPointsDisplay';
+import { InclusionsLayout } from '../../components/shared/InclusionsLayout';
 
 const ITINERARY_DAYS = [
   { day: 1, title: "ARRIVAL & DISCOVERY", desc: "Welcome to basecamp. Check-in and meet your guide team. Evening orientation and gear preparation." },

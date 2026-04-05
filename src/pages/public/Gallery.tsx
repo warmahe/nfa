@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Database, FolderKanban, Map } from "lucide-react";
-import { GALLERY_IMAGES } from "../constants";
+import { GALLERY_IMAGES } from '../../utils/constants';
 
 export const Gallery = () => {
   // Automatically group all images by their destination

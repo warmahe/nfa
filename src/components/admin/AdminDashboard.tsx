@@ -229,36 +229,6 @@ export const AdminDashboard: React.FC = () => {
             )}
           </div>
         )}
-                          : 'text-gray-600 hover:text-gray-900'
-                      }`}
-                    >
-                      🧭 Joining Points
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('activities')}
-                      className={`flex-1 px-6 py-4 font-semibold text-center transition-colors ${
-                        activeTab === 'activities'
-                          ? 'text-blue-600 border-b-2 border-blue-600'
-                          : 'text-gray-600 hover:text-gray-900'
-                      }`}
-                    >
-                      🎯 Activities
-                    </button>
-                  </div>
-
-                  <div className="p-6">
-                    {activeTab === 'joining-points' && (
-                      <AdminJoiningPointsManager packageId={selectedPackageId} />
-                    )}
-                    {activeTab === 'activities' && (
-                      <AdminActivitiesManager packageId={selectedPackageId} />
-                    )}
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );

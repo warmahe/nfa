@@ -6,7 +6,7 @@ import {
   deleteAlert,
   updateAlertTargetPrice,
   PriceAlert,
-} from "../services/priceAlertService";
+} from '../../services/priceAlertService';
 
 export const PriceAlerts = () => {
   const [alerts, setAlerts] = useState<PriceAlert[]>([]);

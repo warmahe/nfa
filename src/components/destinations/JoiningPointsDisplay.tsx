@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MapPin, Clock, Info, AlertCircle } from 'lucide-react';
-import { getSubcollectionData } from '../services/firebaseService';
-import { JoiningPoint } from '../types/database';
+import { getSubcollectionData } from '../../services/firebaseService';
+import { JoiningPoint } from '../../types/database';
 
 interface JoiningPointsDisplayProps {
   packageId: string;

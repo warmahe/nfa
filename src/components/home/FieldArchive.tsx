@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { GALLERY_IMAGES } from '../../constants';
+import { GALLERY_IMAGES } from '../../utils/constants';
 import { ArrowLeft, ArrowRight, Camera } from 'lucide-react';
 import { Link } from 'react-router-dom';
 

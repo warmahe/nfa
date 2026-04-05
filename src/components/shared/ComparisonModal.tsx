@@ -2,11 +2,10 @@ import React, { useEffect, useState } from "react";
 import { X, Trash2, ShoppingCart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
-  getComparison,
+  getComparisonItems as getComparison,
   removeFromComparison,
   clearComparison,
-  ComparisonItem,
-} from "../services/comparisonService";
+} from '../../services/comparisonService';
 
 interface ComparisonModalProps {
   isOpen: boolean;
@@ -18,7 +17,7 @@ export const ComparisonModal: React.FC<ComparisonModalProps> = ({
   onClose,
 }) => {
   const navigate = useNavigate();
-  const [packages, setPackages] = useState<ComparisonItem[]>([]);
+  const [packages, setPackages] = useState<any[]>([]);
 
   useEffect(() => {
     if (isOpen) {

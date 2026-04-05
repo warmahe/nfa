@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { PACKAGES } from "../constants";
+import { PACKAGES } from '../../utils/constants';
 import { Check, ArrowRight, ShieldCheck, CreditCard, ChevronRight, AlertCircle, CheckCircle, Plus, Trash2, Download } from "lucide-react";
 import { motion } from "motion/react";
-import { sendBookingConfirmationEmail } from "../services/emailService";
-import { downloadBookingConfirmation } from "../services/pdfService";
+import { sendBookingConfirmationEmail } from '../../services/emailService';
+import { downloadBookingConfirmation } from '../../services/pdfService';
 
 interface Traveler {
   id: string;

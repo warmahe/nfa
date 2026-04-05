@@ -32,7 +32,7 @@ export const AdminMediaManager: React.FC<AdminMediaManagerProps> = ({
 
     try {
       // Simulate file reading - in production, upload to Firebase Storage
-      Array.from(files).forEach(file => {
+      Array.from(files).forEach((file: any) => {
         const reader = new FileReader();
         reader.onload = (event) => {
           const base64 = event.target?.result as string;
@@ -100,7 +100,7 @@ export const AdminMediaManager: React.FC<AdminMediaManagerProps> = ({
 
     try {
       // Simulate file reading - in production, upload to Firebase Storage
-      Array.from(files).forEach(file => {
+      Array.from(files).forEach((file: any) => {
         const reader = new FileReader();
         reader.onload = (event) => {
           const base64 = event.target?.result as string;

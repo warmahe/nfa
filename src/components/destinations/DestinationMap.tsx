@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { DESTINATION_LOCATIONS, MAP_CONFIG } from "../utils/mapConstants";
+import { DESTINATION_LOCATIONS, MAP_CONFIG } from '../../utils/mapConstants';
 
 interface DestinationMapProps {
   selectedDestination?: string;
