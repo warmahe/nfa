@@ -1,20 +1,17 @@
 import { useMemo, useState } from "react";
-import { DESTINATIONS } from '../utils/constants';
+import { DESTINATIONS } from "../utils/constants";
 
-export const useDestinations = (initialRegion = "ALL") => {
-  const [filterRegion, setFilterRegion] = useState(initialRegion);
-  const [sortBy, setSortBy] = useState("POPULAR");
+export const useDestinations = () => {
+  const [region, setRegion] = useState("ALL");
+  const [difficulty, setDifficulty] = useState("ALL");
 
   const filtered = useMemo(() => {
-    let result = filterRegion === "ALL" 
-      ? DESTINATIONS 
-      : DESTINATIONS.filter(d => d.region === filterRegion);
+    return DESTINATIONS.filter(dest => {
+      const regionMatch = region === "ALL" || dest.region === region;
+      const diffMatch = difficulty === "ALL" || dest.difficulty.toUpperCase() === difficulty;
+      return regionMatch && diffMatch;
+    });
+  }, [region, difficulty]);
 
-    if (sortBy === "PRICE_LOW") result.sort((a, b) => parseInt(a.price.replace(/\D/g, '')) - parseInt(b.price.replace(/\D/g, '')));
-    if (sortBy === "RATING") result.sort((a, b) => b.rating - a.rating);
-    
-    return result;
-  }, [filterRegion, sortBy]);
-
-  return { filtered, filterRegion, setFilterRegion, sortBy, setSortBy };
+  return { filtered, region, setRegion, difficulty, setDifficulty };
 };
