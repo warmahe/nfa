@@ -17,6 +17,7 @@ const MainLayout = () => {
     { label: "ABOUT", href: "/about" },
     { label: "DESTINATIONS", href: "/destinations" },
     { label: "GALLERY", href: "/gallery" },
+    { label: "CONTACT", href: "/contact" },
     { label: "BLOG", href: "/blog" }
   ];
 
