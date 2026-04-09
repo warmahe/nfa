@@ -10,8 +10,9 @@ import { About } from "./pages/public/About";
 import { Contact } from "./pages/public/Contact";
 import { Blog } from "./pages/public/Blog";
 import { BlogPost } from "./pages/public/BlogPost";
-import { PackageBrowse } from "./pages/public/PackageBrowse";
 import { ItineraryDetail } from "./pages/public/ItineraryDetail";
+import { FAQ } from "./pages/public/FAQ";
+import { Testimonials } from "./pages/public/Testimonials";
 
 // USER PAGES
 import { Booking } from "./pages/user/Booking";
@@ -22,9 +23,6 @@ import { Dashboard } from "./pages/user/Dashboard";
 // SYSTEM PAGES
 import { Admin } from "./pages/system/Admin";
 
-// STUBS (Create these files in pages/public/ if you want to remove these)
-const FAQ = () => <div className="pt-20 px-10"><h1>FAQ</h1></div>;
-const Testimonials = () => <div className="pt-20 px-10"><h1>Testimonials</h1></div>;
 
 export default function App() {
   return (
@@ -35,7 +33,6 @@ export default function App() {
           <Route index element={<Home />} />
           <Route path="about" element={<About />} />
           <Route path="destinations" element={<Destinations />} />
-          <Route path="packages" element={<PackageBrowse />} />
           <Route path="itinerary/:id" element={<ItineraryDetail />} />
           <Route path="contact" element={<Contact />} />
           
@@ -46,9 +43,8 @@ export default function App() {
           {/* Content System */}
           <Route path="blog" element={<Blog />} />
           <Route path="blog/:slug" element={<BlogPost />} />
-          <Route path="testimonials" element={<Testimonials />} />
           <Route path="faq" element={<FAQ />} />
-
+          <Route path="testimonials" element={<Testimonials />} />
           {/* User Secure Area */}
           <Route path="booking/:id" element={<Booking />} />
           <Route path="wishlist" element={<Wishlist />} />
