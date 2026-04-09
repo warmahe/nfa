@@ -14,6 +14,7 @@ const MainLayout = () => {
 
   // Standardized clear navigation terms
   const navItems = [
+    { label: "HOME", href: "/" },
     { label: "ABOUT", href: "/about" },
     { label: "DESTINATIONS", href: "/destinations" },
     { label: "GALLERY", href: "/gallery" },
