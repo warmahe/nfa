@@ -64,7 +64,18 @@ const MainLayout = () => {
             })}
           </div>
 
-
+          {/* Action Call & Safe Mobile Toggle Menu */}
+          <div className="flex items-center gap-4 md:gap-6">
+            
+            {/* Safe button toggle preventing misfires. Force updating UI based on boolean */}
+            <button 
+              className="lg:hidden flex items-center justify-center p-2 border-2 text-[#F4BF4B] bg-[#121212] active:bg-[#9E1B1D] active:text-[#FCFBF7] active:border-[#121212] transition-colors border-transparent active:border-[#F4BF4B]"
+              onClick={() => setIsMenuOpen(prev => !prev)}
+              aria-label="Open Site Menu"
+            >
+              {isMenuOpen ? <X size={28} className="drop-shadow" /> : <Menu size={28} className="drop-shadow" />}
+            </button>
+          </div>
         </nav>
 
         {/* 
@@ -100,13 +111,7 @@ const MainLayout = () => {
             </div>
             
             <div className="mt-16 pt-8 w-full border-t border-[#FCFBF7]/10">
-              <Link 
-                to="/booking/oracle"
-                onClick={() => setIsMenuOpen(false)}
-                className="w-full flex items-center justify-center bg-[#F4BF4B] text-[#121212] py-6 font-sans font-black text-sm uppercase tracking-[0.2em] shadow-[6px_6px_0px_0px_#9E1B1D] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all"
-              >
-                START YOUR APPLICATION
-              </Link>
+            
             </div>
           </div>
         </div>
