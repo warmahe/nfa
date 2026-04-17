@@ -2,7 +2,7 @@ import React from 'react';
 import { Star, ShieldCheck, Quote } from 'lucide-react';
 import { REVIEWS } from '../../utils/constants';
 
-export const Testimonials = () => {
+export const Reviews = () => {
   return (
     <div className="min-h-screen bg-[#FCFBF7] pt-24 md:pt-32 pb-24 px-[clamp(1rem,4vw,3rem)] nfa-texture selection:bg-nfa-gold">
       <div className="max-w-[1440px] mx-auto">

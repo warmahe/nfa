@@ -14,12 +14,13 @@ const MainLayout = () => {
 
   // Standardized clear navigation terms
   const navItems = [
-    { label: "HOME", href: "/" },
     { label: "ABOUT", href: "/about" },
     { label: "DESTINATIONS", href: "/destinations" },
+
     { label: "GALLERY", href: "/gallery" },
     { label: "CONTACT", href: "/contact" },
-    { label: "BLOG", href: "/blog" }
+    { label: "BLOG", href: "/blog" },
+    { label: "REVIEWS", href: "/reviews" }
   ];
 
   return (
@@ -63,24 +64,7 @@ const MainLayout = () => {
             })}
           </div>
 
-          {/* Action Call & Safe Mobile Toggle Menu */}
-          <div className="flex items-center gap-4 md:gap-6">
-            <Link 
-              to="/booking/oracle"
-              className="hidden md:flex bg-[#F4BF4B] text-[#121212] px-6 py-2.5 items-center justify-center font-sans text-xs font-black uppercase tracking-widest border-[3px] border-[#121212] shadow-[3px_3px_0px_0px_#9E1B1D] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none active:scale-95 transition-all"
-            >
-              APPLY NOW
-            </Link>
-            
-            {/* Safe button toggle preventing misfires. Force updating UI based on boolean */}
-            <button 
-              className="lg:hidden flex items-center justify-center p-2 border-2 text-[#F4BF4B] bg-[#121212] active:bg-[#9E1B1D] active:text-[#FCFBF7] active:border-[#121212] transition-colors border-transparent active:border-[#F4BF4B]"
-              onClick={() => setIsMenuOpen(prev => !prev)}
-              aria-label="Open Site Menu"
-            >
-              {isMenuOpen ? <X size={28} className="drop-shadow" /> : <Menu size={28} className="drop-shadow" />}
-            </button>
-          </div>
+
         </nav>
 
         {/* 

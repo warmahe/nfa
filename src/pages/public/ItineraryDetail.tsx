@@ -7,7 +7,7 @@ import { DetailItinerary } from "../../components/itinerary/DetailItinerary";
 import { DetailReviews } from "../../components/itinerary/DetailReviews";
 import { BookingSidebar } from "../../components/itinerary/BookingSidebar";
 import { InclusionsLayout } from "../../components/itinerary/InclusionsLayout";
-import { JoiningPointsDisplay } from "../../components/destinations/JoiningPointsDisplay";
+import { JoiningPointsDisplay } from "../../components/itinerary/JoiningPointsDisplay";
 
 export const ItineraryDetail = () => {
   const { id } = useParams<{ id: string }>();

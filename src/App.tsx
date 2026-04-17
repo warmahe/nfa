@@ -12,7 +12,7 @@ import { Blog } from "./pages/public/Blog";
 import { BlogPost } from "./pages/public/BlogPost";
 import { ItineraryDetail } from "./pages/public/ItineraryDetail";
 import { FAQ } from "./pages/public/FAQ";
-import { Testimonials } from "./pages/public/Testimonials";
+import { Reviews } from "./pages/public/Reviews";
 
 // USER PAGES
 import { Booking } from "./pages/user/Booking";
@@ -44,7 +44,7 @@ export default function App() {
           <Route path="blog" element={<Blog />} />
           <Route path="blog/:slug" element={<BlogPost />} />
           <Route path="faq" element={<FAQ />} />
-          <Route path="testimonials" element={<Testimonials />} />
+          <Route path="reviews" element={<Reviews />} />
           {/* User Secure Area */}
           <Route path="booking/:id" element={<Booking />} />
           <Route path="wishlist" element={<Wishlist />} />

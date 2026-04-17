@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp, MapPin } from 'lucide-react';
-import { ItineraryMap } from '../destinations/ItineraryMap';
+import { ItineraryMap } from './ItineraryMap';
 
 const ITINERARY_DAYS = [
   { day: 1, title: "ARRIVAL & DISCOVERY", desc: "Touch down and meet the team. We head straight to the base camp for orientation and a local welcome dinner." },
