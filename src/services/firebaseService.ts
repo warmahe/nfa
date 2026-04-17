@@ -44,7 +44,7 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
 } from 'firebase/auth';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 
 // Firebase Configuration - Replace with your project credentials
 // Get these from Firebase Console: Project Settings > serviceAccounts > Web
@@ -340,15 +340,24 @@ export const deleteDocument = async (collectionName: string, docId: string) => {
 export const uploadImage = async (file: File, path: string): Promise<string> => {
   try {
     const fileRef = ref(storage, `${path}/${file.name}-${Date.now()}`);
-    await uploadBytes(fileRef, file);
-    const downloadURL = await getDownloadURL(fileRef);
-    return downloadURL;
+    const uploadResult = await uploadBytes(fileRef, file);
+    return await getDownloadURL(uploadResult.ref);
   } catch (error: any) {
     console.error('Error uploading image:', error.message);
     throw error;
   }
 };
 
+// Delete image from Firebase Storage
+export const deleteImage = async (url: string) => {
+  if (!url || !url.includes('firebasestorage')) return;
+  try {
+    const fileRef = ref(storage, url);
+    await deleteObject(fileRef);
+  } catch (err) {
+    console.error("Cleanup failed:", err);
+  }
+};
 // ============================================================================
 // SUBCOLLECTION HELPERS
 // ============================================================================

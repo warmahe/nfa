@@ -72,7 +72,11 @@ export const AdminBookingManager: React.FC = () => {
     try {
       setLoading(true);
       const data = await getCollectionData('bookings');
-      const bookingsData: Booking[] = (data as Booking[]) || [];
+      const bookingsData: Booking[] = (data as any[])?.map((item: any) => ({
+        id: item.id || item._id || '',
+        ...item
+      })) || [];
+      
       setBookings(bookingsData.sort((a, b) => {
         const dateA = new Date(a.createdAt?.toDate?.() || a.createdAt).getTime();
         const dateB = new Date(b.createdAt?.toDate?.() || b.createdAt).getTime();
@@ -102,18 +106,18 @@ export const AdminBookingManager: React.FC = () => {
   };
 
   const applyFilters = () => {
-    let filtered = [...bookings];
+    let filtered = [...bookings].filter(b => b.id); // Ensure all bookings have an id
 
     // Search by traveler name, email, or booking ID
     if (filters.searchTerm) {
       const term = filters.searchTerm.toLowerCase();
       filtered = filtered.filter(b =>
-        b.id.toLowerCase().includes(term) ||
-        b.travelers.some(t =>
+        (b.id?.toLowerCase().includes(term)) ||
+        (b.travelers && b.travelers.some(t =>
           t.firstName.toLowerCase().includes(term) ||
           t.lastName.toLowerCase().includes(term) ||
           t.email.toLowerCase().includes(term)
-        )
+        ))
       );
     }
 

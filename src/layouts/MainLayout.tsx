@@ -1,10 +1,19 @@
 import React, { useState, useEffect } from "react";
-import { Outlet, Link, useLocation } from "react-router-dom";
+import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 
 const MainLayout = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
+   const navigate = useNavigate();
+
+   const handleLogoClick = () => {
+    if (location.pathname === '/') {
+      window.location.reload(); // Refresh if already on home
+    } else {
+      navigate('/'); // Navigate home if on another page
+    }
+  };
 
   // Reset dropdown and enforce scrolling position natively upon URL/Path shifts
   useEffect(() => {
@@ -22,6 +31,7 @@ const MainLayout = () => {
     { label: "BLOG", href: "/blog" },
     { label: "REVIEWS", href: "/reviews" }
   ];
+  
 
   return (
     // FIX: Using robust 100dvh guarantees it stretches perfectly on iPhone and Android screens, protecting footer position. 
@@ -37,12 +47,15 @@ const MainLayout = () => {
         <nav className="relative h-20 w-full bg-[#121212] border-b-[4px] border-[#9E1B1D] px-[clamp(1rem,4vw,3rem)] flex justify-between items-center z-[60] shadow-md">
           
           {/* Logo Area */}
-          <Link to="/" className="flex items-center gap-3 group">
+          <button 
+            onClick={handleLogoClick} 
+            className="flex items-center gap-3 group text-left cursor-pointer"
+          >
             <div className="bg-[#F4BF4B] w-5 h-5 md:w-6 md:h-6 rotate-45 flex items-center justify-center border-2 border-[#121212] group-hover:rotate-[135deg] transition-transform duration-500 ease-in-out"></div>
             <span className="font-brand font-black text-lg md:text-xl lg:text-2xl text-[#FCFBF7] tracking-tighter uppercase leading-none mt-1">
               NO FIXED <br className="hidden lg:block"/><span className="text-[#F4BF4B]">ADDRESS.</span>
             </span>
-          </Link>
+          </button>
 
           {/* Desktop Center Links */}
           <div className="hidden lg:flex gap-10 items-center justify-center absolute left-1/2 -translate-x-1/2 h-full">

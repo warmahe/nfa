@@ -1,9 +1,8 @@
 import React from 'react';
-import { DESTINATIONS } from '../../utils/constants';
-import { ArrowUpRight, Crosshair, Map } from 'lucide-react';
+import { ArrowUpRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-export const ExpeditionGrid = () => {
+export const ExpeditionGrid = ({ customItems }: { customItems?: any[] }) => {
   return (
     <section className="bg-nfa-charcoal py-16 md:py-24 px-[clamp(0.5rem,3vw,3rem)] text-nfa-cream border-t-[6px] border-nfa-gold relative overflow-hidden">
       
@@ -42,7 +41,7 @@ export const ExpeditionGrid = () => {
         {/* ============================== */}
         {/* base is grid-cols-2 forcing mobile into 2 columns */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 lg:gap-8 w-full">
-           {DESTINATIONS.slice(0, 4).map((dest) => (
+           {customItems?.map((dest) => (
              <Link 
                to={`/itinerary/${dest.id}`} 
                key={dest.id} 
@@ -52,21 +51,19 @@ export const ExpeditionGrid = () => {
                 {/* 1. Upper Data Strip */}
                 <div className="absolute top-0 w-full flex justify-between items-start z-30 p-2 sm:p-4">
                   <span className="bg-nfa-gold border border-nfa-charcoal text-nfa-charcoal px-1.5 py-0.5 sm:px-3 sm:py-1 text-[6px] sm:text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] shadow-[1px_1px_0px_0px_#121212] md:shadow-[2px_2px_0px_0px_#121212]">
-                    [ {dest.region} ]
+                    [ {dest.difficulty} ]
                   </span>
                   
-                  {/* Div used instead of button since it's inside a Link anchor */}
                   <div className="w-6 h-6 sm:w-10 sm:h-10 border-[1.5px] border-nfa-charcoal bg-nfa-cream group-hover:bg-nfa-burgundy group-hover:text-nfa-cream text-nfa-charcoal flex items-center justify-center transition-colors">
                     <ArrowUpRight className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
                   </div>
                 </div>
 
-                {/* 2. Background Media */}
                 <div className="absolute inset-0 z-0 bg-nfa-charcoal">
                   <img 
-                    src={dest.image} 
+                    src={dest.media?.thumbnail} 
                     className="w-full h-full object-cover transform scale-100 group-hover:scale-105 opacity-80 group-hover:opacity-100 transition-all duration-600" 
-                    alt={dest.name}
+                    alt={dest.title}
                   />
                   <div className="absolute inset-0 bg-linear-to-b from-nfa-charcoal/30 via-transparent to-nfa-charcoal/95" />
                 </div>
@@ -76,25 +73,22 @@ export const ExpeditionGrid = () => {
                    
                    <div className="border-t-2 sm:border-t-[3px] border-nfa-burgundy pt-2 sm:pt-4 mb-3 sm:mb-6">
                      <h3 className="font-brand font-black text-lg sm:text-2xl md:text-3xl lg:text-4xl text-nfa-cream uppercase leading-[0.9] tracking-tight w-full drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] truncate">
-                        {dest.name}
+                        {dest.title}
                      </h3>
                    </div>
                    
                    <div className="grid grid-cols-2 items-end border-t border-nfa-cream/15 pt-2 sm:pt-4">
                       
-                      {/* Left: Duration */}
                       <div className="flex flex-col gap-1 sm:gap-2">
-                        <Map className="text-nfa-burgundy w-3 h-3 sm:w-4 sm:h-4 hidden sm:block" />
                         <span className="font-sans text-[7px] sm:text-[9px] md:text-xs font-black tracking-widest sm:tracking-[0.2em] uppercase text-nfa-cream">
                            {dest.duration}
                         </span>
                       </div>
                       
-                      {/* Right: Pricing */}
                       <div className="text-right">
                         <span className="block text-[5px] sm:text-[7px] md:text-[9px] text-nfa-cream/60 tracking-[0.2em] uppercase mb-0.5 sm:mb-1">Engage</span>
                         <span className="font-brand font-black text-[12px] sm:text-xl md:text-2xl lg:text-3xl leading-none text-nfa-gold">
-                          {dest.price}
+                          ₹{dest.pricing?.basePrice.toLocaleString()}
                         </span>
                       </div>
                       

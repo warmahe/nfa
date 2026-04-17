@@ -1,9 +1,8 @@
 import React, { useRef } from 'react';
-import { GALLERY_IMAGES } from '../../utils/constants';
 import { ArrowLeft, ArrowRight, Camera } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-export const FieldArchive = () => {
+export const FieldArchive = ({ customItems }: { customItems?: any[] }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Simple scroll function for desktop arrows (does not impact mobile touch scrolling)
@@ -63,11 +62,10 @@ export const FieldArchive = () => {
         ref={scrollRef}
         className="flex overflow-x-auto gap-[clamp(1.5rem,4vw,3rem)] px-[clamp(1rem,4vw,3rem)] pb-12 pt-4 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth"
       >
-        {/* We use real images from your constants file */}
-        {GALLERY_IMAGES.slice(0, 6).map((img, idx) => (
+        {customItems?.map((dest, idx) => (
           
           <div 
-            key={img.id} 
+            key={dest.id} 
             // Alternate rotations to look like physical, hand-scattered photos on a desk
             className={`shrink-0 w-[85vw] sm:w-[60vw] lg:w-[450px] snap-center flex flex-col group cursor-pointer ${idx % 2 === 0 ? 'md:-rotate-2 hover:rotate-0' : 'md:rotate-[1.5deg] hover:-rotate-1 md:mt-10'} transition-transform duration-300 ease-out`}
           >
@@ -76,8 +74,8 @@ export const FieldArchive = () => {
               
               <div className="relative aspect-[4/5] border-[3px] border-[#121212] bg-[#121212] overflow-hidden">
                 <img 
-                  src={img.url} 
-                  alt={img.title}
+                  src={dest.coverImage} 
+                  alt={dest.name}
                   className="w-full h-full object-cover grayscale-[20%] group-hover:grayscale-0 group-hover:scale-105 transition-all duration-700" 
                   loading="lazy" // Critical for fast mobile load times
                 />
@@ -86,14 +84,9 @@ export const FieldArchive = () => {
               {/* Physical Stamp Labels under the photo */}
               <div className="mt-4 md:mt-6 px-2 flex justify-between items-start">
                  <div className="flex flex-col gap-1 border-l-4 border-[#9E1B1D] pl-3">
-                   <h3 className="font-brand font-black text-xl md:text-2xl uppercase tracking-tighter text-[#121212] leading-none line-clamp-1">{img.destination}</h3>
-                   <span className="font-sans text-[10px] md:text-xs font-bold text-[#121212]/60 uppercase tracking-[0.1em]">{img.location}</span>
+                   <h3 className="font-brand font-black text-xl md:text-2xl uppercase tracking-tighter text-[#121212] leading-none line-clamp-1">{dest.name}</h3>
+                   <span className="font-sans text-[10px] md:text-xs font-bold text-[#121212]/60 uppercase tracking-[0.1em]">{dest.country}</span>
                  </div>
-                 {img.photographer && (
-                   <span className="font-mono text-[8px] md:text-[10px] uppercase font-bold text-[#121212] bg-[#F4BF4B] border-2 border-[#121212] px-2 py-1 shadow-[2px_2px_0px_0px_#121212] text-right break-words max-w-[120px]">
-                     Photo By <br className="hidden sm:block"/>{img.photographer}
-                   </span>
-                 )}
               </div>
             </div>
           </div>

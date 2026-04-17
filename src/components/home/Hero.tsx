@@ -1,9 +1,15 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Crosshair, ArrowRight, Zap } from 'lucide-react';
+import { ArrowRight, Zap } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-export const Hero = () => {
+interface HeroProps {
+  customImage?: string;
+}
+
+export const Hero: React.FC<HeroProps> = ({ customImage }) => {
+  const defaultImage = "https://static.wixstatic.com/media/bac227_5e350ad8886048cd8be917eab76f0555~mv2.jpg/v1/fill/w_1351,h_542,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/bac227_5e350ad8886048cd8be917eab76f0555~mv2.jpg";
+
   return (
     <section
       className="
@@ -175,8 +181,8 @@ export const Hero = () => {
 
             <div className="absolute inset-0 border-[3px] border-nfa-charcoal bg-nfa-charcoal p-2 md:p-3 shadow-[8px_8px_0px_0px_#121212]">
               <img
-                src="https://static.wixstatic.com/media/bac227_5e350ad8886048cd8be917eab76f0555~mv2.jpg/v1/fill/w_1351,h_542,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/bac227_5e350ad8886048cd8be917eab76f0555~mv2.jpg"
-                alt="NFA Expedition Vehicle"
+                src={customImage || defaultImage}
+                alt="Hero"
                 className="h-full w-full object-cover object-center transition-all duration-700 hover:grayscale-0"
               />
 
