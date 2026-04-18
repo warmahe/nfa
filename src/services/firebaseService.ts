@@ -14,6 +14,7 @@ declare global {
   }
 }
 
+import React from 'react';
 import { initializeApp } from 'firebase/app';
 import {
   getFirestore,
@@ -106,6 +107,10 @@ export const createUserAccount = async (email: string, password: string, display
     console.error('Error creating user account:', error.message);
     throw error;
   }
+};
+
+export const loginAdmin = (email: string, password: string) => {
+  return signInWithEmailAndPassword(auth, email, password);
 };
 
 export const loginUser = async (email: string, password: string) => {
@@ -485,4 +490,23 @@ export const batchGetDocuments = async <T>(
     console.error(`Error batch fetching documents:`, error.message);
     throw error;
   }
+};
+
+// ============================================================================
+// AUTH HOOK
+// ============================================================================
+
+export const useAuth = () => {
+  const [user, setUser] = React.useState<User | null>(null);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setLoading(false);
+    });
+    return unsubscribe;
+  }, []);
+
+  return { user, loading };
 };
