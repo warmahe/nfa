@@ -358,6 +358,33 @@ export const deleteImage = async (url: string) => {
     console.error("Cleanup failed:", err);
   }
 };
+
+// New unified function to prevent orphaned files
+export const uploadAndReplaceImage = async (
+  file: File, 
+  path: string, 
+  oldImageUrl?: string | null
+): Promise<string> => {
+  try {
+    // 1. Delete old image if it exists
+    if (oldImageUrl && oldImageUrl.includes('firebasestorage')) {
+      try {
+        const oldFileRef = ref(storage, oldImageUrl);
+        await deleteObject(oldFileRef);
+      } catch (err) {
+        console.warn("Could not delete old image (might not exist):", err);
+      }
+    }
+
+    // 2. Upload new image
+    const fileRef = ref(storage, `${path}/${Date.now()}_${file.name}`);
+    await uploadBytes(fileRef, file);
+    return await getDownloadURL(fileRef);
+  } catch (error: any) {
+    console.error('Error in uploadAndReplaceImage:', error.message);
+    throw error;
+  }
+};
 // ============================================================================
 // SUBCOLLECTION HELPERS
 // ============================================================================

@@ -316,24 +316,24 @@ export const ComprehensiveAdminDashboard: React.FC = () => {
 
       {/* Tab Navigation */}
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <div className="flex flex-wrap gap-1 p-4 border-b border-gray-200">
+        <div className="flex border-b border-[#121212] overflow-x-auto whitespace-nowrap scrollbar-hide">
           {[
-            { id: 'details', label: '📋 Package Details', icon: '📋' },
-            { id: 'media', label: '🎬 Media', icon: '🎬' },
-            { id: 'pricing', label: '💰 Pricing', icon: '💰' },
-            { id: 'availability', label: '📊 Availability', icon: '📊' },
-            { id: 'itinerary', label: '📅 Itinerary', icon: '📅' },
-            { id: 'joining-points', label: '🧭 Joining Points', icon: '🧭' },
-            { id: 'activities', label: '🎯 Activities', icon: '🎯' },
-            { id: 'faqs', label: '❓ FAQs', icon: '❓' },
+            { id: 'details', label: '▭ Package' },
+            { id: 'media', label: '▢ Media' },
+            { id: 'pricing', label: '▲ Pricing' },
+            { id: 'availability', label: '■ Availability' },
+            { id: 'itinerary', label: '▬ Itinerary' },
+            { id: 'joining-points', label: '◇ Joining' },
+            { id: 'activities', label: '● Activities' },
+            { id: 'faqs', label: '▪ FAQs' },
           ].map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as AdminTab)}
-              className={`px-4 py-2 rounded-lg font-semibold transition-colors whitespace-nowrap text-sm ${
+              className={`px-6 py-4 font-black text-[10px] uppercase tracking-[0.2em] transition-colors ${
                 activeTab === tab.id
-                  ? 'bg-teal-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'text-[#9E1B1D] border-b-4 border-[#9E1B1D]'
+                  : 'text-gray-600 hover:text-black'
               }`}
             >
               {tab.label}

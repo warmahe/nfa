@@ -359,46 +359,25 @@ export const AdminPricingManager: React.FC<AdminPricingManagerProps> = ({
           {editPricing.groupPricing && editPricing.groupPricing.length > 0 && (
             <div className="space-y-3">
               {editPricing.groupPricing.map((tier, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center gap-4 p-4 border border-gray-200 rounded-lg bg-gray-50"
-                >
+                <div key={idx} className="flex flex-col md:flex-row gap-4 p-4 border-2 border-[#121212] bg-white shadow-[4px_4px_0_0_#121212]">
+                  
+                  {/* Label/Info side */}
                   <div className="flex-1">
-                    <p className="text-sm text-gray-600">
-                      {tier.minPeople}+ people
-                    </p>
-                    <p className="font-semibold text-gray-900">
-                      {tier.percentDiscount}% discount
-                    </p>
+                    <p className="font-black text-[10px] uppercase tracking-widest text-[#121212]/50">Requirement</p>
+                    <p className="font-bold text-sm uppercase">{tier.minPeople}+ Guests</p>
                   </div>
 
-                  <div className="flex gap-2">
-                    <input
-                      type="number"
-                      value={tier.minPeople}
-                      onChange={(e) =>
-                        updateGroupTier(idx, 'minPeople', parseInt(e.target.value))
-                      }
-                      placeholder="Min people"
-                      min="1"
-                      className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
-                    />
-                    <input
-                      type="number"
-                      value={tier.percentDiscount}
-                      onChange={(e) =>
-                        updateGroupTier(idx, 'percentDiscount', parseInt(e.target.value))
-                      }
-                      placeholder="Discount %"
-                      min="0"
-                      max="100"
-                      className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500"
-                    />
-                    <button
-                      onClick={() => removeGroupTier(idx)}
-                      className="text-red-600 hover:text-red-800 p-2"
-                    >
-                      <Trash2 size={18} />
+                  <div className="flex-1">
+                    <p className="font-black text-[10px] uppercase tracking-widest text-[#121212]/50">Discount</p>
+                    <p className="font-black text-lg text-[#9E1B1D]">{tier.percentDiscount}% Off</p>
+                  </div>
+
+                  {/* Controls */}
+                  <div className="flex gap-2 border-t md:border-t-0 pt-4 md:pt-0">
+                    <input type="number" value={tier.minPeople} onChange={(e) => updateGroupTier(idx, 'minPeople', parseInt(e.target.value))} className="w-16 p-2 border border-[#121212]" />
+                    <input type="number" value={tier.percentDiscount} onChange={(e) => updateGroupTier(idx, 'percentDiscount', parseInt(e.target.value))} className="w-16 p-2 border border-[#121212]" />
+                    <button onClick={() => removeGroupTier(idx)} className="bg-[#121212] text-white p-2">
+                      <Trash2 size={16} />
                     </button>
                   </div>
                 </div>

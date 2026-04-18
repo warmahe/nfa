@@ -5,6 +5,7 @@ import { ComprehensiveAdminDashboard } from '../../components/admin/Comprehensiv
 import { AdminHomepageManager } from '../../components/admin/AdminHomepageManager';
 import { initializeFirestoreDatabase } from '../../services/firebaseSeeder';
 import { AdminReviewsManager } from '../../components/admin/AdminReviewsManager';
+import { AdminGalleryManager } from '../../components/admin/AdminGalleryManager';
 
 export const Admin = () => {
   const [activeTab, setActiveTab] = useState('HOMEPAGE');
@@ -62,6 +63,7 @@ export const Admin = () => {
               {activeTab === 'DASHBOARD' && <ComprehensiveAdminDashboard />}
               {activeTab === 'BOOKINGS' && <AdminBookingManager />}
               {activeTab === 'REVIEWS' && <AdminReviewsManager />}
+              {activeTab === 'GALLERY' && <AdminGalleryManager />}
               {activeTab === 'DATABASE' && (
                 <div className="p-12 text-center space-y-8">
                    <h2 className="font-brand font-black text-3xl uppercase">System Maintenance</h2>

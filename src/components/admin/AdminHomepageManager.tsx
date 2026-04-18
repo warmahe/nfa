@@ -125,14 +125,14 @@ export const AdminHomepageManager = () => {
   if (loading) return <div className="p-8 font-black uppercase text-gray-500">Loading Configuration...</div>;
 
   return (
-    <div className="space-y-12 max-w-5xl">
+    <div className="space-y-8 md:space-y-12 w-full px-4 md:px-6 lg:px-0 lg:max-w-5xl mx-auto pb-8 md:pb-0">
       
-      <div className="flex justify-between items-center border-b-2 border-[#121212] pb-4">
-        <h2 className="font-brand font-black text-4xl uppercase text-[#121212]">Site Content</h2>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b-2 border-[#121212] pb-4">
+        <h2 className="font-brand font-black text-2xl md:text-4xl uppercase text-[#121212]">Site Content</h2>
         <button 
           onClick={handleSave} 
           disabled={saving}
-          className="flex items-center gap-2 bg-[#121212] text-[#F4BF4B] px-6 py-3 font-black text-xs uppercase tracking-widest hover:bg-[#9E1B1D] hover:text-white transition-colors shadow-[4px_4px_0px_0px_#F4BF4B] disabled:opacity-50"
+          className="w-full md:w-auto flex items-center justify-center md:justify-start gap-2 bg-[#121212] text-[#F4BF4B] px-4 md:px-6 py-3 font-black text-xs uppercase tracking-widest hover:bg-[#9E1B1D] hover:text-white transition-colors shadow-[4px_4px_0px_0px_#F4BF4B] disabled:opacity-50"
         >
           {saving ? 'SAVING...' : <><Save size={16} /> SAVE CHANGES</>}
         </button>
@@ -145,77 +145,77 @@ export const AdminHomepageManager = () => {
       )}
 
       {/* 1. HERO SECTION */}
-      <section className="bg-gray-50 border-2 border-gray-200 p-6">
-        <h3 className="font-black text-lg uppercase tracking-tight mb-4">Hero Background</h3>
+      <section className="bg-gray-50 border-2 border-gray-200 p-4 md:p-6">
+        <h3 className="font-black text-base md:text-lg uppercase tracking-tight mb-4">Hero Background</h3>
         <div className="space-y-4">
           <label className="text-xs font-bold uppercase tracking-widest text-gray-500">Image URL or Upload File</label>
-          <div className="flex gap-4">
+          <div className="flex flex-col md:flex-row gap-3 md:gap-4">
             <input 
               type="text" 
               value={content.heroImage} 
               onChange={(e) => setContent({...content, heroImage: e.target.value})}
               placeholder="https://..." 
-              className="flex-1 p-3 border-2 border-gray-300 outline-none focus:border-[#121212]"
+              className="w-full md:flex-1 p-3 border-2 border-gray-300 outline-none focus:border-[#121212] text-sm"
             />
-            <label className="bg-white border-2 border-gray-300 px-6 py-3 cursor-pointer hover:bg-gray-100 flex items-center gap-2 font-bold text-xs uppercase transition-colors">
+            <label className="w-full md:w-auto bg-white border-2 border-gray-300 px-4 md:px-6 py-3 cursor-pointer hover:bg-gray-100 flex items-center justify-center md:justify-start gap-2 font-bold text-xs uppercase transition-colors">
               {uploadingHero ? 'UPLOADING...' : <><Upload size={16} /> UPLOAD FILE</>}
               <input type="file" className="hidden" accept="image/*" onChange={handleHeroUpload} disabled={uploadingHero} />
             </label>
           </div>
           {content.heroImage && (
-            <img src={content.heroImage} alt="Hero Preview" className="w-full h-48 object-cover border-2 border-[#121212] grayscale-[30%]" />
+            <img src={content.heroImage} alt="Hero Preview" className="w-full h-40 md:h-48 object-cover border-2 border-[#121212] grayscale-[30%]" />
           )}
         </div>
       </section>
 
       {/* 2. LOCATE YOUR DROP ZONE */}
-      <section className="bg-gray-50 border-2 border-gray-200 p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="font-black text-lg uppercase tracking-tight">Target Sectors (Drop Zone)</h3>
+      <section className="bg-gray-50 border-2 border-gray-200 p-4 md:p-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4">
+          <h3 className="font-black text-base md:text-lg uppercase tracking-tight">Target Sectors (Drop Zone)</h3>
           <span className="text-xs font-bold bg-[#121212] text-white px-3 py-1">{content.featuredDropZones.length} / 4 Selected</span>
         </div>
         <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-4">Select exactly 4 packages to feature in the grid.</p>
         
-        <div className="max-h-64 overflow-y-auto border-2 border-gray-200 bg-white grid grid-cols-1 sm:grid-cols-2 gap-2 p-2">
+        <div className="max-h-60 md:max-h-72 overflow-y-auto border-2 border-gray-200 bg-white grid grid-cols-1 sm:grid-cols-2 gap-2 p-3">
           {availablePackages.map(pkg => (
             <div 
               key={pkg.id} 
-              className={`flex items-center gap-3 p-3 border hover:bg-gray-50 cursor-pointer ${content.featuredDropZones.includes(pkg.id) ? 'border-[#9E1B1D] bg-[#9E1B1D]/5' : 'border-gray-200'}`}
+              className={`flex items-center gap-3 p-3 border hover:bg-gray-50 cursor-pointer active:bg-[#F4BF4B]/10 transition-colors ${content.featuredDropZones.includes(pkg.id) ? 'border-[#9E1B1D] bg-[#9E1B1D]/5' : 'border-gray-200'}`}
               onClick={() => toggleSelection('featuredDropZones', pkg.id, 4)}
             >
-              <input type="checkbox" checked={content.featuredDropZones.includes(pkg.id)} readOnly className="size-4 accent-[#9E1B1D]" />
-              <span className="font-bold text-sm uppercase">{pkg.title}</span>
+              <input type="checkbox" checked={content.featuredDropZones.includes(pkg.id)} readOnly className="size-5 md:size-4 accent-[#9E1B1D] cursor-pointer flex-shrink-0" />
+              <span className="font-bold text-sm uppercase truncate">{pkg.title}</span>
             </div>
           ))}
         </div>
       </section>
 
       {/* 3. THE FIELD ARCHIVE (GALLERY) */}
-      <section className="bg-gray-50 border-2 border-gray-200 p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="font-black text-lg uppercase tracking-tight">The Field Archive</h3>
+      <section className="bg-gray-50 border-2 border-gray-200 p-4 md:p-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4">
+          <h3 className="font-black text-base md:text-lg uppercase tracking-tight">The Field Archive</h3>
           <span className="text-xs font-bold bg-[#121212] text-white px-3 py-1">{content.featuredArchive.length} Selected</span>
         </div>
         <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-4">Select the destinations to display in the scrolling visual evidence gallery.</p>
         
-        <div className="max-h-64 overflow-y-auto border-2 border-gray-200 bg-white grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 p-2">
+        <div className="max-h-60 md:max-h-72 overflow-y-auto border-2 border-gray-200 bg-white grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 p-3">
           {availableDestinations.map(dest => (
             <div 
               key={dest.id} 
-              className={`flex items-center gap-3 p-3 border hover:bg-gray-50 cursor-pointer ${content.featuredArchive.includes(dest.id) ? 'border-[#9E1B1D] bg-[#9E1B1D]/5' : 'border-gray-200'}`}
+              className={`flex items-center gap-3 p-3 border hover:bg-gray-50 cursor-pointer active:bg-[#F4BF4B]/10 transition-colors ${content.featuredArchive.includes(dest.id) ? 'border-[#9E1B1D] bg-[#9E1B1D]/5' : 'border-gray-200'}`}
               onClick={() => toggleSelection('featuredArchive', dest.id)}
             >
-              <input type="checkbox" checked={content.featuredArchive.includes(dest.id)} readOnly className="size-4 accent-[#9E1B1D]" />
-              <span className="font-bold text-sm uppercase">{dest.name}</span>
+              <input type="checkbox" checked={content.featuredArchive.includes(dest.id)} readOnly className="size-5 md:size-4 accent-[#9E1B1D] cursor-pointer flex-shrink-0" />
+              <span className="font-bold text-sm uppercase truncate">{dest.name}</span>
             </div>
           ))}
         </div>
       </section>
 
       {/* 4. VOICES FROM THE FIELD (REVIEWS) */}
-      <section className="bg-gray-50 border-2 border-gray-200 p-6 mb-20">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="font-black text-lg uppercase tracking-tight">Voices from the Field</h3>
+      <section className="bg-gray-50 border-2 border-gray-200 p-4 md:p-6 mb-20">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4">
+          <h3 className="font-black text-base md:text-lg uppercase tracking-tight">Voices from the Field</h3>
           <span className="text-xs font-bold bg-[#121212] text-white px-3 py-1">{content.featuredReviewIds.length} Selected</span>
         </div>
         <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-4">Select the authenticated reviews to display in the carousel.</p>
@@ -224,7 +224,7 @@ export const AdminHomepageManager = () => {
         <div className="mb-4 relative">
           <button
             onClick={() => setShowReviewDropdown(!showReviewDropdown)}
-            className="w-full flex items-center justify-between p-3 border-2 border-gray-300 bg-white hover:border-[#121212] transition-all duration-300 font-bold text-sm uppercase text-left"
+            className="w-full flex items-center justify-between p-3 md:p-4 border-2 border-gray-300 bg-white hover:border-[#121212] active:bg-gray-50 transition-all duration-300 font-bold text-xs md:text-sm uppercase text-left touch-manipulation"
           >
             <span>+ Add Review</span>
             <span className={`text-lg transition-transform duration-300 ${showReviewDropdown ? 'rotate-180' : 'rotate-0'}`}>▼</span>
@@ -240,7 +240,7 @@ export const AdminHomepageManager = () => {
                 className="w-full p-3 border-b-2 border-gray-200 outline-none focus:bg-gray-50 text-sm"
               />
               
-              <div className="max-h-56 overflow-y-auto">
+              <div className="max-h-48 md:max-h-56 overflow-y-auto">
                 {availableReviews
                   .filter(review => !content.featuredReviewIds.includes(review.id) && review.travelerName.toLowerCase().includes(reviewSearchQuery))
                   .map((review, idx) => (
@@ -254,8 +254,8 @@ export const AdminHomepageManager = () => {
                       className="p-3 border-b border-gray-100 hover:bg-[#F4BF4B]/20 cursor-pointer transition-colors animate-in fade-in slide-in-from-left-2 duration-200"
                       style={{ animationDelay: `${idx * 20}ms` }}
                     >
-                      <p className="font-bold text-xs uppercase">{review.travelerName} <span className="text-[#9E1B1D] ml-2">★ {review.rating}</span></p>
-                      <p className="text-gray-600 text-[11px] italic mt-1 line-clamp-1">"{review.content}"</p>
+                      <p className="font-bold text-xs uppercase truncate">{review.travelerName} <span className="text-[#9E1B1D] ml-1">★ {review.rating}</span></p>
+                      <p className="text-gray-600 text-[10px] md:text-[11px] italic mt-1 line-clamp-1">"{review.content}"</p>
                     </div>
                   ))}
                 {availableReviews.filter(review => !content.featuredReviewIds.includes(review.id) && review.travelerName.toLowerCase().includes(reviewSearchQuery)).length === 0 && (
@@ -268,35 +268,38 @@ export const AdminHomepageManager = () => {
 
         {/* Active Sequence Section - Compact & Distinct */}
         {content.featuredReviewIds.length > 0 && (
-          <div className="mt-6 p-4 border-2 border-[#121212] bg-white">
-            <h4 className="text-[11px] font-black uppercase mb-3 text-[#121212]">📍 Active Sequence</h4>
-            <div className="space-y-1.5">
+          <div className="mt-6 p-4 md:p-5 border-2 border-[#121212] bg-white">
+            <h4 className="text-[10px] md:text-[11px] font-black uppercase mb-3 text-[#121212]">▪ Active Sequence</h4>
+            <div className="space-y-2">
               {content.featuredReviewIds.map((id, index) => {
                 const review = availableReviews.find(r => r.id === id);
                 return (
-                  <div key={id} className="flex items-center justify-between bg-gray-50 p-2.5 border border-gray-200 hover:bg-gray-100 transition-colors">
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <span className="text-[10px] font-bold text-gray-400 w-4 text-center">{index + 1}</span>
+                  <div key={id} className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 bg-gray-50 p-3 border border-gray-200 hover:bg-gray-100 transition-colors">
+                    <div className="flex items-center gap-3 flex-1 min-w-0 w-full">
+                      <span className="text-[10px] font-bold text-gray-400 w-5 text-center flex-shrink-0">{index + 1}</span>
                       <span className="font-bold text-xs truncate text-[#121212]">{review?.travelerName}</span>
                     </div>
-                    <div className="flex gap-0.5 shrink-0">
+                    <div className="flex gap-1 shrink-0 w-full md:w-auto">
                       <button
                         onClick={() => moveItem('featuredReviewIds', index, 'up')}
                         disabled={index === 0}
-                        className="p-1.5 bg-white border border-gray-300 hover:bg-[#F4BF4B] disabled:opacity-30 disabled:cursor-not-allowed text-[10px] font-bold"
+                        className="flex-1 md:flex-none p-2 md:p-2 bg-white border border-gray-300 hover:bg-[#F4BF4B] active:bg-[#F4BF4B]/50 disabled:opacity-30 disabled:cursor-not-allowed text-[11px] md:text-[10px] font-bold transition-colors"
+                        title="Move up"
                       >
                         ↑
                       </button>
                       <button
                         onClick={() => moveItem('featuredReviewIds', index, 'down')}
                         disabled={index === content.featuredReviewIds.length - 1}
-                        className="p-1.5 bg-white border border-gray-300 hover:bg-[#F4BF4B] disabled:opacity-30 disabled:cursor-not-allowed text-[10px] font-bold"
+                        className="flex-1 md:flex-none p-2 md:p-2 bg-white border border-gray-300 hover:bg-[#F4BF4B] active:bg-[#F4BF4B]/50 disabled:opacity-30 disabled:cursor-not-allowed text-[11px] md:text-[10px] font-bold transition-colors"
+                        title="Move down"
                       >
                         ↓
                       </button>
                       <button
                         onClick={() => toggleSelection('featuredReviewIds', id)}
-                        className="p-1.5 bg-white border border-red-300 hover:bg-red-50 text-red-600 text-[10px] font-bold"
+                        className="flex-1 md:flex-none p-2 md:p-2 bg-white border border-red-300 hover:bg-red-50 active:bg-red-100 text-red-600 text-[11px] md:text-[10px] font-bold transition-colors"
+                        title="Remove"
                       >
                         ✕
                       </button>
