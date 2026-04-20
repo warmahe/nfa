@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Database, Calendar, Package, Image as ImageIcon, LayoutTemplate, RefreshCw, MessageSquare } from 'lucide-react';
+import { Database, Calendar, Package, Image as ImageIcon, LayoutTemplate, RefreshCw, MessageSquare, LogOut } from 'lucide-react';
 import { AdminBookingManager } from '../../components/admin/AdminBookingManager';
 import { ComprehensiveAdminDashboard } from '../../components/admin/ComprehensiveAdminDashboard';
 import { AdminHomepageManager } from '../../components/admin/AdminHomepageManager';
 import { initializeFirestoreDatabase } from '../../services/firebaseSeeder';
 import { AdminReviewsManager } from '../../components/admin/AdminReviewsManager';
 import { AdminGalleryManager } from '../../components/admin/AdminGalleryManager';
+import { logoutUser } from '../../services/firebaseService';
 
 export const Admin = () => {
   const [activeTab, setActiveTab] = useState('HOMEPAGE');
@@ -56,6 +57,12 @@ export const Admin = () => {
                  <tab.icon size={16} /> {tab.label}
                </button>
              ))}
+             <button 
+               onClick={() => { logoutUser(); window.location.href = '/login'; }}
+               className="w-full flex items-center gap-4 p-4 border-2 border-red-600 text-red-600 font-black text-[10px] uppercase tracking-[0.2em] hover:bg-red-600 hover:text-white transition-all mt-10"
+             >
+               <LogOut size={16} /> Terminate Session
+             </button>
            </aside>
 
            <div className="lg:col-span-9 border-4 border-[#121212] bg-white p-8 shadow-[8px_8px_0px_0px_#121212]">

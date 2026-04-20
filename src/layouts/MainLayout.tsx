@@ -49,12 +49,13 @@ const MainLayout = () => {
           {/* Logo Area */}
           <button 
             onClick={handleLogoClick} 
-            className="flex items-center gap-3 group text-left cursor-pointer"
+            className="flex items-center group text-left cursor-pointer outline-none"
           >
-            <div className="bg-[#F4BF4B] w-5 h-5 md:w-6 md:h-6 rotate-45 flex items-center justify-center border-2 border-[#121212] group-hover:rotate-[135deg] transition-transform duration-500 ease-in-out"></div>
-            <span className="font-brand font-black text-lg md:text-xl lg:text-2xl text-[#FCFBF7] tracking-tighter uppercase leading-none mt-1">
-              NO FIXED <br className="hidden lg:block"/><span className="text-[#F4BF4B]">ADDRESS.</span>
-            </span>
+            <img 
+              src="/logo.svg" 
+              alt="No Fixed Address" 
+              className="h-10 w-auto md:h-12 transition-transform duration-500 group-hover:scale-105" 
+            />
           </button>
 
           {/* Desktop Center Links */}
@@ -149,8 +150,14 @@ const MainLayout = () => {
         <div className="w-full max-w-[1440px] mx-auto px-[clamp(1rem,4vw,3rem)] py-12 md:py-24 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-8">
           
           <div className="lg:col-span-2">
-            <h3 className="font-brand font-black text-4xl md:text-6xl text-[#121212] uppercase leading-[0.8] mb-6">No Fixed<br/><span className="text-[#9E1B1D]">Address.</span></h3>
-            <p className="font-sans font-bold uppercase tracking-[0.1em] text-[10px] md:text-xs text-[#121212]/60 max-w-[280px] border-l-[3px] border-[#9E1B1D] pl-4">The world is not a map. It's a series of statements. Make yours.</p>
+            <img 
+              src="/logo.svg" 
+              alt="Logo" 
+              className="h-12 w-auto mb-6 grayscale brightness-0" 
+            />
+            <p className="font-sans font-bold uppercase tracking-[0.1em] text-[10px] md:text-xs text-[#121212]/60 max-w-[280px] border-l-[3px] border-[#9E1B1D] pl-4">
+              The world is not a map. It's a series of statements. Make yours.
+            </p>
           </div>
 
           <div className="flex flex-col gap-4">
@@ -163,9 +170,10 @@ const MainLayout = () => {
 
           <div className="flex flex-col gap-4">
             <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#F4BF4B] bg-[#121212] px-3 py-1.5 w-fit mb-4 shadow-[3px_3px_0_0_#9E1B1D]">CONNECT</h4>
-            <a href="#" className="font-sans text-xs uppercase font-bold tracking-[0.2em] text-[#121212] hover:text-[#9E1B1D] transition-colors">Instagram</a>
-            <a href="#" className="font-sans text-xs uppercase font-bold tracking-[0.2em] text-[#121212] hover:text-[#9E1B1D] transition-colors">Twitter / X</a>
-            <a href="mailto:hello@nofixedaddress.com" className="font-sans text-xs uppercase font-bold tracking-[0.2em] text-[#121212] hover:text-[#9E1B1D] transition-colors">Email Transmission</a>
+            <a href="https://www.instagram.com/nfa.people/" target="_blank" rel="noopener noreferrer" className="font-sans text-xs uppercase font-bold tracking-[0.2em] text-[#121212] hover:text-[#9E1B1D] transition-colors">Instagram</a>
+            <a href="https://www.facebook.com/people/No-Fixed-Address/" target="_blank" rel="noopener noreferrer" className="font-sans text-xs uppercase font-bold tracking-[0.2em] text-[#121212] hover:text-[#9E1B1D] transition-colors">Facebook / X</a>
+            <a href="https://x.com/NOFIXEDADDRESS" target="_blank" rel="noopener noreferrer" className="font-sans text-xs uppercase font-bold tracking-[0.2em] text-[#121212] hover:text-[#9E1B1D] transition-colors">Twitter / X</a>
+            <a href="mailto:hello@nofixedaddress.com" target="_blank" rel="noopener noreferrer" className="font-sans text-xs uppercase font-bold tracking-[0.2em] text-[#121212] hover:text-[#9E1B1D] transition-colors">Email Transmission</a>
           </div>
         </div>
 
