@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useParams } from "react-router-dom";
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../../services/firebaseService';
+import { DESTINATIONS, PACKAGES } from '../../utils/constants';
 import { DetailGallery } from "../../components/itinerary/DetailGallery";
 import { DetailOverview } from "../../components/itinerary/DetailOverview";
 import { DetailItinerary } from "../../components/itinerary/DetailItinerary";
@@ -12,33 +11,15 @@ import { JoiningPointsDisplay } from "../../components/itinerary/JoiningPointsDi
 
 export const ItineraryDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const [pkg, setPkg] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const destination = DESTINATIONS.find(d => d.id === id);
+  const pkg = PACKAGES.find(p => destination && p.destination === destination.name) || PACKAGES[0];
+  
   const [travelers, setTravelers] = useState(1);
-
-  useEffect(() => {
-    const fetchPackage = async () => {
-      try {
-        const snap = await getDoc(doc(db, 'packages', id!));
-        if (snap.exists()) {
-          setPkg({ id: snap.id, ...snap.data() });
-        }
-      } catch (error) {
-        console.error('Error fetching package:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchPackage();
-  }, [id]);
-
-  if (loading) return <div className="min-h-screen bg-[#FCFBF7] p-20 font-black uppercase text-xs">Accessing Intel...</div>;
-  if (!pkg) return <div className="min-h-screen bg-[#FCFBF7] flex items-center justify-center font-black uppercase text-xs">404: Sector Not Found</div>;
 
   return (
     <div className="min-h-screen bg-[#FCFBF7] nfa-texture selection:bg-nfa-gold pb-20">
       {/* 1. Immersive Header */}
-      <DetailGallery pkg={pkg} />
+      <DetailGallery pkg={pkg} destination={destination} />
 
       {/* 2. Content Grid */}
       <div className="max-w-[1440px] mx-auto px-6 py-16 grid grid-cols-1 lg:grid-cols-12 gap-12 xl:gap-20">
@@ -47,7 +28,7 @@ export const ItineraryDetail = () => {
         <div className="lg:col-span-8 space-y-24">
           <DetailOverview pkg={pkg} />
           <JoiningPointsDisplay packageId={pkg.id} packageTitle={pkg.title} />
-          <DetailItinerary customItinerary={pkg.itinerary} destination={pkg.destination} />
+          <DetailItinerary destination={pkg.destination} />
           <InclusionsLayout packageId={pkg.id} packageTitle={pkg.title} />
           <DetailReviews />
         </div>
