@@ -1,234 +1,74 @@
 import React, { useState, useEffect } from 'react';
-import { getCollectionData } from '../../services/firebaseService';
-import { initializeFirestoreDatabase } from '../../services/firebaseSeeder';
-import { Package } from '../../types/database';
-import { AdminJoiningPointsManager } from './AdminJoiningPointsManager';
-import { AdminActivitiesManager } from './AdminActivitiesManager';
-import { AdminFAQsManager } from './AdminFAQsManager';
-import { AdminDestinationManager } from './AdminDestinationManager';
+import { collection, getDocs, addDoc, deleteDoc, doc, Timestamp } from 'firebase/firestore';
+import { db } from '../../services/firebaseService';
+import { Plus, Trash2, Package as PackageIcon } from 'lucide-react';
+import { AdminPackageEditor } from './AdminPackageEditor';
 
-export const AdminDashboard: React.FC = () => {
-  const [packages, setPackages] = useState<Package[]>([]);
-  const [selectedPackageId, setSelectedPackageId] = useState<string>('');
+export const AdminDashboard = () => {
+  const [packages, setPackages] = useState<any[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [seeding, setSeeding] = useState(false);
-  const [seedSuccess, setSeedSuccess] = useState(false);
-  const [activeTab, setActiveTab] = useState<'joining-points' | 'activities' | 'itinerary-faqs' | 'website-faqs' | 'destinations'>('joining-points');
 
-  useEffect(() => {
-    loadPackages();
-  }, []);
-
-  useEffect(() => {
-    if (packages.length > 0 && !selectedPackageId) {
-      setSelectedPackageId(packages[0].id);
-    }
-  }, [packages, selectedPackageId]);
+  useEffect(() => { loadPackages(); }, []);
 
   const loadPackages = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const data = await getCollectionData('packages');
-      setPackages(data as Package[]);
-    } catch (error) {
-      console.error('Error loading packages:', error);
-    } finally {
-      setLoading(false);
-    }
+      const querySnapshot = await getDocs(collection(db, 'packages'));
+      const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setPackages(data.sort((a: any, b: any) => a.title?.localeCompare(b.title)));
+      if (data.length > 0 && !selectedId) setSelectedId(data[0].id);
+    } finally { setLoading(false); }
   };
 
-  const handleSeedDatabase = async () => {
-    if (
-      window.confirm(
-        'This will seed your database with sample data. Continue?'
-      )
-    ) {
-      try {
-        setSeeding(true);
-        setSeedSuccess(false);
-        await initializeFirestoreDatabase();
-        setSeedSuccess(true);
-        loadPackages();
-        setTimeout(() => setSeedSuccess(false), 5000);
-      } catch (error) {
-        console.error('Error seeding database:', error);
-        alert('Error seeding database: ' + error);
-      } finally {
-        setSeeding(false);
-      }
-    }
+  const createPackage = async () => {
+    const title = prompt("ENTER EXPEDITION NAME:");
+    if (!title) return;
+    const slug = title.toLowerCase().replace(/\s+/g, '-');
+    try {
+      const docRef = await addDoc(collection(db, 'packages'), {
+        title: title.toUpperCase(),
+        slug,
+        price: '₹0',
+        duration: '0 DAYS',
+        description: '',
+        itinerary: [],
+        joiningPoints: [],
+        status: 'draft',
+        createdAt: Timestamp.now()
+      });
+      loadPackages();
+      setSelectedId(docRef.id);
+    } catch (err) { alert("ERROR DEPLOYING SECTOR."); }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading admin dashboard...</p>
-        </div>
-      </div>
-    );
-  }
+  const deletePackage = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm("PURGE THIS SECTOR PERMANENTLY?")) return;
+    await deleteDoc(doc(db, 'packages', id));
+    if (selectedId === id) setSelectedId(null);
+    loadPackages();
+  };
+
+  if (loading) return <div className="p-20 font-black uppercase opacity-20 text-center">Scanning Database...</div>;
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Admin Dashboard</h1>
-          <p className="text-gray-600">Manage packages, joining points, and activities</p>
-        </div>
-
-        {/* Success Alert */}
-        {seedSuccess && (
-          <div className="mb-6 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg">
-            ✅ Database seeded successfully! 3 destinations and 2 packages created.
-          </div>
-        )}
-
-        {/* Seed Database Section */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Database Setup</h2>
-              <p className="text-gray-600">
-                Click below to populate your database with sample destinations, packages, joining
-                points, and activities.
-              </p>
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="lg:col-span-3 space-y-4">
+        <button onClick={createPackage} className="w-full bg-[#F4BF4B] border-4 border-[#121212] py-4 font-black text-xs uppercase tracking-widest shadow-[4px_4px_0_0_#000] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all flex items-center justify-center gap-2">
+          <Plus size={16}/> New Expedition
+        </button>
+        <div className="space-y-2">
+          {packages.map(p => (
+            <div key={p.id} onClick={() => setSelectedId(p.id)} className={`p-4 border-2 cursor-pointer transition-all flex justify-between items-center group ${selectedId === p.id ? 'bg-[#121212] text-[#F4BF4B] border-[#121212] shadow-[4px_4px_0_0_#9E1B1D]' : 'bg-white border-gray-200'}`}>
+              <span className="font-black text-[10px] uppercase truncate pr-2">{p.title}</span>
+              <button onClick={(e) => deletePackage(p.id, e)} className="opacity-0 group-hover:opacity-100 text-red-500"><Trash2 size={14}/></button>
             </div>
-            <button
-              onClick={handleSeedDatabase}
-              disabled={seeding}
-              className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-8 py-3 rounded-lg font-semibold whitespace-nowrap ml-4"
-            >
-              {seeding ? '🔄 Seeding...' : '🌱 Seed Database'}
-            </button>
-          </div>
+          ))}
         </div>
-
-        {packages.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-md p-8 text-center">
-            <p className="text-gray-600 mb-4">No packages found. Please seed the database first.</p>
-            <button
-              onClick={handleSeedDatabase}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded"
-            >
-              Seed Database
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-8">
-            {/* Package Selector */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Select Package</h2>
-              <div className="flex flex-wrap gap-2">
-                {packages.map((pkg) => (
-                  <button
-                    key={pkg.id}
-                    onClick={() => setSelectedPackageId(pkg.id)}
-                    className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
-                      selectedPackageId === pkg.id
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    }`}
-                  >
-                    {pkg.title}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Tab Navigation */}
-            {selectedPackageId && (
-              <>
-                <div className="bg-white rounded-lg shadow-md mb-6">
-                  <div className="flex border-b overflow-x-auto">
-                    <button
-                      onClick={() => setActiveTab('joining-points')}
-                      className={`flex-1 px-6 py-4 font-semibold text-center transition-colors whitespace-nowrap ${
-                        activeTab === 'joining-points'
-                          ? 'text-blue-600 border-b-2 border-blue-600'
-                          : 'text-gray-600 hover:text-gray-900 bg-gray-50'
-                      }`}
-                    >
-                      Joining Points
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('activities')}
-                      className={`flex-1 px-6 py-4 font-semibold text-center transition-colors whitespace-nowrap ${
-                        activeTab === 'activities'
-                          ? 'text-blue-600 border-b-2 border-blue-600'
-                          : 'text-gray-600 hover:text-gray-900 bg-gray-50'
-                      }`}
-                    >
-                      Activities
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('itinerary-faqs')}
-                      className={`flex-1 px-6 py-4 font-semibold text-center transition-colors whitespace-nowrap ${
-                        activeTab === 'itinerary-faqs'
-                          ? 'text-blue-600 border-b-2 border-blue-600'
-                          : 'text-gray-600 hover:text-gray-900 bg-gray-50'
-                      }`}
-                    >
-                      Itinerary FAQs
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('website-faqs')}
-                      className={`flex-1 px-6 py-4 font-semibold text-center transition-colors whitespace-nowrap ${
-                        activeTab === 'website-faqs'
-                          ? 'text-blue-600 border-b-2 border-blue-600'
-                          : 'text-gray-600 hover:text-gray-900 bg-gray-50'
-                      }`}
-                    >
-                      Website FAQs
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('destinations')}
-                      className={`flex-1 px-6 py-4 font-semibold text-center transition-colors whitespace-nowrap ${
-                        activeTab === 'destinations'
-                          ? 'text-blue-600 border-b-2 border-blue-600'
-                          : 'text-gray-600 hover:text-gray-900 bg-gray-50'
-                      }`}
-                    >
-                      Destinations
-                    </button>
-                  </div>
-                </div>
-
-                <div className="mt-6">
-                  {activeTab === 'joining-points' && (
-                    <AdminJoiningPointsManager
-                      packageId={selectedPackageId}
-                      packageTitle={packages.find((p) => p.id === selectedPackageId)?.title || ''}
-                    />
-                  )}
-                  {activeTab === 'activities' && (
-                    <AdminActivitiesManager
-                      packageId={selectedPackageId}
-                      packageTitle={packages.find((p) => p.id === selectedPackageId)?.title || ''}
-                    />
-                  )}
-                  {activeTab === 'itinerary-faqs' && (
-                    <AdminFAQsManager
-                      type="itinerary"
-                      packageId={selectedPackageId}
-                      packageTitle={packages.find((p) => p.id === selectedPackageId)?.title || ''}
-                    />
-                  )}
-                  {activeTab === 'website-faqs' && (
-                    <AdminFAQsManager
-                      type="website"
-                    />
-                  )}
-                  {activeTab === 'destinations' && (
-                    <AdminDestinationManager />
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-        )}
+      </div>
+      <div className="lg:col-span-9 border-4 border-[#121212] bg-white p-6 md:p-10 shadow-[8px_8px_0_0_#121212]">
+        {selectedId ? <AdminPackageEditor key={selectedId} packageId={selectedId} /> : <div className="h-96 flex flex-col items-center justify-center opacity-20"><PackageIcon size={64}/><h2 className="font-brand font-black text-2xl uppercase">Select Sector</h2></div>}
       </div>
     </div>
   );
