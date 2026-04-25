@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { doc, getDoc, collection, query, where, documentId, getDocs, collectionGroup } from 'firebase/firestore';
 import { db } from '../services/firebaseService';
+import { PACKAGES } from '../utils/constants';
 
 export const useHomepageContent = () => {
   const [data, setData] = useState<any>(null);
@@ -19,12 +20,12 @@ export const useHomepageContent = () => {
 
         const settings = settingsSnap.data();
 
-        // 1. Fetch ALL packages
-        const pkgSnaps = await getDocs(collection(db, 'packages'));
-        const allPkgs = pkgSnaps.docs.map(d => ({ id: d.id, ...d.data() }));
+        // 1. Static Journeys
+        const allPkgs = PACKAGES;
         
-         // 2. Fetch ALL destinations
+         // 2. Fetch ALL destinations (optional/static)
         const destSnaps = await getDocs(collection(db, 'destinations'));
+
         const allDests = destSnaps.docs.map(d => ({ id: d.id, ...d.data() }));
 
         // 3. Fetch ALL reviews
@@ -32,8 +33,13 @@ export const useHomepageContent = () => {
         const allReviews = reviewSnaps.docs.map(d => ({ id: d.id, ...d.data() }));
 
         // 4. Local Filtering & Sorting based on the Admin selection array
-        const dropZones = allPkgs.filter(p => settings.featuredDropZones?.includes(p.id));
+        let dropZones = allPkgs.filter(p => settings.featuredDropZones?.includes(p.id));
         const archive = allDests.filter(d => settings.featuredArchive?.includes(d.id));
+        
+        // Fallback for Drop Zones if DB is empty or nothing is featured
+        if (dropZones.length === 0 && PACKAGES.length > 0) {
+          dropZones = PACKAGES;
+        }
         
         // Ensure reviews follow the EXACT order the admin selected
         const voices = settings.featuredReviewIds

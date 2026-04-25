@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import { Database, Calendar, Package, Image as ImageIcon, LayoutTemplate, RefreshCw, MessageSquare, LogOut } from 'lucide-react';
-import { AdminBookingManager } from '../../components/admin/AdminBookingManager';
-import { ComprehensiveAdminDashboard } from '../../components/admin/ComprehensiveAdminDashboard';
 import { AdminHomepageManager } from '../../components/admin/AdminHomepageManager';
 import { initializeFirestoreDatabase } from '../../services/firebaseSeeder';
 import { AdminReviewsManager } from '../../components/admin/AdminReviewsManager';
@@ -28,8 +26,6 @@ export const Admin = () => {
 
   const tabs = [
     { id: 'HOMEPAGE', label: 'Site Content', icon: LayoutTemplate },
-    { id: 'DASHBOARD', label: 'Packages', icon: Package },
-    { id: 'BOOKINGS', label: 'Bookings', icon: Calendar },
     { id: 'REVIEWS', label: 'Field Logs', icon: MessageSquare },
     { id: 'DATABASE', label: 'Database', icon: Database },
     { id: 'GALLERY', label: 'Gallery', icon: ImageIcon }
@@ -67,8 +63,6 @@ export const Admin = () => {
 
            <div className="lg:col-span-9 border-4 border-[#121212] bg-white p-8 shadow-[8px_8px_0px_0px_#121212]">
               {activeTab === 'HOMEPAGE' && <AdminHomepageManager />}
-              {activeTab === 'DASHBOARD' && <ComprehensiveAdminDashboard />}
-              {activeTab === 'BOOKINGS' && <AdminBookingManager />}
               {activeTab === 'REVIEWS' && <AdminReviewsManager />}
               {activeTab === 'GALLERY' && <AdminGalleryManager />}
               {activeTab === 'DATABASE' && (
@@ -77,17 +71,37 @@ export const Admin = () => {
                    <p className="font-sans font-bold text-xs uppercase tracking-widest text-gray-500 max-w-md mx-auto">
                      Populate your Firestore collections with the default operational data set.
                    </p>
-                   <button 
-                    onClick={handleSeed}
-                    disabled={seeding}
-                    className="bg-[#121212] text-[#F4BF4B] px-10 py-5 font-black text-xs uppercase tracking-widest flex items-center gap-4 mx-auto hover:bg-[#9E1B1D] hover:text-white transition-all shadow-[6px_6px_0_0_#F4BF4B]"
-                   >
-                     <RefreshCw size={18} className={seeding ? "animate-spin" : ""} />
-                     {seeding ? "PROCESSING..." : "SEED DATABASE"}
-                   </button>
+                   <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                     <button 
+                      onClick={handleSeed}
+                      disabled={seeding}
+                      className="bg-[#121212] text-[#F4BF4B] px-10 py-5 font-black text-xs uppercase tracking-widest flex items-center gap-4 hover:bg-[#9E1B1D] hover:text-white transition-all shadow-[6px_6px_0_0_#F4BF4B]"
+                     >
+                       <RefreshCw size={18} className={seeding ? "animate-spin" : ""} />
+                       {seeding ? "PROCESSING..." : "SEED DATABASE"}
+                     </button>
+
+                     <button 
+                      onClick={async () => {
+                        if (window.confirm("CRITICAL: This will PERMANENTLY delete all Destinations and Packages from the database. Continue?")) {
+                          setSeeding(true);
+                          try {
+                            // I'll add a dedicated purge function or just call initialize with no data
+                            await initializeFirestoreDatabase(); // Already purges
+                            alert("Database Purged Successfully.");
+                          } catch (err) { alert(err); } finally { setSeeding(false); }
+                        }
+                      }}
+                      disabled={seeding}
+                      className="border-4 border-[#9E1B1D] text-[#9E1B1D] px-10 py-5 font-black text-xs uppercase tracking-widest flex items-center gap-4 hover:bg-[#9E1B1D] hover:text-white transition-all shadow-[6px_6px_0_0_#9E1B1D]/10"
+                     >
+                       <Database size={18} />
+                       PURGE ALL DATA
+                     </button>
+                   </div>
+
                 </div>
               )}
-              {activeTab === 'GALLERY' && <div className="p-12 text-center font-black uppercase">Gallery Archive Management</div>}
            </div>
         </div>
       </div>

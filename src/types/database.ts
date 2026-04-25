@@ -149,6 +149,12 @@ export interface PackageAvailability {
   bookings: number; // AUTO: total bookings for this package
 }
 
+export interface ItineraryDay {
+  day: number;
+  title: string;
+  description: string;
+}
+
 export interface Package extends BaseDocument {
   // Identification
   title: string; // "Iceland Adventure"
@@ -162,6 +168,7 @@ export interface Package extends BaseDocument {
   destinations: string[]; // Array of destination IDs
   difficulty: 'Easy' | 'Moderate' | 'Challenging' | 'Expert';
   duration: string; // "5 Days / 4 Nights"
+  itineraryDays?: ItineraryDay[]; // Array of day titles and descriptions
   departureDate?: string; // "2024-06-15" (ISO date format)
   maxTravelers: number; // 12
   status: 'draft' | 'active' | 'archived';

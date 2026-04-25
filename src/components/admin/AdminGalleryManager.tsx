@@ -109,36 +109,39 @@ export const AdminGalleryManager = () => {
   if (loading) return <div className="p-10 font-black uppercase opacity-20">Loading Archive...</div>;
 
   return (
-    <div className="space-y-0 relative">
+    <div className="bg-[#FCFBF7] border-2 border-[#121212] shadow-[8px_8px_0px_0px_#121212] p-6 md:p-8 space-y-8 relative">
       {notification && <Notification text={notification.text} type={notification.type} />}
 
       {/* CUSTOM CONFIRMATION MODAL */}
       {confirmDelete.show && (
-        <div className="fixed inset-0 z-[2000] bg-[#121212]/90 backdrop-blur-sm flex items-center justify-center p-4 ">
-          <div className="bg-white border-[4px] border-[#121212] p-8 max-w-sm w-full shadow-[12px_12px_0_0_#9E1B1D]">
-            <h3 className="font-brand font-black text-3xl uppercase mb-2">Are you sure?</h3>
-            <p className="font-bold text-[10px] uppercase tracking-widest text-gray-400 mb-8">
+        <div className="fixed inset-0 z-[2000] bg-[#121212]/90 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#FCFBF7] border-4 border-[#121212] p-8 max-w-sm w-full shadow-[16px_16px_0_0_#121212]">
+            <h3 className="font-black text-xl uppercase tracking-tight text-[#121212] mb-2">Are you sure?</h3>
+            <p className="font-bold text-[10px] uppercase tracking-widest text-gray-500 mb-8 border-b-2 border-[#121212] pb-4">
               This will permanently delete the file from your cloud storage.
             </p>
             <div className="grid grid-cols-2 gap-4">
-              <button onClick={handleConfirmDelete} className="bg-[#9E1B1D] text-white py-4 font-black text-xs uppercase tracking-widest shadow-[4px_4px_0_0_#000] active:translate-x-1 active:translate-y-1">Yes, Delete</button>
-              <button onClick={() => setConfirmDelete({show:false, type:'folder', fIdx:-1})} className="border-2 border-[#121212] py-4 font-black text-xs uppercase tracking-widest">Cancel</button>
+              <button onClick={handleConfirmDelete} className="bg-[#9E1B1D] text-white border-2 border-[#9E1B1D] py-4 font-black text-[10px] uppercase tracking-widest shadow-[4px_4px_0_0_#121212] active:translate-x-1 active:translate-y-1 hover:bg-white hover:text-[#9E1B1D] transition-colors">YES, DELETE</button>
+              <button onClick={() => setConfirmDelete({show:false, type:'folder', fIdx:-1})} className="bg-white border-2 border-[#121212] text-[#121212] py-4 font-black text-[10px] uppercase tracking-widest shadow-[4px_4px_0_0_#121212] hover:bg-gray-100 transition-colors">CANCEL</button>
             </div>
           </div>
         </div>
       )}
 
       {/* HEADER */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b-4 border-[#121212] pb-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b-2 border-[#121212] pb-6">
         <div className="flex items-center gap-4">
           {activeFolderIdx !== null && (
-            <button onClick={() => setActiveFolderIdx(null)} className="p-2 border-2 border-[#121212] hover:bg-[#F4BF4B]"><ArrowLeft size={20}/></button>
+            <button onClick={() => setActiveFolderIdx(null)} className="p-3 border-2 border-[#121212] bg-white hover:bg-[#F4BF4B] transition-colors shadow-[2px_2px_0px_0px_#121212]"><ArrowLeft size={20}/></button>
           )}
-          <h2 className="font-brand font-black text-4xl uppercase">
-            {activeFolderIdx !== null ? `${folders[activeFolderIdx].title} // FILES` : 'Gallery Archive'}
-          </h2>
+          <div>
+            <h2 className="font-brand font-black text-2xl md:text-3xl uppercase tracking-tight text-[#121212]">
+              {activeFolderIdx !== null ? `${folders[activeFolderIdx].title} // FILES` : 'Gallery Archive'}
+            </h2>
+            <p className="font-bold text-xs uppercase tracking-widest text-gray-500 mt-2">Manage visual assets</p>
+          </div>
         </div>
-        <button onClick={handleGlobalSave} disabled={saving} className="w-full md:w-auto bg-[#121212] text-[#F4BF4B] px-10 py-4 font-black text-xs uppercase tracking-widest shadow-[6px_6px_0_0_#9E1B1D] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all">
+        <button onClick={handleGlobalSave} disabled={saving} className="w-full md:w-auto bg-[#121212] text-[#F4BF4B] px-8 py-4 font-black text-xs uppercase tracking-widest shadow-[4px_4px_0_0_#F4BF4B] hover:bg-[#9E1B1D] hover:text-white hover:shadow-[4px_4px_0_0_#121212] transition-all">
           {saving ? 'SYNCING...' : 'SAVE ALL CHANGES'}
         </button>
       </div>
@@ -150,21 +153,21 @@ export const AdminGalleryManager = () => {
             const nf = [...folders];
             nf[activeFolderIdx].images = [...(nf[activeFolderIdx].images || []), { id: Date.now().toString(), url: '', title: '', photographer: '' }];
             setFolders(nf);
-          }} className="w-full py-8 border-4 border-dashed border-[#121212]/10 font-black text-xs uppercase tracking-widest hover:bg-[#F4BF4B]/10">+ ADD NEW FILE SLOT</button>
+          }} className="w-full py-8 border-4 border-dashed border-[#121212] bg-white font-black text-xs uppercase tracking-widest text-[#121212] hover:bg-[#F4BF4B] transition-colors">+ ADD NEW FILE SLOT</button>
           
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {folders[activeFolderIdx].images?.map((img: any, imgIdx: number) => (
-              <div key={img.id} className="border-2 border-[#121212] bg-white p-3 shadow-[4px_4px_0_0_#121212]">
-                <div className="aspect-square bg-gray-100 relative border-2 border-[#121212] overflow-hidden mb-3">
-                  {img.url ? <img src={img.url} className="w-full h-full object-cover" /> : <div className="h-full flex items-center justify-center text-[10px] font-black opacity-20 uppercase">No Data</div>}
+              <div key={img.id} className="border-2 border-[#121212] bg-[#FCFBF7] p-4 shadow-[4px_4px_0_0_#121212] flex flex-col">
+                <div className="aspect-square bg-white relative border-2 border-[#121212] overflow-hidden mb-4 shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.05)]">
+                  {img.url ? <img src={img.url} className="w-full h-full object-cover grayscale-[20%]" /> : <div className="h-full flex items-center justify-center text-[10px] font-black opacity-20 uppercase tracking-widest">No Data</div>}
                   {uploadingIdx === imgIdx && <div className="absolute inset-0 bg-[#121212]/80 flex items-center justify-center text-[#F4BF4B]"><Loader2 className="animate-spin" /></div>}
                 </div>
-                <label className="block bg-[#121212] text-white p-2 text-center text-[8px] font-black uppercase cursor-pointer hover:bg-[#9E1B1D]">
-                  Upload File <input type="file" className="hidden" accept="image/*" onChange={(e) => onUpload(activeFolderIdx, imgIdx, e)} />
+                <label className="block border-2 border-[#121212] bg-white hover:bg-[#F4BF4B] text-[#121212] py-3 text-center text-[10px] font-black uppercase tracking-widest cursor-pointer shadow-[2px_2px_0_0_#121212] transition-colors mb-4">
+                  UPLOAD FILE <input type="file" className="hidden" accept="image/*" onChange={(e) => onUpload(activeFolderIdx, imgIdx, e)} />
                 </label>
-                <input className="w-full mt-2 text-[10px] p-2 border-b-2 border-gray-100 outline-none uppercase font-bold focus:border-[#121212]" placeholder="PHOTO TITLE" value={img.title} onChange={e => { const nf = [...folders]; nf[activeFolderIdx].images[imgIdx].title = e.target.value; setFolders(nf); }} />
-                <input className="w-full text-[9px] p-2 border-b-2 border-gray-100 outline-none uppercase text-gray-400 focus:border-[#121212]" placeholder="PHOTOGRAPHER" value={img.photographer} onChange={e => { const nf = [...folders]; nf[activeFolderIdx].images[imgIdx].photographer = e.target.value; setFolders(nf); }} />
-                <button onClick={() => setConfirmDelete({ show: true, type: 'image', fIdx: activeFolderIdx, imgIdx })} className="w-full mt-4 text-red-600 font-black text-[8px] uppercase tracking-widest hover:underline">Remove Slot</button>
+                <input className="w-full mb-3 p-3 border-2 border-[#121212] bg-white outline-none text-[10px] uppercase font-black tracking-widest focus:border-[#F4BF4B] transition-colors" placeholder="PHOTO TITLE" value={img.title} onChange={e => { const nf = [...folders]; nf[activeFolderIdx].images[imgIdx].title = e.target.value; setFolders(nf); }} />
+                <input className="w-full mb-4 p-3 border-2 border-[#121212] bg-white outline-none text-[10px] uppercase font-black tracking-widest focus:border-[#F4BF4B] transition-colors" placeholder="PHOTOGRAPHER" value={img.photographer} onChange={e => { const nf = [...folders]; nf[activeFolderIdx].images[imgIdx].photographer = e.target.value; setFolders(nf); }} />
+                <button onClick={() => setConfirmDelete({ show: true, type: 'image', fIdx: activeFolderIdx, imgIdx })} className="w-full mt-auto bg-[#121212] text-[#F4BF4B] hover:bg-[#9E1B1D] hover:text-white py-3 border-2 border-[#121212] font-black text-[10px] uppercase tracking-widest shadow-[2px_2px_0_0_#F4BF4B] transition-colors">REMOVE SLOT</button>
               </div>
             ))}
           </div>
@@ -172,21 +175,21 @@ export const AdminGalleryManager = () => {
       ) : (
         /* VIEW 2: FOLDER LIST */
         <div className="space-y-6">
-          <button onClick={addFolder} className="w-full py-10 border-4 border-dashed border-[#121212]/10 font-black text-sm uppercase tracking-[0.2em] text-gray-400 hover:bg-[#F4BF4B]/10 hover:border-[#121212] hover:text-[#121212] transition-all">+ CREATE NEW TRIP ARCHIVE</button>
+          <button onClick={addFolder} className="w-full py-10 border-4 border-dashed border-[#121212] bg-white font-black text-sm uppercase tracking-[0.2em] text-[#121212] hover:bg-[#F4BF4B] transition-all">+ CREATE NEW TRIP ARCHIVE</button>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {folders.map((f, fIdx) => (
-              <div key={f.id} className="border-4 border-[#121212] bg-white p-4 flex flex-col shadow-[8px_8px_0_0_#121212]">
-                <div className="aspect-square bg-gray-100 border-2 border-[#121212] mb-4 relative overflow-hidden">
-                  {f.url ? <img src={f.url} className="w-full h-full object-cover grayscale-[30%]" /> : <div className="h-full flex items-center justify-center text-xs font-black opacity-10 text-center uppercase">EMPTY FOLDER</div>}
+              <div key={f.id} className="border-2 border-[#121212] bg-white p-6 flex flex-col shadow-[4px_4px_0_0_#121212]">
+                <div className="aspect-square bg-[#FCFBF7] border-2 border-[#121212] mb-4 relative overflow-hidden shadow-[inset_2px_2px_0px_0px_rgba(0,0,0,0.05)]">
+                  {f.url ? <img src={f.url} className="w-full h-full object-cover grayscale-[30%]" /> : <div className="h-full flex items-center justify-center text-[10px] font-black opacity-20 text-center uppercase tracking-widest">EMPTY FOLDER</div>}
                   {uploadingIdx === -99 && <div className="absolute inset-0 bg-[#121212]/80 flex items-center justify-center text-[#F4BF4B]"><Loader2 className="animate-spin" /></div>}
                 </div>
-                <label className="bg-gray-100 p-3 text-center text-[9px] font-black uppercase cursor-pointer border-2 border-[#121212] mb-4 hover:bg-[#F4BF4B] transition-colors">
+                <label className="border-2 border-[#121212] bg-white hover:bg-[#F4BF4B] p-3 text-center text-[10px] font-black uppercase tracking-widest cursor-pointer mb-4 shadow-[2px_2px_0_0_#121212] transition-colors">
                   SET COVER IMAGE <input type="file" className="hidden" accept="image/*" onChange={(e) => onUpload(fIdx, null, e)} />
                 </label>
-                <input className="w-full p-3 border-2 border-gray-100 focus:border-[#121212] outline-none text-xs font-black uppercase mb-6" placeholder="TRIP TITLE" value={f.title} onChange={e => { const n = [...folders]; n[fIdx].title = e.target.value; setFolders(n); }} />
-                <div className="space-y-2 mt-auto">
-                   <button onClick={() => setActiveFolderIdx(fIdx)} className="w-full bg-[#F4BF4B] border-2 border-[#121212] py-3 font-black text-[10px] uppercase tracking-widest hover:bg-[#121212] hover:text-white transition-all">MANAGE FILES ({f.images?.length || 0})</button>
-                   <button onClick={() => setConfirmDelete({ show: true, type: 'folder', fIdx })} className="w-full border-2 border-[#9E1B1D] text-[#9E1B1D] py-3 font-black text-[10px] uppercase tracking-widest hover:bg-[#9E1B1D] hover:text-white transition-all">DELETE FOLDER</button>
+                <input className="w-full p-4 border-2 border-[#121212] bg-[#FCFBF7] focus:border-[#F4BF4B] outline-none text-xs font-black uppercase tracking-widest mb-6 transition-colors" placeholder="TRIP TITLE" value={f.title} onChange={e => { const n = [...folders]; n[fIdx].title = e.target.value; setFolders(n); }} />
+                <div className="space-y-3 mt-auto">
+                   <button onClick={() => setActiveFolderIdx(fIdx)} className="w-full bg-[#121212] text-[#F4BF4B] hover:bg-gray-800 border-2 border-[#121212] py-3 font-black text-[10px] uppercase tracking-widest shadow-[2px_2px_0_0_#F4BF4B] transition-colors">MANAGE FILES ({f.images?.length || 0})</button>
+                   <button onClick={() => setConfirmDelete({ show: true, type: 'folder', fIdx })} className="w-full bg-white text-[#9E1B1D] hover:bg-[#9E1B1D] hover:text-white border-2 border-[#9E1B1D] py-3 font-black text-[10px] uppercase tracking-widest shadow-[2px_2px_0_0_#9E1B1D] transition-colors">DELETE FOLDER</button>
                 </div>
               </div>
             ))}

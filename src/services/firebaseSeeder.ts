@@ -1,69 +1,59 @@
 import { db } from './firebaseService';
-import { writeBatch, Timestamp, doc } from 'firebase/firestore';
+import { writeBatch, Timestamp, doc, collection, getDocs, deleteDoc } from 'firebase/firestore';
+
+const clearCollection = async (collectionName: string) => {
+  const querySnapshot = await getDocs(collection(db, collectionName));
+  const batch = writeBatch(db);
+  querySnapshot.forEach((d) => {
+    batch.delete(doc(db, collectionName, d.id));
+  });
+  await batch.commit();
+};
 
 export const initializeFirestoreDatabase = async () => {
   console.log('Starting Firestore database initialization...');
   try {
+    // 1. PURGE EXISTING DATA
+    console.log('Purging existing data...');
+    await clearCollection('destinations');
+    await clearCollection('packages');
+    
     const batch = writeBatch(db);
 
-    // 1. SEED DESTINATIONS
-    const destinations = [
-      {
-        id: 'iceland',
-        name: 'ICELAND',
-        country: 'Iceland',
-        continent: 'Europe',
-        description: 'Land of fire and ice.',
-        highlights: ['Northern Lights', 'Golden Circle'],
-        currency: 'ISK',
-        coverImage: 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=800',
-        active: true,
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now(),
-      },
-      {
-        id: 'switzerland',
-        name: 'SWITZERLAND',
-        country: 'Switzerland',
-        continent: 'Europe',
-        description: 'Alpine landscapes.',
-        highlights: ['Matterhorn', 'Swiss Alps'],
-        currency: 'CHF',
-        coverImage: 'https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=800',
-        active: true,
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now(),
-      }
-    ];
-
-    destinations.forEach(d => batch.set(doc(db, 'destinations', d.id), d));
-
-    // 2. SEED PACKAGES
+    // 2. SEED ONE ROBUST PACKAGE (The Master Template)
     const packages = [
       {
-        id: 'iceland-adventure',
-        title: 'ICELAND ADVENTURE',
-        slug: 'iceland-adventure',
-        overview: 'Experience the magical Golden Circle.',
-        destinations: ['iceland'],
-        difficulty: 'Moderate',
-        duration: '5 Days / 4 Nights',
-        maxTravelers: 12,
+        id: 'iceland-drift',
+        title: 'THE ICELANDIC DRIFT',
+        slug: 'iceland-drift',
+        description: 'This is not a vacation; it\'s an expedition. We leave the tourist traps behind and dive into the raw, unfiltered reality of the Arctic North.',
+        destinations: ['Iceland'],
+        difficulty: 'Challenging',
+        duration: '7 Days',
+        maxTravelers: 6,
         status: 'active',
         pricing: {
-          basePrice: 99000,
+          basePrice: 5299,
           currency: 'INR',
           discount: 0,
-          seasonalPricing: [],
-          groupPricing: []
         },
-        availability: { maxSlots: 12, bookings: 0 },
         media: {
-          thumbnail: 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=800',
-          gallery: [],
-          videos: []
+          thumbnail: 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=1200&q=80',
+          gallery: [
+            'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=1000&q=80',
+            'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1000&q=80'
+          ]
         },
-        rating: { average: 4.8, totalReviews: 24, autoCalculated: 4.8 },
+        rating: { average: 5.0, totalReviews: 12 },
+        itineraryDays: [
+          { day: 1, title: "INSERTION: REYKJAVIK", description: "Arrive at coordinates. Gear check. First deployment into the volcanic rift." },
+          { day: 2, title: "THE SILVER SILENCE", description: "Trek across the Vatnajökull glacier. Total isolation achieved." },
+          { day: 3, title: "BASALT PROTOCOL", description: "Navigate the black sands of Vik. Extreme weather drills." },
+          { day: 4, title: "GEOTHERMAL EXTRACTION", description: "Recover in hidden thermal vents. Review field data." },
+          { day: 5, title: "THE NORTHERN WATCH", description: "Camp under the Aurora Borealis. Night navigation training." },
+          { day: 6, title: "RIVER CROSSING", description: "Fording glacial rivers in modified 4x4 units." },
+          { day: 7, title: "EXFILTRATION", description: "Final debrief. Return to base." }
+        ],
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
       }
@@ -71,8 +61,19 @@ export const initializeFirestoreDatabase = async () => {
 
     packages.forEach(p => batch.set(doc(db, 'packages', p.id), p));
 
+    // 3. SEED HOMEPAGE SETTINGS
+    const homepageSettings = {
+      heroImage: 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=1600&q=80',
+      featuredDropZones: ['iceland-drift'],
+      featuredArchive: [], // Destinations cleared
+      featuredReviewIds: [],
+      updatedAt: Timestamp.now()
+    };
+
+    batch.set(doc(db, 'settings', 'homepage'), homepageSettings);
+
     await batch.commit();
-    console.log('✅ Database Seeded Successfully');
+    console.log('✅ Database Purged & Master Expedition Seeded');
     return { success: true };
   } catch (error) {
     console.error('Error initializing database:', error);

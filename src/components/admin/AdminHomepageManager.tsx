@@ -145,7 +145,7 @@ export const AdminHomepageManager = () => {
       )}
 
       {/* 1. HERO SECTION */}
-      <section className="bg-gray-50 border-2 border-gray-200 p-4 md:p-6">
+      <section className="bg-[#FCFBF7] border-2 border-[#121212] shadow-[8px_8px_0px_0px_#121212] p-6">
         <h3 className="font-black text-base md:text-lg uppercase tracking-tight mb-4">Hero Background</h3>
         <div className="space-y-4">
           <label className="text-xs font-bold uppercase tracking-widest text-gray-500">Image URL or Upload File</label>
@@ -155,9 +155,9 @@ export const AdminHomepageManager = () => {
               value={content.heroImage} 
               onChange={(e) => setContent({...content, heroImage: e.target.value})}
               placeholder="https://..." 
-              className="w-full md:flex-1 p-3 border-2 border-gray-300 outline-none focus:border-[#121212] text-sm"
+              className="w-full md:flex-1 p-3 border-2 border-[#121212] bg-white outline-none focus:border-[#F4BF4B] text-sm font-bold"
             />
-            <label className="w-full md:w-auto bg-white border-2 border-gray-300 px-4 md:px-6 py-3 cursor-pointer hover:bg-gray-100 flex items-center justify-center md:justify-start gap-2 font-bold text-xs uppercase transition-colors">
+            <label className="w-full md:w-auto bg-white border-2 border-[#121212] text-[#121212] hover:bg-gray-100 px-4 md:px-6 py-3 cursor-pointer flex items-center justify-center md:justify-start gap-2 font-black text-xs uppercase tracking-widest shadow-[4px_4px_0px_0px_#121212] transition-colors">
               {uploadingHero ? 'UPLOADING...' : <><Upload size={16} /> UPLOAD FILE</>}
               <input type="file" className="hidden" accept="image/*" onChange={handleHeroUpload} disabled={uploadingHero} />
             </label>
@@ -169,18 +169,18 @@ export const AdminHomepageManager = () => {
       </section>
 
       {/* 2. LOCATE YOUR DROP ZONE */}
-      <section className="bg-gray-50 border-2 border-gray-200 p-4 md:p-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4">
-          <h3 className="font-black text-base md:text-lg uppercase tracking-tight">Target Sectors (Drop Zone)</h3>
-          <span className="text-xs font-bold bg-[#121212] text-white px-3 py-1">{content.featuredDropZones.length} / 4 Selected</span>
+      <section className="bg-[#FCFBF7] border-2 border-[#121212] shadow-[8px_8px_0px_0px_#121212] p-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4 border-b-2 border-[#121212] pb-4">
+          <h3 className="font-black text-lg md:text-xl uppercase tracking-tight text-[#121212]">Target Sectors (Drop Zone)</h3>
+          <span className="text-[10px] font-black uppercase tracking-widest bg-[#121212] text-[#F4BF4B] px-3 py-1 shadow-[2px_2px_0px_0px_#F4BF4B]">{content.featuredDropZones.length} / 4 Selected</span>
         </div>
-        <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-4">Select exactly 4 packages to feature in the grid.</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-6">Select exactly 4 packages to feature in the grid.</p>
         
-        <div className="max-h-60 md:max-h-72 overflow-y-auto border-2 border-gray-200 bg-white grid grid-cols-1 sm:grid-cols-2 gap-2 p-3">
+        <div className="max-h-60 md:max-h-72 overflow-y-auto border-2 border-[#121212] bg-white grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 shadow-[inset_0px_2px_4px_rgba(0,0,0,0.05)]">
           {availablePackages.map(pkg => (
             <div 
               key={pkg.id} 
-              className={`flex items-center gap-3 p-3 border hover:bg-gray-50 cursor-pointer active:bg-[#F4BF4B]/10 transition-colors ${content.featuredDropZones.includes(pkg.id) ? 'border-[#9E1B1D] bg-[#9E1B1D]/5' : 'border-gray-200'}`}
+              className={`flex items-center gap-3 p-4 border-2 cursor-pointer transition-all ${content.featuredDropZones.includes(pkg.id) ? 'border-[#121212] bg-[#F4BF4B]/10 shadow-[4px_4px_0px_0px_#121212]' : 'border-gray-200 hover:border-[#121212] hover:shadow-[4px_4px_0px_0px_rgba(18,18,18,0.2)] bg-white'}`}
               onClick={() => toggleSelection('featuredDropZones', pkg.id, 4)}
             >
               <input type="checkbox" checked={content.featuredDropZones.includes(pkg.id)} readOnly className="size-5 md:size-4 accent-[#9E1B1D] cursor-pointer flex-shrink-0" />
@@ -191,18 +191,18 @@ export const AdminHomepageManager = () => {
       </section>
 
       {/* 3. THE FIELD ARCHIVE (GALLERY) */}
-      <section className="bg-gray-50 border-2 border-gray-200 p-4 md:p-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4">
-          <h3 className="font-black text-base md:text-lg uppercase tracking-tight">The Field Archive</h3>
-          <span className="text-xs font-bold bg-[#121212] text-white px-3 py-1">{content.featuredArchive.length} Selected</span>
+      <section className="bg-[#FCFBF7] border-2 border-[#121212] shadow-[8px_8px_0px_0px_#121212] p-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4 border-b-2 border-[#121212] pb-4">
+          <h3 className="font-black text-lg md:text-xl uppercase tracking-tight text-[#121212]">The Field Archive</h3>
+          <span className="text-[10px] font-black uppercase tracking-widest bg-[#121212] text-[#F4BF4B] px-3 py-1 shadow-[2px_2px_0px_0px_#F4BF4B]">{content.featuredArchive.length} Selected</span>
         </div>
-        <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-4">Select the destinations to display in the scrolling visual evidence gallery.</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-6">Select the destinations to display in the scrolling visual evidence gallery.</p>
         
-        <div className="max-h-60 md:max-h-72 overflow-y-auto border-2 border-gray-200 bg-white grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 p-3">
+        <div className="max-h-60 md:max-h-72 overflow-y-auto border-2 border-[#121212] bg-white grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4 shadow-[inset_0px_2px_4px_rgba(0,0,0,0.05)]">
           {availableDestinations.map(dest => (
             <div 
               key={dest.id} 
-              className={`flex items-center gap-3 p-3 border hover:bg-gray-50 cursor-pointer active:bg-[#F4BF4B]/10 transition-colors ${content.featuredArchive.includes(dest.id) ? 'border-[#9E1B1D] bg-[#9E1B1D]/5' : 'border-gray-200'}`}
+              className={`flex items-center gap-3 p-4 border-2 cursor-pointer transition-all ${content.featuredArchive.includes(dest.id) ? 'border-[#121212] bg-[#F4BF4B]/10 shadow-[4px_4px_0px_0px_#121212]' : 'border-gray-200 hover:border-[#121212] hover:shadow-[4px_4px_0px_0px_rgba(18,18,18,0.2)] bg-white'}`}
               onClick={() => toggleSelection('featuredArchive', dest.id)}
             >
               <input type="checkbox" checked={content.featuredArchive.includes(dest.id)} readOnly className="size-5 md:size-4 accent-[#9E1B1D] cursor-pointer flex-shrink-0" />
@@ -213,25 +213,25 @@ export const AdminHomepageManager = () => {
       </section>
 
       {/* 4. VOICES FROM THE FIELD (REVIEWS) */}
-      <section className="bg-gray-50 border-2 border-gray-200 p-4 md:p-6 mb-20">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4">
-          <h3 className="font-black text-base md:text-lg uppercase tracking-tight">Voices from the Field</h3>
-          <span className="text-xs font-bold bg-[#121212] text-white px-3 py-1">{content.featuredReviewIds.length} Selected</span>
+      <section className="bg-[#FCFBF7] border-2 border-[#121212] shadow-[8px_8px_0px_0px_#121212] p-6 mb-20">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4 border-b-2 border-[#121212] pb-4">
+          <h3 className="font-black text-lg md:text-xl uppercase tracking-tight text-[#121212]">Voices from the Field</h3>
+          <span className="text-[10px] font-black uppercase tracking-widest bg-[#121212] text-[#F4BF4B] px-3 py-1 shadow-[2px_2px_0px_0px_#F4BF4B]">{content.featuredReviewIds.length} Selected</span>
         </div>
-        <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-4">Select the authenticated reviews to display in the carousel.</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-6">Select the authenticated reviews to display in the carousel.</p>
         
         {/* Search & Dropdown for Reviews */}
-        <div className="mb-4 relative">
+        <div className="mb-6 relative">
           <button
             onClick={() => setShowReviewDropdown(!showReviewDropdown)}
-            className="w-full flex items-center justify-between p-3 md:p-4 border-2 border-gray-300 bg-white hover:border-[#121212] active:bg-gray-50 transition-all duration-300 font-bold text-xs md:text-sm uppercase text-left touch-manipulation"
+            className="w-full flex items-center justify-between p-4 border-2 border-[#121212] bg-white hover:bg-gray-50 transition-colors font-black text-xs md:text-sm uppercase tracking-widest text-left shadow-[4px_4px_0px_0px_#121212]"
           >
-            <span>+ Add Review</span>
+            <span>+ ADD REVIEW</span>
             <span className={`text-lg transition-transform duration-300 ${showReviewDropdown ? 'rotate-180' : 'rotate-0'}`}>▼</span>
           </button>
           
           {showReviewDropdown && (
-            <div className="absolute top-full left-0 right-0 mt-1 border-2 border-gray-300 bg-white shadow-lg z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="absolute top-full left-0 right-0 mt-2 border-2 border-[#121212] bg-white shadow-[8px_8px_0px_0px_#121212] z-50 animate-in fade-in slide-in-from-top-2 duration-200">
               <input
                 type="text"
                 placeholder="Search by name..."
@@ -268,22 +268,22 @@ export const AdminHomepageManager = () => {
 
         {/* Active Sequence Section - Compact & Distinct */}
         {content.featuredReviewIds.length > 0 && (
-          <div className="mt-6 p-4 md:p-5 border-2 border-[#121212] bg-white">
-            <h4 className="text-[10px] md:text-[11px] font-black uppercase mb-3 text-[#121212]">▪ Active Sequence</h4>
-            <div className="space-y-2">
+          <div className="mt-8 p-6 border-2 border-[#121212] bg-white shadow-[4px_4px_0px_0px_#121212]">
+            <h4 className="font-black text-xs uppercase tracking-widest mb-4 text-[#121212] border-b-2 border-[#121212] pb-2 inline-block">▪ Active Sequence</h4>
+            <div className="space-y-3">
               {content.featuredReviewIds.map((id, index) => {
                 const review = availableReviews.find(r => r.id === id);
                 return (
-                  <div key={id} className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 bg-gray-50 p-3 border border-gray-200 hover:bg-gray-100 transition-colors">
-                    <div className="flex items-center gap-3 flex-1 min-w-0 w-full">
-                      <span className="text-[10px] font-bold text-gray-400 w-5 text-center flex-shrink-0">{index + 1}</span>
-                      <span className="font-bold text-xs truncate text-[#121212]">{review?.travelerName}</span>
+                  <div key={id} className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-[#FCFBF7] p-4 border-2 border-[#121212] hover:bg-[#F4BF4B]/10 transition-colors">
+                    <div className="flex items-center gap-4 flex-1 min-w-0 w-full">
+                      <span className="font-black text-xs text-gray-400 w-6 text-center flex-shrink-0 border-r-2 border-[#121212] pr-4">{index + 1}</span>
+                      <span className="font-black text-xs uppercase truncate text-[#121212]">{review?.travelerName}</span>
                     </div>
-                    <div className="flex gap-1 shrink-0 w-full md:w-auto">
+                    <div className="flex gap-2 shrink-0 w-full md:w-auto mt-2 md:mt-0">
                       <button
                         onClick={() => moveItem('featuredReviewIds', index, 'up')}
                         disabled={index === 0}
-                        className="flex-1 md:flex-none p-2 md:p-2 bg-white border border-gray-300 hover:bg-[#F4BF4B] active:bg-[#F4BF4B]/50 disabled:opacity-30 disabled:cursor-not-allowed text-[11px] md:text-[10px] font-bold transition-colors"
+                        className="flex-1 md:flex-none p-2 bg-white border-2 border-[#121212] hover:bg-[#F4BF4B] disabled:opacity-30 disabled:cursor-not-allowed font-black text-xs transition-colors shadow-[2px_2px_0px_0px_#121212]"
                         title="Move up"
                       >
                         ↑
@@ -291,14 +291,14 @@ export const AdminHomepageManager = () => {
                       <button
                         onClick={() => moveItem('featuredReviewIds', index, 'down')}
                         disabled={index === content.featuredReviewIds.length - 1}
-                        className="flex-1 md:flex-none p-2 md:p-2 bg-white border border-gray-300 hover:bg-[#F4BF4B] active:bg-[#F4BF4B]/50 disabled:opacity-30 disabled:cursor-not-allowed text-[11px] md:text-[10px] font-bold transition-colors"
+                        className="flex-1 md:flex-none p-2 bg-white border-2 border-[#121212] hover:bg-[#F4BF4B] disabled:opacity-30 disabled:cursor-not-allowed font-black text-xs transition-colors shadow-[2px_2px_0px_0px_#121212]"
                         title="Move down"
                       >
                         ↓
                       </button>
                       <button
                         onClick={() => toggleSelection('featuredReviewIds', id)}
-                        className="flex-1 md:flex-none p-2 md:p-2 bg-white border border-red-300 hover:bg-red-50 active:bg-red-100 text-red-600 text-[11px] md:text-[10px] font-bold transition-colors"
+                        className="flex-1 md:flex-none p-2 bg-[#121212] text-[#F4BF4B] hover:bg-[#9E1B1D] hover:text-white border-2 border-[#121212] font-black text-xs transition-colors shadow-[2px_2px_0px_0px_#F4BF4B]"
                         title="Remove"
                       >
                         ✕

@@ -69,8 +69,6 @@ export const routeSplitting = {
  */
 export const componentSplitting = {
   // Admin components
-  adminCrud: () => import('../components/admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })),
-  
   // Image components
   lazyImage: () => import('../components/shared/LazyImage').then(m => m),
   

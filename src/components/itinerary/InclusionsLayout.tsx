@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Check, Plus, Info, Compass, Coffee, CarFront, BedDouble, ArrowRight } from 'lucide-react';
-import { getSubcollectionData } from '../../services/firebaseService';
+import { Check, Plus, Info, Compass, Coffee, CarFront, BedDouble, ArrowRight, Save, Trash2 } from 'lucide-react';
+import { getSubcollectionData, updateDocument, deleteDocument } from '../../services/firebaseService';
 import { Activity } from '../../types/database';
 
-export const InclusionsLayout = ({ packageId }: { packageId: string }) => {
+export const InclusionsLayout = ({ packageId, isEditing }: { packageId: string, isEditing?: boolean }) => {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [savingId, setSavingId] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -16,6 +17,21 @@ export const InclusionsLayout = ({ packageId }: { packageId: string }) => {
     };
     load();
   }, [packageId]);
+
+  const handleUpdateActivity = (id: string, field: string, value: any) => {
+    setActivities(prev => prev.map(a => a.id === id ? { ...a, [field]: value } : a));
+  };
+
+  const saveActivity = async (activity: Activity) => {
+    setSavingId(activity.id);
+    try {
+      await updateDocument(`packages/${packageId}/activities`, activity.id, activity);
+      setTimeout(() => setSavingId(null), 1000);
+    } catch (err) {
+      alert("Failed to save activity.");
+      setSavingId(null);
+    }
+  };
 
   const provisionGrid = [
     { title: "Discovery", icon: Compass, items: ["Entry Permits", "Local Access Fees", "Guided Routes"] },
@@ -69,26 +85,77 @@ export const InclusionsLayout = ({ packageId }: { packageId: string }) => {
               {/* Day Badge */}
               <div className={`p-8 lg:w-48 flex flex-row lg:flex-col items-center justify-center border-b-4 lg:border-b-0 lg:border-r-4 border-[#121212] ${act.isIncluded ? 'bg-[#FCFBF7]' : 'bg-[#9E1B1D]'}`}>
                  <span className="font-sans font-black text-xs uppercase tracking-widest opacity-40 lg:mb-2">{act.isIncluded ? 'Day' : 'Extra'}</span>
-                 <span className="font-brand font-black text-6xl lg:text-8xl ml-4 lg:ml-0 leading-none">{act.isIncluded ? `0${act.day}` : '+'}</span>
+                 {isEditing ? (
+                   <input 
+                    type="number"
+                    value={act.day}
+                    onChange={(e) => handleUpdateActivity(act.id, 'day', parseInt(e.target.value) || 0)}
+                    className="w-20 bg-transparent border-b-2 border-[#121212] text-center font-brand font-black text-4xl lg:text-6xl outline-none"
+                   />
+                 ) : (
+                   <span className="font-brand font-black text-6xl lg:text-8xl ml-4 lg:ml-0 leading-none">{act.isIncluded ? `0${act.day}` : '+'}</span>
+                 )}
               </div>
 
               {/* Activity Info */}
               <div className="p-8 flex-1 flex flex-col justify-center">
                  <div className="flex justify-between items-start mb-4">
-                    <h3 className="font-brand font-black text-3xl md:text-4xl uppercase tracking-tight leading-none">{act.title}</h3>
+                    {isEditing ? (
+                      <input 
+                        value={act.title}
+                        onChange={(e) => handleUpdateActivity(act.id, 'title', e.target.value)}
+                        className="bg-transparent border-b-2 border-[#121212]/20 font-brand font-black text-3xl md:text-4xl uppercase tracking-tight w-full outline-none"
+                      />
+                    ) : (
+                      <h3 className="font-brand font-black text-3xl md:text-4xl uppercase tracking-tight leading-none">{act.title}</h3>
+                    )}
                     {!act.isIncluded && <span className="bg-[#F4BF4B] text-[#121212] px-4 py-1 font-black text-xs uppercase tracking-widest border-2 border-[#121212]">₹{act.price}</span>}
                  </div>
-                 <p className="font-serif italic text-lg opacity-70 mb-6 max-w-2xl leading-relaxed">"{act.description}"</p>
+                 
+                 {isEditing ? (
+                    <textarea 
+                      value={act.description}
+                      onChange={(e) => handleUpdateActivity(act.id, 'description', e.target.value)}
+                      className="w-full bg-transparent border border-[#121212]/10 p-2 font-serif italic text-lg opacity-70 mb-6 outline-none min-h-[80px]"
+                    />
+                 ) : (
+                    <p className="font-serif italic text-lg opacity-70 mb-6 max-w-2xl leading-relaxed">"{act.description}"</p>
+                 )}
+
                  <div className="flex gap-6 text-[10px] font-black uppercase tracking-widest opacity-40">
-                    <span className="flex items-center gap-2"><Compass size={12}/> Location: {act.location}</span>
-                    <span className="flex items-center gap-2"><Check size={12}/> Duration: {act.duration}</span>
+                    <span className="flex items-center gap-2">
+                       <Compass size={12}/> Location: 
+                       {isEditing ? (
+                         <input value={act.location} onChange={(e) => handleUpdateActivity(act.id, 'location', e.target.value)} className="bg-transparent border-b border-[#121212]/20 outline-none" />
+                       ) : (
+                         act.location
+                       )}
+                    </span>
+                    <span className="flex items-center gap-2">
+                       <Check size={12}/> Duration: 
+                       {isEditing ? (
+                         <input value={act.duration} onChange={(e) => handleUpdateActivity(act.id, 'duration', e.target.value)} className="bg-transparent border-b border-[#121212]/20 outline-none" />
+                       ) : (
+                         act.duration
+                       )}
+                    </span>
                  </div>
               </div>
 
-              {/* Hover Trigger */}
-              <div className="hidden lg:flex items-center px-8 border-l-4 border-[#121212] opacity-10 hover:opacity-100 transition-opacity cursor-pointer">
-                 <ArrowRight size={48} />
-              </div>
+              {/* Edit Actions */}
+              {isEditing && (
+                <div className="flex flex-row lg:flex-col items-center justify-center p-4 gap-4 border-t-4 lg:border-t-0 lg:border-l-4 border-[#121212]">
+                   <button 
+                     onClick={() => saveActivity(act)}
+                     className="p-3 bg-[#F4BF4B] border-2 border-[#121212] hover:bg-white transition-colors shadow-[4px_4px_0px_0px_#121212]"
+                   >
+                      {savingId === act.id ? <Check size={20}/> : <Save size={20}/>}
+                   </button>
+                   <button className="p-3 bg-[#9E1B1D] text-white border-2 border-[#121212] hover:bg-[#121212] transition-colors shadow-[4px_4px_0px_0px_#F4BF4B]">
+                      <Trash2 size={20}/>
+                   </button>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -121,4 +188,4 @@ export const InclusionsLayout = ({ packageId }: { packageId: string }) => {
 
     </section>
   );
-};
+};

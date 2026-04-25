@@ -1,18 +1,52 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
-import { User, Calendar, CreditCard, ArrowRight, ArrowLeft, Check, Info } from "lucide-react";
-import { DESTINATIONS, PACKAGES } from "../../utils/constants";
+import { User, Calendar, CreditCard, ArrowRight, ArrowLeft, Check, Info, Loader2 } from "lucide-react";
+import { getDocumentById } from "../../services/firebaseService";
+import { Package } from "../../types/database";
 
 export const Booking = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
+  const [pkg, setPkg] = useState<Package | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchTrip = async () => {
+      if (!id) return;
+      try {
+        const data = await getDocumentById<Package>('packages', id);
+        setPkg(data);
+      } catch (err) {
+        console.error("Booking fetch failed:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTrip();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#FCFBF7] flex items-center justify-center">
+         <Loader2 className="animate-spin text-[#9E1B1D]" size={40} />
+      </div>
+    );
+  }
+
+  if (!pkg) {
+    return (
+      <div className="min-h-screen bg-[#FCFBF7] flex flex-col items-center justify-center p-8 text-center">
+         <h2 className="font-brand font-black text-4xl uppercase mb-4">Transmission Lost.</h2>
+         <p className="font-sans font-bold text-xs uppercase tracking-widest text-gray-500 mb-8">The requested itinerary could not be retrieved.</p>
+         <button onClick={() => navigate('/destinations')} className="bg-[#121212] text-[#F4BF4B] px-8 py-4 font-black text-xs uppercase tracking-[0.2em]">Return to Base</button>
+      </div>
+    );
+  }
   
-  // Find trip details
-  const destination = DESTINATIONS.find(d => d.id === id);
-  const pkg = PACKAGES.find(p => p.id === id) || PACKAGES[0];
-  const priceInt = parseInt(pkg.price.replace(/[^0-9]/g, ''));
+  const priceInt = pkg.pricing?.basePrice || 0;
+
 
   const nextStep = () => setStep(s => s + 1);
   const prevStep = () => setStep(s => s - 1);
@@ -136,18 +170,18 @@ export const Booking = () => {
                 <div className="space-y-6">
                    <div className="flex gap-6 items-center">
                       <div className="size-20 border-2 border-[#121212] bg-[#121212] shrink-0 overflow-hidden">
-                         <img src={pkg.image} className="w-full h-full object-cover opacity-80" alt="summary"/>
+                         <img src={pkg.media?.thumbnail} className="w-full h-full object-cover opacity-80" alt="summary"/>
                       </div>
                       <div>
                          <p className="font-black text-xs uppercase tracking-tight">{pkg.title}</p>
-                         <p className="font-bold text-[9px] uppercase tracking-widest text-[#121212]/40 mt-1">{pkg.duration} // {pkg.destination}</p>
+                         <p className="font-bold text-[9px] uppercase tracking-widest text-[#121212]/40 mt-1">{pkg.duration} // {pkg.destinations?.[0]}</p>
                       </div>
                    </div>
 
                    <div className="pt-6 border-t-2 border-dashed border-[#121212]/10 space-y-4">
                       <div className="flex justify-between text-xs font-bold uppercase tracking-tight opacity-60">
                          <span>Transfer Cost</span>
-                         <span>{pkg.price}</span>
+                         <span>?{priceInt.toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between text-xs font-bold uppercase tracking-tight opacity-60">
                          <span>Registry Fee</span>
