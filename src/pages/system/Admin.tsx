@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { Database, Calendar, Package, Image as ImageIcon, LayoutTemplate, RefreshCw, MessageSquare, LogOut } from 'lucide-react';
+import { Calendar, Package, Image as ImageIcon, LayoutTemplate, MessageSquare, LogOut } from 'lucide-react';
 import { AdminHomepageManager } from '../../components/admin/AdminHomepageManager';
-import { initializeFirestoreDatabase } from '../../services/firebaseSeeder';
 import { AdminReviewsManager } from '../../components/admin/AdminReviewsManager';
 import { AdminGalleryManager } from '../../components/admin/AdminGalleryManager';
 import { AdminPackagesManager } from '../../components/admin/AdminPackagesManager';
@@ -9,27 +8,13 @@ import { logoutUser } from '../../services/firebaseService';
 
 export const Admin = () => {
   const [activeTab, setActiveTab] = useState('HOMEPAGE');
-  const [seeding, setSeeding] = useState(false);
 
-  const handleSeed = async () => {
-    if (window.confirm("This will populate your database with sample data. Continue?")) {
-      setSeeding(true);
-      try {
-        await initializeFirestoreDatabase();
-        alert("Database seeded successfully.");
-      } catch (err) {
-        alert("Error: " + err);
-      } finally {
-        setSeeding(false);
-      }
-    }
-  };
+
 
   const tabs = [
     { id: 'HOMEPAGE', label: 'Site Content', icon: LayoutTemplate },
     { id: 'PACKAGES', label: 'Packages', icon: Package },
     { id: 'REVIEWS', label: 'Field Logs', icon: MessageSquare },
-    { id: 'DATABASE', label: 'Database', icon: Database },
     { id: 'GALLERY', label: 'Gallery', icon: ImageIcon }
   ];
 
@@ -68,24 +53,7 @@ export const Admin = () => {
               {activeTab === 'PACKAGES' && <AdminPackagesManager />}
               {activeTab === 'REVIEWS' && <AdminReviewsManager />}
               {activeTab === 'GALLERY' && <AdminGalleryManager />}
-              {activeTab === 'DATABASE' && (
-                <div className="p-12 text-center space-y-8">
-                   <h2 className="font-brand font-black text-3xl uppercase">System Maintenance</h2>
-                   <p className="font-sans font-bold text-xs uppercase tracking-widest text-gray-500 max-w-md mx-auto">
-                     Populate your Firestore collections with the default operational data set.
-                   </p>
-                   <div className="flex justify-center">
-                     <button 
-                      onClick={handleSeed}
-                      disabled={seeding}
-                      className="bg-[#121212] text-[#F4BF4B] px-10 py-5 font-black text-xs uppercase tracking-widest flex items-center gap-4 hover:bg-[#9E1B1D] hover:text-white transition-all shadow-[6px_6px_0_0_#F4BF4B]"
-                     >
-                       <RefreshCw size={18} className={seeding ? "animate-spin" : ""} />
-                       {seeding ? "PROCESSING..." : "SEED DATABASE"}
-                     </button>
-                   </div>
-                </div>
-              )}
+
            </div>
         </div>
       </div>
