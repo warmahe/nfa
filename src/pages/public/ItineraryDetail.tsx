@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { Save, Eye, X, Check, ArrowRight } from 'lucide-react';
-import { updateDocument } from '../../services/firebaseService';
+import { updateDocument, db } from '../../services/firebaseService';
+import { getDoc, doc, query, collection, where, getDocs } from 'firebase/firestore';
 import { Package } from '../../types/database';
-import { PACKAGES } from '../../utils/constants';
 
 // Section components (strict order per spec)
 import { HeroSection } from '../../components/itinerary/sections/HeroSection';
@@ -33,22 +33,36 @@ export const ItineraryDetail = () => {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success'>('idle');
   const [travelers, setTravelers] = useState(1);
 
-  // ─── Load package (static-first, no Firestore dependency) ────────────────
+  // ─── Load package from Firestore ────────────────
   useEffect(() => {
-    setLoading(true);
-    setError(null);
-    try {
-      const staticPkg = PACKAGES.find(p => p.id === id || p.slug === id);
-      if (staticPkg) {
-        setPkg(staticPkg as unknown as Package);
-      } else {
-        setError('Package not found. Check the URL and try again.');
+    const loadPackage = async () => {
+      if (!id) return;
+      setLoading(true);
+      setError(null);
+      try {
+        // 1. Try finding by Document ID
+        const packageDoc = await getDoc(doc(db, 'packages', id));
+        if (packageDoc.exists()) {
+          setPkg({ id: packageDoc.id, ...packageDoc.data() } as Package);
+        } else {
+          // 2. Try finding by Slug
+          const q = query(collection(db, 'packages'), where('slug', '==', id));
+          const querySnap = await getDocs(q);
+          if (!querySnap.empty) {
+            const docData = querySnap.docs[0];
+            setPkg({ id: docData.id, ...docData.data() } as Package);
+          } else {
+            setError('Package not found. Check the URL and try again.');
+          }
+        }
+      } catch (err: any) {
+        console.error("Error loading package:", err);
+        setError('Failed to load package data.');
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      setError('Failed to load package data.');
-    } finally {
-      setLoading(false);
-    }
+    };
+    loadPackage();
   }, [id]);
 
   // ─── Admin save ───────────────────────────────────────────────────────────

@@ -1,22 +1,19 @@
-import React from 'react';
 import { Package } from '../../../types/database';
+import * as LucideIcons from 'lucide-react';
+
+const IconRenderer = ({ name, className, size = 18 }: { name: string, className?: string, size?: number }) => {
+  const Icon = (LucideIcons as any)[name] || LucideIcons.Sparkles;
+  return <Icon className={className} size={size} />;
+};
 
 interface HighlightsSectionProps {
   pkg: Package;
 }
 
-const DEFAULT_HIGHLIGHTS = [
-  { icon: '🏔️', text: 'Trek across ancient glacier fields' },
-  { icon: '🌌', text: 'Witness the Aurora Borealis in the wild' },
-  { icon: '🚗', text: 'Off-road 4×4 expeditions through volcanic terrain' },
-  { icon: '🏊', text: 'Hidden thermal pools accessible only to our group' },
-  { icon: '📸', text: 'Guided photography sessions at golden hour' },
-  { icon: '🍽️', text: 'Farm-to-table dinners with local chefs' },
-];
-
 export const HighlightsSection: React.FC<HighlightsSectionProps> = ({ pkg }) => {
-  const highlights = pkg?.highlights?.slice(0, 10);
-  const displayItems = highlights && highlights.length > 0 ? highlights : DEFAULT_HIGHLIGHTS;
+  const displayItems = pkg?.highlights?.slice(0, 10) || [];
+
+  if (displayItems.length === 0) return null;
 
   return (
     <section
@@ -63,8 +60,8 @@ export const HighlightsSection: React.FC<HighlightsSectionProps> = ({ pkg }) => 
                   </span>
 
                   {/* Icon badge */}
-                  <div className="size-10 bg-[#F4BF4B]/10 border border-[#F4BF4B]/20 flex items-center justify-center text-xl shrink-0 group-hover:bg-[#F4BF4B] group-hover:scale-110 transition-all">
-                    {icon}
+                  <div className="size-10 bg-[#F4BF4B]/10 border border-[#F4BF4B]/20 flex items-center justify-center shrink-0 group-hover:bg-[#F4BF4B] group-hover:text-[#121212] group-hover:scale-110 transition-all">
+                    <IconRenderer name={typeof item === 'string' ? 'Sparkles' : (item.icon || 'Sparkles')} size={20} />
                   </div>
 
                   {/* Text */}

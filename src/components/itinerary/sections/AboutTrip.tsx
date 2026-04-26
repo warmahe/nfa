@@ -53,10 +53,10 @@ export const AboutTrip: React.FC<AboutTripProps> = ({ pkg }) => {
             </span>
             <div className="relative">
               <span className="block font-sans font-black text-[10px] uppercase tracking-[0.4em] text-[#9E1B1D] mb-3">
-                The Journey
+                {pkg?.aboutQuestion || 'The Journey'}
               </span>
               <h2 className="font-brand font-black text-4xl md:text-5xl uppercase tracking-tighter text-[#121212] leading-[0.9] mb-8">
-                What Is This<br />All About?
+                {pkg?.aboutTitle || 'What Is This\nAll About?'}
               </h2>
             </div>
           </div>

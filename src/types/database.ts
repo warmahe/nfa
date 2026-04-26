@@ -153,21 +153,35 @@ export interface ItineraryDay {
   day: number;
   title: string;
   description: string;
-  // Rich day fields (new)
+  // Rich day fields
   meals?: string[];       // e.g. ['Breakfast', 'Dinner']
   activities?: string[];  // activity titles for this day
   addons?: string[];      // optional add-on titles
+  textAlign?: 'left' | 'center' | 'right'; // New: alignment control
+  isDay1Arrival?: boolean; // New: Special flag for Day 1
+  arrivalText?: string;    // New: "Fly in to..." text
 }
 
 export interface ItineraryCity {
   city: string;           // e.g. 'Reykjavik'
+  country?: string;       // New: 'Spain', 'Iceland' etc
   nights: number;         // number of nights in this city
   days: ItineraryDay[];   // ordered day entries
+  arrivalTransfer?: {     // New: Transfer info before this city
+    type: 'flight' | 'train' | 'bus' | 'ferry' | 'car';
+    text: string;         // e.g. "Transfer by flight on day 4"
+  };
 }
 
 export interface TripHighlight {
   icon?: string;  // emoji or lucide icon name
   text: string;
+}
+
+export interface RichInclusionExclusion {
+  text: string;
+  category?: string; // e.g. 'Accommodation', 'Transport', 'Meals'
+  icon?: string;     // lucide icon name
 }
 
 export interface TripPricingDate {
@@ -176,6 +190,12 @@ export interface TripPricingDate {
   currency?: string;
   status: 'available' | 'limited' | 'sold_out' | 'coming_soon';
   notes?: string;
+}
+
+export interface QuickInfoItem {
+  label: string;
+  value: string;
+  icon: string; // Lucide icon name
 }
 
 export interface Package extends BaseDocument {
@@ -187,6 +207,8 @@ export interface Package extends BaseDocument {
   overview: string; // Short summary
   description: string; // Long description (rich text HTML)
   aboutImage?: string; // URL for about section left-side image
+  aboutTitle?: string;    // New: Custom title for about section
+  aboutQuestion?: string; // New: "Why This Trip" or similar question text
 
   // Classification
   destinations: string[]; // Array of destination IDs / location names
@@ -196,18 +218,21 @@ export interface Package extends BaseDocument {
   maxTravelers: number; // 12
   status: 'draft' | 'active' | 'archived';
 
-  // Quick Info fields (new)
-  tripStyle?: string;       // 'Adventure', 'Cultural', 'Luxury' …
-  accommodation?: string;   // 'Mountain Lodges', 'Luxury Camps' …
-  guideType?: string;       // 'Expert Local Guides', 'Self-guided' …
+  // Quick Info fields (dynamic slots)
+  tripStyle?: string;       // Legacy
+  accommodation?: string;   // Legacy
+  guideType?: string;       // Legacy
+  quickInfo?: QuickInfoItem[]; // New: Dynamic array of 6 slots
   limitedSeats?: boolean;   // Show "Limited Seats" badge on hero
 
   // Rich content (new)
   highlights?: TripHighlight[];         // Bullet highlights list
   itineraryDays?: ItineraryDay[];       // Flat day list (legacy / fallback)
   itineraryCities?: ItineraryCity[];    // City-grouped itinerary (new)
-  inclusions?: string[];                // What's included
-  exclusions?: string[];                // What's NOT included
+  inclusions?: string[];                // What's included (legacy)
+  exclusions?: string[];                // What's NOT included (legacy)
+  inclusionsRich?: RichInclusionExclusion[]; // New: Detailed inclusions
+  exclusionsRich?: RichInclusionExclusion[]; // New: Detailed exclusions
   pricingDates?: TripPricingDate[];     // Departure date pricing cards
   relatedTripIds?: string[];            // IDs of related packages
 

@@ -1,179 +1,172 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, MapPin, Utensils, Activity, Star } from 'lucide-react';
-import { Package, ItineraryCity } from '../../../types/database';
+import { ChevronDown, ChevronUp, MapPin, Plane, Train, Bus, Ship, Car, Utensils, Star, CheckCircle } from 'lucide-react';
+import { Package, ItineraryCity, ItineraryDay } from '../../../types/database';
 
 interface ItineraryCitiesProps {
   pkg: Package;
 }
 
-const MealBadge: React.FC<{ meal: string }> = ({ meal }) => (
-  <span className="flex items-center gap-1.5 bg-[#F4BF4B]/20 border border-[#F4BF4B] text-[#121212] px-3 py-1 font-black text-[9px] uppercase tracking-widest">
-    <Utensils size={10} /> {meal}
-  </span>
-);
+const TransferIcon = ({ type }: { type: string }) => {
+  switch (type) {
+    case 'flight': return <Plane size={18} />;
+    case 'train': return <Train size={18} />;
+    case 'bus': return <Bus size={18} />;
+    case 'ferry': return <Ship size={18} />;
+    case 'car': return <Car size={18} />;
+    default: return <Plane size={18} />;
+  }
+};
 
-const DayCard: React.FC<{ day: Package['itineraryDays'] extends (infer D)[] ? D : never; dayIndex: number; isOpen: boolean; onToggle: () => void }> = ({
-  day,
-  dayIndex,
-  isOpen,
-  onToggle,
-}) => (
-  <div className={`border-2 border-[#121212] transition-all ${isOpen ? 'bg-white shadow-[6px_6px_0px_0px_#F4BF4B]' : 'bg-[#FCFBF7] hover:bg-white'}`}>
-    <button
-      onClick={onToggle}
-      className="w-full flex items-center gap-5 p-5 text-left group"
-      aria-expanded={isOpen}
-    >
-      <span className="font-brand font-black text-3xl text-[#9E1B1D]/40 group-hover:text-[#9E1B1D] transition-colors shrink-0 w-10">
-        {(day.day || dayIndex + 1).toString().padStart(2, '0')}
-      </span>
-      <h4 className="flex-1 font-black text-sm uppercase tracking-tight text-[#121212]">
-        {day.title || `Day ${day.day || dayIndex + 1}`}
-      </h4>
-      {isOpen ? <ChevronUp size={18} className="shrink-0 text-[#9E1B1D]" /> : <ChevronDown size={18} className="shrink-0" />}
-    </button>
+const DayDetails: React.FC<{ day: ItineraryDay }> = ({ day }) => {
+  const alignmentClass = day.textAlign === 'center' ? 'text-center items-center' : day.textAlign === 'right' ? 'text-right items-end' : 'text-left items-start';
+  
+  return (
+    <div className={`space-y-6 py-8 ${alignmentClass}`}>
+      <div className="space-y-2">
+        <h4 className="font-brand font-black text-xl uppercase tracking-tighter text-[#121212]">
+          Day {day.day}: {day.title}
+        </h4>
+        <div className="w-12 h-1 bg-[#F4BF4B]" />
+      </div>
+      
+      <p className="font-sans font-medium text-sm text-[#121212]/80 leading-relaxed max-w-2xl whitespace-pre-line">
+        {day.description}
+      </p>
 
-    {isOpen && (
-      <div className="px-5 pb-6 pl-[calc(2.5rem+1.25rem)] space-y-5 animate-in fade-in slide-in-from-top-2 duration-300">
-        {day.description && (
-          <p className="font-serif italic text-base text-[#121212]/70 leading-relaxed border-l-2 border-[#F4BF4B] pl-4">
-            {day.description}
-          </p>
-        )}
-
-        {/* Meals */}
+      <div className={`flex flex-wrap gap-4 pt-4 ${day.textAlign === 'center' ? 'justify-center' : day.textAlign === 'right' ? 'justify-end' : 'justify-start'}`}>
         {day.meals && day.meals.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            <span className="text-[9px] font-black uppercase tracking-widest text-[#121212]/40 self-center mr-1">Meals:</span>
-            {day.meals.map((meal, i) => <MealBadge key={i} meal={meal} />)}
+          <div className="flex items-center gap-2">
+            <div className="size-8 rounded-full bg-[#F4BF4B]/10 flex items-center justify-center text-[#F4BF4B]">
+              <Utensils size={14} />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[8px] font-black uppercase text-gray-400 tracking-widest">Meals:</span>
+              <span className="text-[10px] font-bold uppercase tracking-wide">+ {day.meals.join(', ')}</span>
+            </div>
           </div>
         )}
 
-        {/* Activities */}
-        {day.activities && day.activities.length > 0 && (
-          <div className="space-y-1.5">
-            <span className="text-[9px] font-black uppercase tracking-widest text-[#121212]/40 flex items-center gap-1">
-              <Activity size={10} /> Activities:
-            </span>
-            <ul className="space-y-1">
-              {day.activities.map((act, i) => (
-                <li key={i} className="flex items-start gap-2 text-xs font-bold text-[#121212]/70 uppercase tracking-wide">
-                  <div className="size-1.5 bg-[#9E1B1D] rounded-full shrink-0 mt-1.5" />
-                  {act}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {/* Add-ons */}
         {day.addons && day.addons.length > 0 && (
-          <div className="space-y-1.5">
-            <span className="text-[9px] font-black uppercase tracking-widest text-[#9E1B1D]/70 flex items-center gap-1">
-              <Star size={10} /> Optional Add-ons:
-            </span>
-            <ul className="space-y-1">
-              {day.addons.map((addon, i) => (
-                <li key={i} className="flex items-start gap-2 text-xs font-bold text-[#9E1B1D]/80 uppercase tracking-wide">
-                  <div className="size-1.5 bg-[#F4BF4B] rotate-45 shrink-0 mt-1.5" />
-                  {addon}
-                </li>
-              ))}
-            </ul>
+          <div className="flex items-center gap-2">
+            <div className="size-8 rounded-full bg-[#9E1B1D]/10 flex items-center justify-center text-[#9E1B1D]">
+              <Star size={14} />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[8px] font-black uppercase text-gray-400 tracking-widest">Optional Add-on:</span>
+              <span className="text-[10px] font-bold uppercase tracking-wide">+ {day.addons.join(', ')}</span>
+            </div>
+          </div>
+        )}
+
+        {day.activities && day.activities.length > 0 && (
+          <div className="flex items-center gap-2">
+            <div className="size-8 rounded-full bg-[#121212]/5 flex items-center justify-center text-[#121212]">
+              <CheckCircle size={14} />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[8px] font-black uppercase text-gray-400 tracking-widest">Included Today:</span>
+              <span className="text-[10px] font-bold uppercase tracking-wide">+ {day.activities.join(', ')}</span>
+            </div>
           </div>
         )}
       </div>
-    )}
-  </div>
-);
+    </div>
+  );
+};
 
 export const ItineraryCities: React.FC<ItineraryCitiesProps> = ({ pkg }) => {
-  const [openItems, setOpenItems] = useState<Record<string, boolean>>({ '0-0': true }); // First day open by default
-  const [openCities, setOpenCities] = useState<Record<number, boolean>>({ 0: true }); // First city open
+  const [expandedCities, setExpandedCities] = useState<Record<number, boolean>>({ 0: true });
 
-  const toggle = (key: string) =>
-    setOpenItems(prev => ({ ...prev, [key]: !prev[key] }));
+  const toggleCity = (idx: number) => {
+    setExpandedCities(prev => ({ ...prev, [idx]: !prev[idx] }));
+  };
 
-  const toggleCity = (i: number) =>
-    setOpenCities(prev => ({ ...prev, [i]: !prev[i] }));
+  const cities = pkg?.itineraryCities || [];
 
-  // Prefer city-grouped itinerary; fall back to flat days
-  const hasCities = pkg?.itineraryCities && pkg.itineraryCities.length > 0;
-  const flatDays = pkg?.itineraryDays || [];
+  if (cities.length === 0) return null;
 
   return (
-    <section id="itinerary" className="py-24 px-6 md:px-16 max-w-[1440px] mx-auto" aria-label="Trip itinerary">
-
-      <div className="mb-14">
-        <span className="block font-sans font-black text-[10px] uppercase tracking-[0.4em] text-[#9E1B1D] mb-3">
-          Day by Day
+    <section id="itinerary" className="py-24 px-6 md:px-16 max-w-[1440px] mx-auto bg-[#FCFBF7]">
+      <div className="mb-20 text-center">
+        <span className="block font-sans font-black text-[10px] uppercase tracking-[0.4em] text-[#9E1B1D] mb-4">
+          Mission Deployment
         </span>
-        <h2 className="font-brand font-black text-[clamp(3rem,7vw,6rem)] uppercase tracking-tighter text-[#121212] leading-[0.85]">
-          The Mission<br />Timeline.
+        <h2 className="font-brand font-black text-[clamp(3.5rem,8vw,7.5rem)] uppercase tracking-tighter text-[#121212] leading-[0.8] mb-8">
+          The Tactical<br />Timeline.
         </h2>
+        <div className="w-24 h-2 bg-[#F4BF4B] mx-auto" />
       </div>
 
-      {hasCities ? (
-        /* --- CITY-GROUPED VIEW --- */
-        <div className="space-y-8">
-          {pkg.itineraryCities!.map((cityBlock: ItineraryCity, ci) => (
-            <div key={ci} className="border-4 border-[#121212]">
-              {/* City header */}
-              <button
-                onClick={() => toggleCity(ci)}
-                className="w-full flex items-center gap-6 p-6 bg-[#121212] text-white group hover:bg-[#9E1B1D] transition-colors"
-                aria-expanded={openCities[ci]}
-              >
-                <MapPin size={20} className="text-[#F4BF4B] shrink-0" />
-                <div className="flex-1 text-left">
-                  <span className="font-brand font-black text-2xl uppercase tracking-tight">{cityBlock.city}</span>
-                  <span className="ml-4 text-white/50 font-black text-[10px] uppercase tracking-widest">
-                    {cityBlock.nights} Night{cityBlock.nights !== 1 ? 's' : ''} · {cityBlock.days.length} Day{cityBlock.days.length !== 1 ? 's' : ''}
-                  </span>
+      <div className="relative max-w-4xl mx-auto pl-8 md:pl-0">
+        {/* Vertical Center Line */}
+        <div className="absolute left-4 md:left-1/2 top-0 bottom-0 w-0.5 bg-gray-200 -translate-x-1/2" />
+
+        {cities.map((city, cIdx) => (
+          <div key={cIdx} className="relative mb-24 last:mb-0">
+            
+            {/* Arrival Transfer info */}
+            {city.arrivalTransfer && (
+              <div className="relative z-10 flex flex-col items-center mb-8">
+                <div className="bg-white border-2 border-[#121212] p-3 shadow-[4px_4px_0_0_#121212] rounded-full">
+                  <TransferIcon type={city.arrivalTransfer.type} />
                 </div>
-                {openCities[ci]
-                  ? <ChevronUp size={20} className="text-[#F4BF4B] shrink-0" />
-                  : <ChevronDown size={20} className="text-[#F4BF4B] shrink-0" />
-                }
+                <span className="mt-2 font-sans font-bold text-[10px] uppercase tracking-widest text-[#121212]/40 italic">
+                  {city.arrivalTransfer.text}
+                </span>
+              </div>
+            )}
+
+            {/* City Header Card */}
+            <div className="relative z-10 flex flex-col items-center">
+              <button 
+                onClick={() => toggleCity(cIdx)}
+                className="group w-full max-w-lg bg-[#f0f0f0] border-2 border-[#121212]/5 p-6 rounded-3xl shadow-xl flex items-center gap-6 hover:shadow-2xl transition-all hover:scale-[1.02]"
+              >
+                <div className="size-14 rounded-full bg-[#9E1B1D]/10 flex items-center justify-center text-[#9E1B1D] shrink-0 border-2 border-white shadow-inner">
+                  <MapPin size={24} />
+                </div>
+                <div className="flex-1 text-left">
+                  <h3 className="font-brand font-black text-3xl uppercase tracking-tighter text-[#121212] leading-none mb-1">
+                    {city.city}
+                  </h3>
+                  <p className="font-black text-[10px] uppercase tracking-widest text-gray-400">
+                    {city.country || 'Expedition Sector'} | {city.nights} Night{city.nights !== 1 ? 's' : ''}
+                  </p>
+                </div>
+                <div className={`p-2 transition-transform duration-300 ${expandedCities[cIdx] ? 'rotate-180' : ''}`}>
+                  <ChevronDown size={24} className="text-[#121212]/20 group-hover:text-[#9E1B1D]" />
+                </div>
               </button>
 
-              {openCities[ci] && (
-                <div className="p-4 space-y-3 bg-[#FCFBF7] animate-in fade-in slide-in-from-top-2 duration-300">
-                  {cityBlock.days.map((day, di) => (
-                    <DayCard
-                      key={di}
-                      day={day}
-                      dayIndex={di}
-                      isOpen={!!openItems[`${ci}-${di}`]}
-                      onToggle={() => toggle(`${ci}-${di}`)}
-                    />
+              {/* Day Contents within this city block */}
+              {expandedCities[cIdx] && (
+                <div className="w-full mt-12 space-y-12 animate-in fade-in slide-in-from-top-4 duration-500">
+                  {city.days.map((day, dIdx) => (
+                    <div key={dIdx} className="relative">
+                      {/* Day dot on timeline */}
+                      <div className="absolute left-[-26px] md:left-1/2 top-10 size-4 bg-[#F4BF4B] border-4 border-white rounded-full -translate-x-1/2 z-20 shadow-md" />
+                      
+                      <div className={`md:w-1/2 ${dIdx % 2 === 0 ? 'md:ml-auto md:pl-16' : 'md:mr-auto md:pr-16 md:text-right'}`}>
+                         <DayDetails day={{...day, textAlign: day.textAlign || (dIdx % 2 === 0 ? 'left' : 'right')}} />
+                      </div>
+                    </div>
                   ))}
                 </div>
               )}
             </div>
-          ))}
-        </div>
-      ) : flatDays.length > 0 ? (
-        /* --- FLAT LEGACY VIEW --- */
-        <div className="space-y-4">
-          {flatDays.map((day, di) => (
-            <DayCard
-              key={di}
-              day={day}
-              dayIndex={di}
-              isOpen={!!openItems[`0-${di}`]}
-              onToggle={() => toggle(`0-${di}`)}
-            />
-          ))}
-        </div>
-      ) : (
-        /* --- EMPTY STATE --- */
-        <div className="border-4 border-dashed border-[#121212]/20 p-16 text-center">
-          <span className="font-black text-[#121212]/30 uppercase tracking-widest text-sm">
-            Itinerary coming soon
+          </div>
+        ))}
+
+        {/* Departure/Exit logic (last flight out) */}
+        <div className="relative z-10 flex flex-col items-center mt-24">
+          <div className="bg-white border-2 border-[#121212] p-3 shadow-[4px_4px_0_0_#F4BF4B] rounded-full">
+            <Plane size={18} />
+          </div>
+          <span className="mt-2 font-sans font-bold text-[10px] uppercase tracking-widest text-[#121212]/40 italic">
+            Mission Exfiltration Completed
           </span>
         </div>
-      )}
+      </div>
     </section>
   );
 };

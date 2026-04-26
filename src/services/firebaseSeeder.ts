@@ -45,14 +45,13 @@ export const initializeFirestoreDatabase = async () => {
           ]
         },
         rating: { average: 5.0, totalReviews: 12 },
-        itineraryDays: [
-          { day: 1, title: "INSERTION: REYKJAVIK", description: "Arrive at coordinates. Gear check. First deployment into the volcanic rift." },
-          { day: 2, title: "THE SILVER SILENCE", description: "Trek across the Vatnajökull glacier. Total isolation achieved." },
-          { day: 3, title: "BASALT PROTOCOL", description: "Navigate the black sands of Vik. Extreme weather drills." },
-          { day: 4, title: "GEOTHERMAL EXTRACTION", description: "Recover in hidden thermal vents. Review field data." },
-          { day: 5, title: "THE NORTHERN WATCH", description: "Camp under the Aurora Borealis. Night navigation training." },
-          { day: 6, title: "RIVER CROSSING", description: "Fording glacial rivers in modified 4x4 units." },
-          { day: 7, title: "EXFILTRATION", description: "Final debrief. Return to base." }
+        quickInfo: [
+          { icon: 'Clock', label: 'Duration', value: '7 Days' },
+          { icon: 'Calendar', label: 'Next Departure', value: 'Dec 12, 2024' },
+          { icon: 'Users', label: 'Group Size', value: 'Max 6 Units' },
+          { icon: 'Zap', label: 'Trip Style', value: 'Tactical' },
+          { icon: 'BedDouble', label: 'Accommodation', value: 'Base Camps' },
+          { icon: 'Compass', label: 'Guide', value: 'Field Experts' },
         ],
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
@@ -61,11 +60,44 @@ export const initializeFirestoreDatabase = async () => {
 
     packages.forEach(p => batch.set(doc(db, 'packages', p.id), p));
 
-    // 3. SEED HOMEPAGE SETTINGS
+    // 3. SEED DESTINATIONS (Field Archive)
+    const destinations = [
+      {
+        id: 'iceland',
+        name: 'Iceland',
+        country: 'Iceland',
+        description: 'The land of fire and ice. Volcanic rifts and glacial expanses.',
+        coverImage: 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=800&q=80',
+        active: true,
+        slug: 'iceland'
+      },
+      {
+        id: 'norway',
+        name: 'Norway',
+        country: 'Norway',
+        description: 'Deep fjords and jagged peaks. The ultimate northern test.',
+        coverImage: 'https://images.unsplash.com/photo-1527004013197-933c4bb611b3?w=800&q=80',
+        active: true,
+        slug: 'norway'
+      },
+      {
+        id: 'kyrgyzstan',
+        name: 'Kyrgyzstan',
+        country: 'Kyrgyzstan',
+        description: 'The Silk Road peaks. Nomadic trails and high-altitude endurance.',
+        coverImage: 'https://images.unsplash.com/photo-1569531191131-717a76bcd9d0?w=800&q=80',
+        active: true,
+        slug: 'kyrgyzstan'
+      }
+    ];
+
+    destinations.forEach(d => batch.set(doc(db, 'destinations', d.id), d));
+
+    // 4. SEED HOMEPAGE SETTINGS
     const homepageSettings = {
       heroImage: 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=1600&q=80',
       featuredDropZones: ['iceland-drift'],
-      featuredArchive: [], // Destinations cleared
+      featuredArchive: ['iceland', 'norway', 'kyrgyzstan'],
       featuredReviewIds: [],
       updatedAt: Timestamp.now()
     };
@@ -73,7 +105,7 @@ export const initializeFirestoreDatabase = async () => {
     batch.set(doc(db, 'settings', 'homepage'), homepageSettings);
 
     await batch.commit();
-    console.log('✅ Database Purged & Master Expedition Seeded');
+    console.log('✅ Database Purged & Master Expedition + Archive Seeded');
     return { success: true };
   } catch (error) {
     console.error('Error initializing database:', error);

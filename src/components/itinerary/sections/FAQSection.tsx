@@ -7,31 +7,23 @@ interface FAQSectionProps {
   pkg: Package;
 }
 
-const DEFAULT_FAQS: Omit<FAQ, keyof import('../../../types/database').BaseDocument | 'helpfulCount' | 'unhelpfulCount' | 'active' | 'order'>[] = [
-  { question: 'Is prior trekking experience required?', answer: 'No prior trekking experience is needed for most of our trips. We cater to all fitness levels and provide full briefings before each activity.' },
-  { question: 'What is the cancellation policy?', answer: 'You can cancel up to 30 days before departure for a full refund minus a 5% processing fee. Cancellations within 30 days are non-refundable but can be transferred.' },
-  { question: 'Are visa & flights included?', answer: 'No, flights and visa fees are not included. We provide detailed visa guidance specific to your nationality as part of the pre-departure briefing.' },
-  { question: 'What should I pack?', answer: 'We send a detailed packing list after booking. General essentials include layered clothing, comfortable trekking shoes, a rain jacket, and a basic first-aid kit.' },
-  { question: 'Is travel insurance mandatory?', answer: 'Yes, all participants are required to have comprehensive travel insurance covering emergency evacuation and medical expenses.' },
-];
-
 export const FAQSection: React.FC<FAQSectionProps> = ({ pkg }) => {
   const [faqs, setFaqs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   useEffect(() => {
-    if (!pkg?.id) { setFaqs(DEFAULT_FAQS as any[]); setLoading(false); return; }
+    if (!pkg?.id) { setLoading(false); return; }
     getSubcollectionData<FAQ>('packages', pkg.id, 'faqs')
       .then(data => {
         const sorted = data.filter(f => f.active !== false).sort((a, b) => (a.order || 0) - (b.order || 0));
-        setFaqs(sorted.length > 0 ? sorted : DEFAULT_FAQS as any[]);
+        setFaqs(sorted);
       })
-      .catch(() => setFaqs(DEFAULT_FAQS as any[]))
+      .catch(() => setFaqs([]))
       .finally(() => setLoading(false));
   }, [pkg?.id]);
 
-  if (loading) return null;
+  if (loading || faqs.length === 0) return null;
 
   return (
     <section

@@ -195,6 +195,39 @@ export const usersCollection = collection(db, 'users');
 export const blogsCollection = collection(db, 'blogs');
 
 // ============================================================================
+// PACKAGE-SPECIFIC HELPERS
+// ============================================================================
+
+import { addDoc } from 'firebase/firestore';
+
+/** Fetch all packages from Firestore with their document IDs */
+export const getAllPackages = async () => {
+  try {
+    const snap = await getDocs(collection(db, 'packages'));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (error: any) {
+    console.error('Error fetching packages:', error.message);
+    throw error;
+  }
+};
+
+/** Create a new package document and return the auto-generated ID */
+export const createPackage = async (data: Record<string, any>): Promise<string> => {
+  try {
+    const { Timestamp: T } = await import('firebase/firestore');
+    const docRef = await addDoc(collection(db, 'packages'), {
+      ...data,
+      createdAt: T.now(),
+      updatedAt: T.now(),
+    });
+    return docRef.id;
+  } catch (error: any) {
+    console.error('Error creating package:', error.message);
+    throw error;
+  }
+};
+
+// ============================================================================
 // FIRESTORE QUERY HELPERS
 // ============================================================================
 
@@ -338,14 +371,74 @@ export const deleteDocument = async (collectionName: string, docId: string) => {
 };
 
 // ============================================================================
+// IMAGE COMPRESSION
+// ============================================================================
+
+/**
+ * Compresses an image file using canvas before upload.
+ * Resizes to maxWidth (default 1200px) and re-encodes as JPEG at given quality.
+ * Skips compression for GIFs. Reduces file sizes by ~60-80%.
+ */
+export const compressImage = (
+  file: File,
+  maxWidth = 1200,
+  quality = 0.82
+): Promise<Blob> => {
+  return new Promise((resolve, reject) => {
+    // Skip GIFs — canvas kills animation
+    if (file.type === 'image/gif') {
+      resolve(file);
+      return;
+    }
+
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+
+      // Calculate new dimensions keeping aspect ratio
+      let { width, height } = img;
+      if (width > maxWidth) {
+        height = Math.round((height * maxWidth) / width);
+        width = maxWidth;
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { resolve(file); return; }
+
+      ctx.drawImage(img, 0, 0, width, height);
+
+      canvas.toBlob(
+        (blob) => {
+          if (blob) resolve(blob);
+          else resolve(file);
+        },
+        'image/jpeg',
+        quality
+      );
+    };
+
+    img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('Image load failed')); };
+    img.src = objectUrl;
+  });
+};
+
+// ============================================================================
 // FILE UPLOAD HELPERS
 // ============================================================================
 
-// Upload image to Firebase Storage
+// Upload image to Firebase Storage (with automatic compression)
 export const uploadImage = async (file: File, path: string): Promise<string> => {
   try {
-    const fileRef = ref(storage, `${path}/${file.name}-${Date.now()}`);
-    const uploadResult = await uploadBytes(fileRef, file);
+    const compressed = await compressImage(file);
+    const fileName = file.name.replace(/\.[^.]+$/, '') + '.jpg';
+    const fileRef = ref(storage, `${path}/${Date.now()}_${fileName}`);
+    const uploadResult = await uploadBytes(fileRef, compressed, { contentType: 'image/jpeg' });
     return await getDownloadURL(uploadResult.ref);
   } catch (error: any) {
     console.error('Error uploading image:', error.message);
@@ -364,10 +457,10 @@ export const deleteImage = async (url: string) => {
   }
 };
 
-// New unified function to prevent orphaned files
+// Unified function to compress, upload and replace an image (prevents orphaned files)
 export const uploadAndReplaceImage = async (
-  file: File, 
-  path: string, 
+  file: File,
+  path: string,
   oldImageUrl?: string | null
 ): Promise<string> => {
   try {
@@ -381,9 +474,11 @@ export const uploadAndReplaceImage = async (
       }
     }
 
-    // 2. Upload new image
-    const fileRef = ref(storage, `${path}/${Date.now()}_${file.name}`);
-    await uploadBytes(fileRef, file);
+    // 2. Compress then upload
+    const compressed = await compressImage(file);
+    const fileName = file.name.replace(/\.[^.]+$/, '') + '.jpg';
+    const fileRef = ref(storage, `${path}/${Date.now()}_${fileName}`);
+    await uploadBytes(fileRef, compressed, { contentType: 'image/jpeg' });
     return await getDownloadURL(fileRef);
   } catch (error: any) {
     console.error('Error in uploadAndReplaceImage:', error.message);

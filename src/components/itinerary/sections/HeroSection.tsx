@@ -43,7 +43,6 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ pkg }) => {
       {/* Content */}
       <div className="relative z-10 h-full flex flex-col justify-end px-6 md:px-16 pb-16 md:pb-20 max-w-[1440px] mx-auto w-full">
 
-        {/* Location / Tags */}
         <div className="flex flex-wrap gap-3 mb-6">
           {pkg?.destinations?.map((dest, i) => (
             <span
@@ -53,11 +52,6 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ pkg }) => {
               📍 {dest}
             </span>
           ))}
-          {pkg?.rating?.average && (
-            <span className="bg-[#F4BF4B] text-[#121212] px-4 py-1.5 font-black text-[10px] uppercase tracking-[0.3em] border-2 border-[#121212] flex items-center gap-1.5">
-              <Star size={12} fill="currentColor" /> {pkg.rating.average} / 5
-            </span>
-          )}
         </div>
 
         {/* Title */}
@@ -77,7 +71,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ pkg }) => {
           <div className="flex items-center gap-6 shrink-0">
             <div className="text-right">
               <span className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1">Starting From</span>
-              <span className="font-brand font-black text-4xl md:text-5xl text-[#F4BF4B] leading-none">
+              <span className="font-display font-black text-4xl md:text-5xl text-[#F4BF4B] leading-none tracking-tighter">
                 {price.toLocaleString()}
               </span>
               <span className="text-white/60 font-black text-sm ml-2">{currency}</span>
@@ -92,11 +86,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ pkg }) => {
         </div>
       </div>
 
-      {/* Scroll hint */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 hidden md:flex flex-col items-center gap-2">
-        <div className="w-px h-8 bg-white/30 animate-bounce" />
-        <span className="text-white/30 font-black text-[9px] uppercase tracking-widest">Scroll</span>
-      </div>
+
 
       <style>{`
         @keyframes heroZoom {

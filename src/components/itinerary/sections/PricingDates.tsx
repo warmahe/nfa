@@ -14,14 +14,9 @@ const statusConfig: Record<TripPricingDate['status'], { label: string; color: st
   coming_soon: { label: 'Coming Soon', color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200' },
 };
 
-const DEFAULT_DATES: TripPricingDate[] = [
-  { date_range: 'Oct 15 – Oct 22, 2026', price: 5299, status: 'available' },
-  { date_range: 'Nov 02 – Nov 09, 2026', price: 4899, status: 'limited', notes: 'Only 2 seats left' },
-  { date_range: 'Dec 10 – Dec 17, 2026', price: 5799, status: 'coming_soon' },
-];
-
 export const PricingDates: React.FC<PricingDatesProps> = ({ pkg }) => {
-  const dates = pkg?.pricingDates && pkg.pricingDates.length > 0 ? pkg.pricingDates : DEFAULT_DATES;
+  const dates = pkg?.pricingDates || [];
+  if (dates.length === 0) return null;
   const currency = pkg?.pricing?.currency || 'INR';
 
   return (
@@ -80,7 +75,7 @@ export const PricingDates: React.FC<PricingDatesProps> = ({ pkg }) => {
                     <span className="block text-[9px] font-black uppercase tracking-widest text-[#121212]/40 mb-1">
                       Per Person
                     </span>
-                    <span className="font-brand font-black text-4xl text-[#121212]">
+                    <span className="font-display font-black text-4xl text-[#121212] tracking-tighter">
                       {(d.price || pkg?.pricing?.basePrice || 0).toLocaleString()}
                     </span>
                     <span className="text-[#121212]/40 font-black text-sm ml-1">{d.currency || currency}</span>

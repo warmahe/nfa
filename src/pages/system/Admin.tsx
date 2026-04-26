@@ -4,6 +4,7 @@ import { AdminHomepageManager } from '../../components/admin/AdminHomepageManage
 import { initializeFirestoreDatabase } from '../../services/firebaseSeeder';
 import { AdminReviewsManager } from '../../components/admin/AdminReviewsManager';
 import { AdminGalleryManager } from '../../components/admin/AdminGalleryManager';
+import { AdminPackagesManager } from '../../components/admin/AdminPackagesManager';
 import { logoutUser } from '../../services/firebaseService';
 
 export const Admin = () => {
@@ -26,6 +27,7 @@ export const Admin = () => {
 
   const tabs = [
     { id: 'HOMEPAGE', label: 'Site Content', icon: LayoutTemplate },
+    { id: 'PACKAGES', label: 'Packages', icon: Package },
     { id: 'REVIEWS', label: 'Field Logs', icon: MessageSquare },
     { id: 'DATABASE', label: 'Database', icon: Database },
     { id: 'GALLERY', label: 'Gallery', icon: ImageIcon }
@@ -36,7 +38,7 @@ export const Admin = () => {
       <div className="max-w-[1440px] mx-auto">
         <div className="mb-12 border-b-4 border-[#121212] pb-8">
            <h1 className="font-brand font-black text-6xl uppercase tracking-tighter text-[#121212]">
-             Admin <span className="text-[#9E1B1D]">Terminal.</span>
+             Admin <span className="text-[#9E1B1D]">Control Panel.</span>
            </h1>
         </div>
 
@@ -57,12 +59,13 @@ export const Admin = () => {
                onClick={() => { logoutUser(); window.location.href = '/login'; }}
                className="w-full flex items-center gap-4 p-4 border-2 border-red-600 text-red-600 font-black text-[10px] uppercase tracking-[0.2em] hover:bg-red-600 hover:text-white transition-all mt-10"
              >
-               <LogOut size={16} /> Terminate Session
+               <LogOut size={16} /> Exit Session
              </button>
            </aside>
 
            <div className="lg:col-span-9 border-4 border-[#121212] bg-white p-8 shadow-[8px_8px_0px_0px_#121212]">
               {activeTab === 'HOMEPAGE' && <AdminHomepageManager />}
+              {activeTab === 'PACKAGES' && <AdminPackagesManager />}
               {activeTab === 'REVIEWS' && <AdminReviewsManager />}
               {activeTab === 'GALLERY' && <AdminGalleryManager />}
               {activeTab === 'DATABASE' && (
@@ -71,7 +74,7 @@ export const Admin = () => {
                    <p className="font-sans font-bold text-xs uppercase tracking-widest text-gray-500 max-w-md mx-auto">
                      Populate your Firestore collections with the default operational data set.
                    </p>
-                   <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                   <div className="flex justify-center">
                      <button 
                       onClick={handleSeed}
                       disabled={seeding}
@@ -80,26 +83,7 @@ export const Admin = () => {
                        <RefreshCw size={18} className={seeding ? "animate-spin" : ""} />
                        {seeding ? "PROCESSING..." : "SEED DATABASE"}
                      </button>
-
-                     <button 
-                      onClick={async () => {
-                        if (window.confirm("CRITICAL: This will PERMANENTLY delete all Destinations and Packages from the database. Continue?")) {
-                          setSeeding(true);
-                          try {
-                            // I'll add a dedicated purge function or just call initialize with no data
-                            await initializeFirestoreDatabase(); // Already purges
-                            alert("Database Purged Successfully.");
-                          } catch (err) { alert(err); } finally { setSeeding(false); }
-                        }
-                      }}
-                      disabled={seeding}
-                      className="border-4 border-[#9E1B1D] text-[#9E1B1D] px-10 py-5 font-black text-xs uppercase tracking-widest flex items-center gap-4 hover:bg-[#9E1B1D] hover:text-white transition-all shadow-[6px_6px_0_0_#9E1B1D]/10"
-                     >
-                       <Database size={18} />
-                       PURGE ALL DATA
-                     </button>
                    </div>
-
                 </div>
               )}
            </div>
