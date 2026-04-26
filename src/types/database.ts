@@ -153,6 +153,29 @@ export interface ItineraryDay {
   day: number;
   title: string;
   description: string;
+  // Rich day fields (new)
+  meals?: string[];       // e.g. ['Breakfast', 'Dinner']
+  activities?: string[];  // activity titles for this day
+  addons?: string[];      // optional add-on titles
+}
+
+export interface ItineraryCity {
+  city: string;           // e.g. 'Reykjavik'
+  nights: number;         // number of nights in this city
+  days: ItineraryDay[];   // ordered day entries
+}
+
+export interface TripHighlight {
+  icon?: string;  // emoji or lucide icon name
+  text: string;
+}
+
+export interface TripPricingDate {
+  date_range: string;     // e.g. 'Oct 15 – Oct 22, 2026'
+  price: number;
+  currency?: string;
+  status: 'available' | 'limited' | 'sold_out' | 'coming_soon';
+  notes?: string;
 }
 
 export interface Package extends BaseDocument {
@@ -163,15 +186,30 @@ export interface Package extends BaseDocument {
   // Content
   overview: string; // Short summary
   description: string; // Long description (rich text HTML)
+  aboutImage?: string; // URL for about section left-side image
 
   // Classification
-  destinations: string[]; // Array of destination IDs
+  destinations: string[]; // Array of destination IDs / location names
   difficulty: 'Easy' | 'Moderate' | 'Challenging' | 'Expert';
   duration: string; // "5 Days / 4 Nights"
-  itineraryDays?: ItineraryDay[]; // Array of day titles and descriptions
   departureDate?: string; // "2024-06-15" (ISO date format)
   maxTravelers: number; // 12
   status: 'draft' | 'active' | 'archived';
+
+  // Quick Info fields (new)
+  tripStyle?: string;       // 'Adventure', 'Cultural', 'Luxury' …
+  accommodation?: string;   // 'Mountain Lodges', 'Luxury Camps' …
+  guideType?: string;       // 'Expert Local Guides', 'Self-guided' …
+  limitedSeats?: boolean;   // Show "Limited Seats" badge on hero
+
+  // Rich content (new)
+  highlights?: TripHighlight[];         // Bullet highlights list
+  itineraryDays?: ItineraryDay[];       // Flat day list (legacy / fallback)
+  itineraryCities?: ItineraryCity[];    // City-grouped itinerary (new)
+  inclusions?: string[];                // What's included
+  exclusions?: string[];                // What's NOT included
+  pricingDates?: TripPricingDate[];     // Departure date pricing cards
+  relatedTripIds?: string[];            // IDs of related packages
 
   // Pricing
   pricing: PackagePricing;
@@ -559,6 +597,17 @@ export interface SeedDataInput {
   reviews: Record<string, Omit<Review, keyof BaseTimestamp>[]>;
   destinations: Omit<Destination, keyof BaseTimestamp>[];
   blogs: Omit<Blog, keyof BaseTimestamp>[];
+}
+
+// ============================================================================
+// LEADS COLLECTION (Download CTA phone capture)
+// ============================================================================
+
+export interface Lead extends BaseDocument {
+  phone: string;
+  packageId?: string;
+  packageTitle?: string;
+  source: 'download_cta';
 }
 
 // ============================================================================
