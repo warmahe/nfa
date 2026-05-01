@@ -1358,7 +1358,7 @@ const PackageReviewsManager = ({ pkgId }: { pkgId: string }) => {
     setLoading(true);
     try {
       const data = await getSubcollectionData('packages', pkgId, 'reviews');
-      setReviews(data.sort((a, b) => (a.order || 0) - (b.order || 0)));
+      setReviews(data.sort((a: any, b: any) => (a.order || 0) - (b.order || 0)));
     } catch (err) {
       console.error(err);
     } finally {
