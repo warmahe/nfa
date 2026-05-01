@@ -1,22 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Plus, Search, Edit2, Trash2, ArrowLeft, Save, 
-  MapPin, Calendar, Clock, Star, Users, Info, 
+import {
+  Plus, Search, Edit2, Trash2, ArrowLeft, Save,
+  MapPin, Calendar, Clock, Star, Users, Info,
   Layers, CheckCircle, XCircle, HelpCircle, Image as ImageIcon,
   ChevronRight, GripVertical, PlusCircle, Trash, X,
   GripHorizontal
 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
-import { 
-  collection, doc, getDocs, updateDoc, deleteDoc, 
-  Timestamp, addDoc, query, orderBy 
+import {
+  collection, doc, getDocs, updateDoc, deleteDoc,
+  Timestamp, addDoc, query, orderBy
 } from 'firebase/firestore';
-import { db, getAllPackages } from '../../services/firebaseService';
+import { db, getAllPackages, getSubcollectionData, setSubcollectionDocument, deleteSubcollectionDocument, getCollectionData } from '../../services/firebaseService';
 import { Package, ItineraryCity, ItineraryDay, TripPricingDate, TripHighlight } from '../../types/database';
 import { ImageInput } from './ImageInput';
 
 // Types for Internal UI state
-type EditorTab = 'OVERVIEW' | 'HIGHLIGHTS' | 'LOGISTICS' | 'ITINERARY' | 'PRICING' | 'INCLUSIONS' | 'MEDIA' | 'FAQS';
+type EditorTab = 'OVERVIEW' | 'HIGHLIGHTS' | 'LOGISTICS' | 'ITINERARY' | 'PRICING' | 'INCLUSIONS' | 'MEDIA' | 'FAQS' | 'FIELD LOGS' | 'RELATED';
 
 export const AdminPackagesManager = () => {
   const [packages, setPackages] = useState<Package[]>([]);
@@ -83,7 +83,7 @@ export const AdminPackagesManager = () => {
   const handleSave = async () => {
     if (!activePackage) return;
     if (!window.confirm("SAVE CHANGES: Are you sure you want to update the live trip data?")) return;
-    
+
     setSaving(true);
     try {
       const { id, ...data } = activePackage;
@@ -116,7 +116,7 @@ export const AdminPackagesManager = () => {
     setActivePackage({ ...activePackage, ...updates });
   };
 
-  const filteredPackages = packages.filter(p => 
+  const filteredPackages = packages.filter(p =>
     p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     p.destinations?.some(d => d.toLowerCase().includes(searchQuery.toLowerCase()))
   );
@@ -140,7 +140,7 @@ export const AdminPackagesManager = () => {
               <Layers size={14} className="text-[#9E1B1D]" /> Access and control all adventure parameters
             </p>
           </div>
-          <button 
+          <button
             onClick={handleCreateNew}
             className="w-full md:w-auto bg-[#121212] text-[#F4BF4B] px-10 py-5 font-black text-xs uppercase tracking-[0.2em] shadow-[6px_6px_0_0_#F4BF4B] hover:bg-[#9E1B1D] hover:text-white transition-all flex items-center justify-center gap-4 group"
           >
@@ -152,9 +152,9 @@ export const AdminPackagesManager = () => {
           <div className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#9E1B1D] transition-colors">
             <Search size={20} />
           </div>
-          <input 
-            type="text" 
-            placeholder="Search by title, destination, or sector..." 
+          <input
+            type="text"
+            placeholder="Search by title, destination, or sector..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full p-6 pl-16 border-4 border-[#121212] outline-none focus:border-[#F4BF4B] font-black text-sm uppercase tracking-widest bg-white shadow-[4px_4px_0_0_#121212] focus:shadow-none transition-all"
@@ -166,9 +166,8 @@ export const AdminPackagesManager = () => {
             <div key={pkg.id} className="border-4 border-[#121212] bg-white p-8 shadow-[8px_8px_0_0_#121212] flex flex-col gap-6 hover:-translate-y-1 transition-all">
               <div className="flex justify-between items-start">
                 <div className="space-y-3">
-                  <span className={`text-[9px] font-black uppercase px-3 py-1 border-2 border-[#121212] shadow-[2px_2px_0_0_#121212] ${
-                    pkg.status === 'active' ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-500'
-                  }`}>
+                  <span className={`text-[9px] font-black uppercase px-3 py-1 border-2 border-[#121212] shadow-[2px_2px_0_0_#121212] ${pkg.status === 'active' ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-500'
+                    }`}>
                     System Status: {pkg.status}
                   </span>
                   <h3 className="font-brand font-black text-2xl uppercase leading-[0.9] mt-2 tracking-tighter">{pkg.title}</h3>
@@ -181,14 +180,14 @@ export const AdminPackagesManager = () => {
                   </div>
                 </div>
                 <div className="flex gap-3">
-                  <button 
+                  <button
                     onClick={() => setActivePackage(pkg)}
                     className="p-4 bg-white border-2 border-[#121212] hover:bg-[#F4BF4B] transition-all shadow-[4px_4px_0_0_#121212] hover:shadow-none active:translate-x-1 active:translate-y-1"
                     title="Edit System Data"
                   >
                     <Edit2 size={20} />
                   </button>
-                  <button 
+                  <button
                     onClick={() => handleDelete(pkg.id)}
                     className="p-4 bg-white border-2 border-[#9E1B1D] text-[#9E1B1D] hover:bg-[#9E1B1D] hover:text-white transition-all shadow-[4px_4px_0_0_#9E1B1D] hover:shadow-none active:translate-x-1 active:translate-y-1"
                     title="Delete Trip"
@@ -197,7 +196,7 @@ export const AdminPackagesManager = () => {
                   </button>
                 </div>
               </div>
-              
+
               <div className="flex flex-wrap gap-6 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mt-auto pt-6 border-t-2 border-gray-100">
                 <span className="flex items-center gap-2"><Clock size={14} className="text-[#9E1B1D]" /> {pkg.duration}</span>
                 <span className="flex items-center gap-2"><Users size={14} className="text-[#9E1B1D]" /> {pkg.maxTravelers} Slots</span>
@@ -215,7 +214,7 @@ export const AdminPackagesManager = () => {
       {/* Editor Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b-4 border-[#121212] pb-8">
         <div className="flex items-center gap-6">
-          <button 
+          <button
             onClick={() => setActivePackage(null)}
             className="p-4 border-2 border-[#121212] bg-white hover:bg-[#F4BF4B] transition-all shadow-[4px_4px_0_0_#121212] hover:shadow-none"
           >
@@ -231,27 +230,26 @@ export const AdminPackagesManager = () => {
             </div>
           </div>
         </div>
-        <button 
+        <button
           onClick={handleSave}
           disabled={saving}
           className="w-full md:w-auto bg-[#121212] text-[#F4BF4B] px-12 py-6 font-black text-xs uppercase tracking-[0.3em] shadow-[8px_8px_0_0_#F4BF4B] hover:bg-[#9E1B1D] hover:text-white transition-all flex items-center justify-center gap-4 group"
         >
-          <Save size={22} className="group-hover:scale-110 transition-transform" /> 
+          <Save size={22} className="group-hover:scale-110 transition-transform" />
           {saving ? 'SAVING DATA...' : 'SAVE UPDATES'}
         </button>
       </div>
 
       {/* Editor Tabs */}
       <div className="flex flex-wrap gap-2 border-b-2 border-gray-100 pb-2 overflow-x-auto">
-        {(['OVERVIEW', 'HIGHLIGHTS', 'LOGISTICS', 'ITINERARY', 'PRICING', 'INCLUSIONS', 'MEDIA', 'FAQS'] as EditorTab[]).map(tab => (
+        {(['OVERVIEW', 'HIGHLIGHTS', 'LOGISTICS', 'ITINERARY', 'PRICING', 'INCLUSIONS', 'MEDIA', 'FAQS', 'FIELD LOGS', 'RELATED'] as EditorTab[]).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-6 py-4 font-black text-[10px] uppercase tracking-[0.25em] transition-all border-b-4 ${
-              activeTab === tab 
-                ? "border-[#9E1B1D] text-[#9E1B1D] bg-[#9E1B1D]/5" 
-                : "border-transparent text-gray-400 hover:text-[#121212] hover:bg-gray-50"
-            }`}
+            className={`px-6 py-4 font-black text-[10px] uppercase tracking-[0.25em] transition-all border-b-4 ${activeTab === tab
+              ? "border-[#9E1B1D] text-[#9E1B1D] bg-[#9E1B1D]/5"
+              : "border-transparent text-gray-400 hover:text-[#121212] hover:bg-gray-50"
+              }`}
           >
             {tab}
           </button>
@@ -260,7 +258,7 @@ export const AdminPackagesManager = () => {
 
       {/* Tab Content */}
       <div className="bg-white p-8 border-4 border-[#121212] shadow-[8px_8px_0_0_#FCFBF7]">
-        
+
         {/* OVERVIEW TAB */}
         {activeTab === 'OVERVIEW' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
@@ -269,18 +267,18 @@ export const AdminPackagesManager = () => {
                 <h4 className="font-black text-[10px] uppercase tracking-[0.3em] text-[#9E1B1D] border-b border-[#9E1B1D]/10 pb-4">Core Logistics</h4>
                 <div>
                   <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 block mb-2">Trip Title</label>
-                  <input 
-                    type="text" 
-                    value={activePackage.title} 
+                  <input
+                    type="text"
+                    value={activePackage.title}
                     onChange={e => updateActivePackage({ title: e.target.value })}
                     className="w-full p-4 border-2 border-[#121212] outline-none focus:border-[#F4BF4B] font-black text-lg uppercase tracking-tight"
                   />
                 </div>
                 <div>
                   <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 block mb-2">Trip Destinations (Comma separated)</label>
-                  <input 
-                    type="text" 
-                    value={activePackage.destinations?.join(', ') || ''} 
+                  <input
+                    type="text"
+                    value={activePackage.destinations?.join(', ') || ''}
                     onChange={e => updateActivePackage({ destinations: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
                     className="w-full p-4 border-2 border-[#121212] outline-none focus:border-[#F4BF4B] font-bold text-sm uppercase"
                     placeholder="e.g. ICELAND, NORWAY"
@@ -289,8 +287,8 @@ export const AdminPackagesManager = () => {
                 <div className="grid grid-cols-2 gap-6">
                   <div>
                     <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 block mb-2">System Status</label>
-                    <select 
-                      value={activePackage.status} 
+                    <select
+                      value={activePackage.status}
                       onChange={e => updateActivePackage({ status: e.target.value as any })}
                       className="w-full p-4 border-2 border-[#121212] font-black uppercase text-[10px] tracking-widest outline-none appearance-none bg-white h-[60px]"
                     >
@@ -301,8 +299,8 @@ export const AdminPackagesManager = () => {
                   </div>
                   <div>
                     <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 block mb-2">Intensity Level</label>
-                    <select 
-                      value={activePackage.difficulty} 
+                    <select
+                      value={activePackage.difficulty}
                       onChange={e => updateActivePackage({ difficulty: e.target.value as any })}
                       className="w-full p-4 border-2 border-[#121212] font-black uppercase text-[10px] tracking-widest outline-none appearance-none bg-white h-[60px]"
                     >
@@ -319,9 +317,9 @@ export const AdminPackagesManager = () => {
                 <h4 className="font-black text-[10px] uppercase tracking-[0.3em] text-[#9E1B1D] border-b border-[#9E1B1D]/10 pb-4">The Narrative (About Section)</h4>
                 <div>
                   <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 block mb-2">Section Header (Question)</label>
-                  <input 
-                    type="text" 
-                    value={activePackage.aboutQuestion || ''} 
+                  <input
+                    type="text"
+                    value={activePackage.aboutQuestion || ''}
                     onChange={e => updateActivePackage({ aboutQuestion: e.target.value })}
                     className="w-full p-4 border-2 border-[#121212] outline-none focus:border-[#F4BF4B] font-bold text-sm"
                     placeholder="e.g. Why This Trip? / The Objective?"
@@ -329,9 +327,9 @@ export const AdminPackagesManager = () => {
                 </div>
                 <div>
                   <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 block mb-2">Section Title</label>
-                  <input 
-                    type="text" 
-                    value={activePackage.aboutTitle || ''} 
+                  <input
+                    type="text"
+                    value={activePackage.aboutTitle || ''}
                     onChange={e => updateActivePackage({ aboutTitle: e.target.value })}
                     className="w-full p-4 border-2 border-[#121212] outline-none focus:border-[#F4BF4B] font-brand font-black text-2xl uppercase tracking-tighter"
                     placeholder="e.g. THE JOURNEY."
@@ -339,8 +337,8 @@ export const AdminPackagesManager = () => {
                 </div>
                 <div>
                   <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 block mb-2">Mission Brief (Description)</label>
-                  <textarea 
-                    value={activePackage.description} 
+                  <textarea
+                    value={activePackage.description}
                     onChange={e => updateActivePackage({ description: e.target.value })}
                     rows={6}
                     className="w-full p-4 border-2 border-[#121212] outline-none focus:border-[#F4BF4B] font-bold text-sm leading-relaxed"
@@ -351,7 +349,7 @@ export const AdminPackagesManager = () => {
 
             <div className="space-y-8">
               <div className="p-6 border-4 border-[#121212] bg-[#FCFBF7]">
-                 <ImageInput 
+                <ImageInput
                   label="Mission Documentation (About Image)"
                   value={activePackage.aboutImage || ''}
                   storagePath={`packages/${activePackage.slug}/about`}
@@ -365,9 +363,9 @@ export const AdminPackagesManager = () => {
                 <div className="grid grid-cols-2 gap-6">
                   <div>
                     <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 block mb-2">Duration</label>
-                    <input 
-                      type="text" 
-                      value={activePackage.duration} 
+                    <input
+                      type="text"
+                      value={activePackage.duration}
                       onChange={e => updateActivePackage({ duration: e.target.value })}
                       className="w-full p-4 border-2 border-[#121212] outline-none focus:border-[#F4BF4B] font-black uppercase text-xs"
                       placeholder="e.g. 5 DAYS / 4 NIGHTS"
@@ -375,9 +373,9 @@ export const AdminPackagesManager = () => {
                   </div>
                   <div>
                     <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 block mb-2">Unit Capacity</label>
-                    <input 
-                      type="number" 
-                      value={activePackage.maxTravelers} 
+                    <input
+                      type="number"
+                      value={activePackage.maxTravelers}
                       onChange={e => updateActivePackage({ maxTravelers: parseInt(e.target.value) })}
                       className="w-full p-4 border-2 border-[#121212] outline-none focus:border-[#F4BF4B] font-black text-xl"
                     />
@@ -396,7 +394,7 @@ export const AdminPackagesManager = () => {
                 <h4 className="font-brand font-black text-3xl uppercase tracking-tighter text-[#121212]">Mission Highlights.</h4>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-2">Key defining moments of the expedition</p>
               </div>
-              <button 
+              <button
                 onClick={() => {
                   const h = [...(activePackage.highlights || [])];
                   h.push({ text: '', icon: 'CheckCircle' });
@@ -407,21 +405,21 @@ export const AdminPackagesManager = () => {
                 <Plus size={16} /> ADD HIGHLIGHT
               </button>
             </div>
-            
+
             <div className="space-y-4">
               {(activePackage.highlights || []).map((h, i) => (
                 <div key={i} className="flex gap-4 items-center bg-[#FCFBF7] p-6 border-2 border-[#121212] shadow-[4px_4px_0_0_#121212] group">
                   <div className="cursor-move text-gray-300 group-hover:text-[#9E1B1D] transition-colors shrink-0">
                     <GripVertical size={20} />
                   </div>
-                  
+
                   {/* Icon Selector / Preview */}
                   <div className="relative group/icon shrink-0">
                     <div className="size-14 bg-white border-2 border-[#121212] flex items-center justify-center text-[#9E1B1D] shadow-[2px_2px_0_0_#121212]">
                       <IconPreview name={h.icon || 'Sparkles'} />
                     </div>
-                    <select 
-                      value={h.icon || 'Sparkles'} 
+                    <select
+                      value={h.icon || 'Sparkles'}
                       onChange={e => {
                         const nh = [...(activePackage.highlights || [])];
                         nh[i].icon = e.target.value;
@@ -435,9 +433,9 @@ export const AdminPackagesManager = () => {
                     </select>
                   </div>
 
-                  <input 
-                    type="text" 
-                    value={h.text} 
+                  <input
+                    type="text"
+                    value={h.text}
                     onChange={e => {
                       const nh = [...(activePackage.highlights || [])];
                       nh[i].text = e.target.value;
@@ -446,8 +444,8 @@ export const AdminPackagesManager = () => {
                     placeholder="Enter highlight description..."
                     className="flex-1 bg-transparent border-none outline-none font-bold text-sm uppercase tracking-tight placeholder:text-gray-300"
                   />
-                  
-                  <button 
+
+                  <button
                     onClick={() => {
                       if (window.confirm("Delete this highlight?")) {
                         const nh = [...(activePackage.highlights || [])];
@@ -474,7 +472,7 @@ export const AdminPackagesManager = () => {
                 <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-2">Add or remove tactical info slots for the trip page</p>
               </div>
               <div className="flex gap-4">
-                <button 
+                <button
                   onClick={() => {
                     const nq = [...(activePackage.quickInfo || [])];
                     nq.push({ label: '', value: '', icon: 'Compass' });
@@ -484,7 +482,7 @@ export const AdminPackagesManager = () => {
                 >
                   <Plus size={16} /> ADD LOGISTIC SLOT
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     if (window.confirm("RESET TO TRIP DEFAULTS: This will wipe custom slots and use system defaults. Continue?")) {
                       updateActivePackage({ quickInfo: [] });
@@ -502,8 +500,8 @@ export const AdminPackagesManager = () => {
                 return (
                   <div key={idx} className="border-2 border-[#121212] p-6 bg-[#FCFBF7] shadow-[4px_4px_0_0_#121212] space-y-6 relative group">
                     <span className="absolute -top-3 -right-3 size-8 bg-[#121212] text-[#F4BF4B] flex items-center justify-center font-black text-xs border-2 border-[#F4BF4B]">0{idx + 1}</span>
-                    
-                    <button 
+
+                    <button
                       onClick={() => {
                         const nq = [...(activePackage.quickInfo || [])];
                         nq.splice(idx, 1);
@@ -520,8 +518,8 @@ export const AdminPackagesManager = () => {
                         <div className="size-16 bg-white border-2 border-[#121212] flex items-center justify-center text-[#9E1B1D] shadow-[4px_4px_0_0_#121212]">
                           <IconPreview name={info.icon} size={24} />
                         </div>
-                        <select 
-                          value={info.icon} 
+                        <select
+                          value={info.icon}
                           onChange={e => {
                             const nq = [...(activePackage.quickInfo || [])];
                             nq[idx].icon = e.target.value;
@@ -538,8 +536,8 @@ export const AdminPackagesManager = () => {
                       <div className="flex-1 space-y-4">
                         <div>
                           <label className="text-[8px] font-black uppercase text-gray-400 mb-1 block tracking-[0.2em]">Slot Label</label>
-                          <input 
-                            type="text" 
+                          <input
+                            type="text"
                             value={info.label}
                             onChange={e => {
                               const nq = [...(activePackage.quickInfo || [])];
@@ -552,8 +550,8 @@ export const AdminPackagesManager = () => {
                         </div>
                         <div>
                           <label className="text-[8px] font-black uppercase text-gray-400 mb-1 block tracking-[0.2em]">Display Value</label>
-                          <input 
-                            type="text" 
+                          <input
+                            type="text"
                             value={info.value}
                             onChange={e => {
                               const nq = [...(activePackage.quickInfo || [])];
@@ -581,14 +579,14 @@ export const AdminPackagesManager = () => {
                 <h4 className="font-brand font-black text-3xl uppercase tracking-tighter">Operational Timeline.</h4>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-2">Vertical deployment schedule grouped by sector</p>
               </div>
-              <button 
+              <button
                 onClick={() => {
                   const cities = [...(activePackage.itineraryCities || [])];
-                  cities.push({ 
-                    city: 'New Sector', 
+                  cities.push({
+                    city: 'New Sector',
                     country: '',
-                    nights: 1, 
-                    days: [{ day: 1, title: 'Insertion', description: '', textAlign: 'left' }] 
+                    nights: 1,
+                    days: [{ day: 1, title: 'Insertion', description: '', textAlign: 'left' }]
                   });
                   updateActivePackage({ itineraryCities: cities });
                 }}
@@ -601,17 +599,17 @@ export const AdminPackagesManager = () => {
             <div className="space-y-16">
               {(activePackage.itineraryCities || []).map((city, cIdx) => (
                 <div key={cIdx} className="border-4 border-[#121212] bg-white p-10 shadow-[12px_12px_0_0_#121212] relative">
-                  
+
                   {/* Arrival Transfer Controls */}
                   <div className="mb-10 p-4 border-2 border-dashed border-[#121212]/20 bg-[#FCFBF7]/50 flex flex-col md:flex-row gap-6 items-center">
                     <div className="flex items-center gap-3 shrink-0">
-                      <select 
+                      <select
                         value={city.arrivalTransfer?.type || 'flight'}
                         onChange={e => {
                           const nc = [...(activePackage.itineraryCities || [])];
-                          nc[cIdx].arrivalTransfer = { 
-                            type: e.target.value as any, 
-                            text: nc[cIdx].arrivalTransfer?.text || '' 
+                          nc[cIdx].arrivalTransfer = {
+                            type: e.target.value as any,
+                            text: nc[cIdx].arrivalTransfer?.text || ''
                           };
                           updateActivePackage({ itineraryCities: nc });
                         }}
@@ -624,21 +622,21 @@ export const AdminPackagesManager = () => {
                         <option value="car">CAR</option>
                       </select>
                     </div>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={city.arrivalTransfer?.text || ''}
                       onChange={e => {
                         const nc = [...(activePackage.itineraryCities || [])];
-                        nc[cIdx].arrivalTransfer = { 
-                          type: nc[cIdx].arrivalTransfer?.type || 'flight', 
-                          text: e.target.value 
+                        nc[cIdx].arrivalTransfer = {
+                          type: nc[cIdx].arrivalTransfer?.type || 'flight',
+                          text: e.target.value
                         };
                         updateActivePackage({ itineraryCities: nc });
                       }}
                       placeholder="e.g. Fly in to Barcelona on Day 1"
                       className="flex-1 bg-transparent border-b-2 border-[#121212]/10 p-2 font-bold text-sm outline-none focus:border-[#9E1B1D] transition-colors"
                     />
-                    <button 
+                    <button
                       onClick={() => {
                         const nc = [...(activePackage.itineraryCities || [])];
                         delete nc[cIdx].arrivalTransfer;
@@ -659,9 +657,9 @@ export const AdminPackagesManager = () => {
                       <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <label className="text-[8px] font-black uppercase text-gray-400 mb-1 block">Sector Name</label>
-                          <input 
-                            type="text" 
-                            value={city.city} 
+                          <input
+                            type="text"
+                            value={city.city}
                             onChange={e => {
                               const nc = [...(activePackage.itineraryCities || [])];
                               nc[cIdx].city = e.target.value;
@@ -672,9 +670,9 @@ export const AdminPackagesManager = () => {
                         </div>
                         <div>
                           <label className="text-[8px] font-black uppercase text-gray-400 mb-1 block">Country</label>
-                          <input 
-                            type="text" 
-                            value={city.country || ''} 
+                          <input
+                            type="text"
+                            value={city.country || ''}
                             onChange={e => {
                               const nc = [...(activePackage.itineraryCities || [])];
                               nc[cIdx].country = e.target.value;
@@ -686,14 +684,14 @@ export const AdminPackagesManager = () => {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-6">
                       <div className="text-right">
                         <label className="text-[8px] font-black uppercase text-gray-400 mb-1 block tracking-widest">Duration</label>
                         <div className="flex items-center gap-2">
-                          <input 
-                            type="number" 
-                            value={city.nights} 
+                          <input
+                            type="number"
+                            value={city.nights}
                             onChange={e => {
                               const nc = [...(activePackage.itineraryCities || [])];
                               nc[cIdx].nights = parseInt(e.target.value);
@@ -704,7 +702,7 @@ export const AdminPackagesManager = () => {
                           <span className="font-black text-xs uppercase tracking-widest">Nights</span>
                         </div>
                       </div>
-                      <button 
+                      <button
                         onClick={() => {
                           if (window.confirm("Delete this entire sector and all its days?")) {
                             const nc = [...(activePackage.itineraryCities || [])];
@@ -723,14 +721,14 @@ export const AdminPackagesManager = () => {
                     {city.days.map((day, dIdx) => (
                       <div key={dIdx} className="pl-10 border-l-4 border-[#F4BF4B] space-y-6 relative">
                         <div className="absolute left-[-14px] top-0 size-6 rounded-full bg-[#F4BF4B] border-4 border-white shadow-[0_0_0_2px_#121212]" />
-                        
+
                         <div className="flex flex-col md:flex-row justify-between items-start gap-4">
                           <div className="flex-1 space-y-4 w-full">
                             <div className="flex items-center gap-4">
                               <span className="font-brand font-black text-3xl text-[#F4BF4B]">DAY {day.day}.</span>
-                              <input 
-                                type="text" 
-                                value={day.title} 
+                              <input
+                                type="text"
+                                value={day.title}
                                 onChange={e => {
                                   const nc = [...(activePackage.itineraryCities || [])];
                                   nc[cIdx].days[dIdx].title = e.target.value;
@@ -740,37 +738,35 @@ export const AdminPackagesManager = () => {
                                 placeholder="Day Objective"
                               />
                             </div>
-                            
+
                             {/* Alignment Controls */}
                             <div className="flex items-center gap-2 border-b border-gray-100 pb-2">
                               <span className="text-[8px] font-black uppercase text-gray-300 tracking-widest mr-2">Alignment:</span>
                               {(['left', 'center', 'right'] as const).map(align => (
-                                <button 
+                                <button
                                   key={align}
                                   onClick={() => {
                                     const nc = [...(activePackage.itineraryCities || [])];
                                     nc[cIdx].days[dIdx].textAlign = align;
                                     updateActivePackage({ itineraryCities: nc });
                                   }}
-                                  className={`text-[8px] font-black uppercase px-2 py-0.5 border transition-all ${
-                                    day.textAlign === align ? 'bg-[#121212] text-white border-[#121212]' : 'text-gray-400 border-gray-200 hover:border-[#121212]'
-                                  }`}
+                                  className={`text-[8px] font-black uppercase px-2 py-0.5 border transition-all ${day.textAlign === align ? 'bg-[#121212] text-white border-[#121212]' : 'text-gray-400 border-gray-200 hover:border-[#121212]'
+                                    }`}
                                 >
                                   {align}
                                 </button>
                               ))}
                             </div>
 
-                            <textarea 
-                              value={day.description} 
+                            <textarea
+                              value={day.description}
                               onChange={e => {
                                 const nc = [...(activePackage.itineraryCities || [])];
                                 nc[cIdx].days[dIdx].description = e.target.value;
                                 updateActivePackage({ itineraryCities: nc });
                               }}
-                              className={`w-full p-6 bg-[#FCFBF7] border-2 border-[#121212]/5 outline-none text-sm leading-relaxed min-h-[150px] font-bold ${
-                                day.textAlign === 'center' ? 'text-center' : day.textAlign === 'right' ? 'text-right' : 'text-left'
-                              }`}
+                              className={`w-full p-6 bg-[#FCFBF7] border-2 border-[#121212]/5 outline-none text-sm leading-relaxed min-h-[150px] font-bold ${day.textAlign === 'center' ? 'text-center' : day.textAlign === 'right' ? 'text-right' : 'text-left'
+                                }`}
                               placeholder="Mission briefing details..."
                             />
 
@@ -778,8 +774,8 @@ export const AdminPackagesManager = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                               <div className="p-4 border-2 border-gray-50 bg-gray-50/30">
                                 <label className="text-[8px] font-black uppercase tracking-[0.2em] text-[#9E1B1D] mb-3 block">Meals Included</label>
-                                <input 
-                                  type="text" 
+                                <input
+                                  type="text"
                                   value={day.meals?.join(', ') || ''}
                                   onChange={e => {
                                     const nc = [...(activePackage.itineraryCities || [])];
@@ -792,8 +788,8 @@ export const AdminPackagesManager = () => {
                               </div>
                               <div className="p-4 border-2 border-gray-50 bg-gray-50/30">
                                 <label className="text-[8px] font-black uppercase tracking-[0.2em] text-[#F4BF4B] mb-3 block">Optional Add-ons</label>
-                                <input 
-                                  type="text" 
+                                <input
+                                  type="text"
                                   value={day.addons?.join(', ') || ''}
                                   onChange={e => {
                                     const nc = [...(activePackage.itineraryCities || [])];
@@ -806,8 +802,8 @@ export const AdminPackagesManager = () => {
                               </div>
                             </div>
                           </div>
-                          
-                          <button 
+
+                          <button
                             onClick={() => {
                               if (window.confirm("Delete this day?")) {
                                 const nc = [...(activePackage.itineraryCities || [])];
@@ -822,16 +818,16 @@ export const AdminPackagesManager = () => {
                         </div>
                       </div>
                     ))}
-                    
-                    <button 
+
+                    <button
                       onClick={() => {
                         const nc = [...(activePackage.itineraryCities || [])];
                         const lastDay = nc[cIdx].days[nc[cIdx].days.length - 1]?.day || 0;
-                        nc[cIdx].days.push({ 
-                          day: lastDay + 1, 
-                          title: 'New Objective', 
-                          description: '', 
-                          textAlign: 'left' 
+                        nc[cIdx].days.push({
+                          day: lastDay + 1,
+                          title: 'New Objective',
+                          description: '',
+                          textAlign: 'left'
                         });
                         updateActivePackage({ itineraryCities: nc });
                       }}
@@ -855,14 +851,14 @@ export const AdminPackagesManager = () => {
                 <div>
                   <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 block mb-3">Base Price & Currency</label>
                   <div className="flex gap-4">
-                    <input 
-                      type="number" 
-                      value={activePackage.pricing.basePrice} 
+                    <input
+                      type="number"
+                      value={activePackage.pricing.basePrice}
                       onChange={e => updateActivePackage({ pricing: { ...activePackage.pricing, basePrice: parseInt(e.target.value) } })}
                       className="flex-1 p-5 border-2 border-[#121212] outline-none focus:border-[#F4BF4B] font-black text-2xl shadow-[4px_4px_0_0_#121212]"
                     />
-                    <select 
-                      value={activePackage.pricing.currency} 
+                    <select
+                      value={activePackage.pricing.currency}
                       onChange={e => updateActivePackage({ pricing: { ...activePackage.pricing, currency: e.target.value } })}
                       className="p-5 border-2 border-[#121212] font-black bg-white shadow-[4px_4px_0_0_#121212]"
                     >
@@ -878,7 +874,7 @@ export const AdminPackagesManager = () => {
             <div className="space-y-6">
               <div className="flex justify-between items-center border-b-2 border-[#121212] pb-4">
                 <h4 className="font-black text-xs uppercase tracking-widest">Departure Windows & Specific Pricing</h4>
-                <button 
+                <button
                   onClick={() => {
                     const dates = [...(activePackage.pricingDates || [])];
                     dates.push({ date_range: 'New Dates', price: activePackage.pricing.basePrice, status: 'available' });
@@ -894,8 +890,8 @@ export const AdminPackagesManager = () => {
                 {(activePackage.pricingDates || []).map((date, i) => (
                   <div key={i} className="border-2 border-[#121212] p-6 bg-white shadow-[4px_4px_0_0_#121212] space-y-4">
                     <div className="flex justify-between">
-                      <span className="text-[9px] font-black uppercase tracking-tighter bg-gray-100 px-2 py-1">Slot #{i+1}</span>
-                      <button 
+                      <span className="text-[9px] font-black uppercase tracking-tighter bg-gray-100 px-2 py-1">Slot #{i + 1}</span>
+                      <button
                         onClick={() => {
                           const dates = [...(activePackage.pricingDates || [])];
                           dates.splice(i, 1);
@@ -908,9 +904,9 @@ export const AdminPackagesManager = () => {
                     </div>
                     <div>
                       <label className="text-[9px] font-black uppercase text-gray-400">Date Range</label>
-                      <input 
-                        type="text" 
-                        value={date.date_range} 
+                      <input
+                        type="text"
+                        value={date.date_range}
                         onChange={e => {
                           const nd = [...(activePackage.pricingDates || [])];
                           nd[i].date_range = e.target.value;
@@ -923,9 +919,9 @@ export const AdminPackagesManager = () => {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="text-[9px] font-black uppercase text-gray-400">Price</label>
-                        <input 
-                          type="number" 
-                          value={date.price} 
+                        <input
+                          type="number"
+                          value={date.price}
                           onChange={e => {
                             const nd = [...(activePackage.pricingDates || [])];
                             nd[i].price = parseInt(e.target.value);
@@ -936,8 +932,8 @@ export const AdminPackagesManager = () => {
                       </div>
                       <div>
                         <label className="text-[9px] font-black uppercase text-gray-400">Status</label>
-                        <select 
-                          value={date.status} 
+                        <select
+                          value={date.status}
                           onChange={e => {
                             const nd = [...(activePackage.pricingDates || [])];
                             nd[i].status = e.target.value as any;
@@ -952,9 +948,9 @@ export const AdminPackagesManager = () => {
                         </select>
                       </div>
                     </div>
-                    <input 
-                      type="text" 
-                      value={date.notes || ''} 
+                    <input
+                      type="text"
+                      value={date.notes || ''}
                       onChange={e => {
                         const nd = [...(activePackage.pricingDates || [])];
                         nd[i].notes = e.target.value;
@@ -980,7 +976,7 @@ export const AdminPackagesManager = () => {
                   <h4 className="font-brand font-black text-2xl uppercase tracking-tighter text-green-600">Included.</h4>
                   <p className="text-[8px] font-bold uppercase tracking-widest text-gray-400 mt-1">Operational support and assets</p>
                 </div>
-                <button 
+                <button
                   onClick={() => {
                     const inc = [...(activePackage.inclusionsRich || [])];
                     inc.push({ text: '', category: 'General', icon: 'Check' });
@@ -998,8 +994,8 @@ export const AdminPackagesManager = () => {
                       <div className="size-10 bg-green-50 border border-green-200 flex items-center justify-center text-green-600">
                         <IconPreview name={item.icon || 'Check'} size={20} />
                       </div>
-                      <select 
-                        value={item.icon || 'Check'} 
+                      <select
+                        value={item.icon || 'Check'}
                         onChange={e => {
                           const n = [...(activePackage.inclusionsRich || [])];
                           n[idx].icon = e.target.value;
@@ -1013,7 +1009,7 @@ export const AdminPackagesManager = () => {
                       </select>
                     </div>
                     <div className="flex-1 space-y-2">
-                      <select 
+                      <select
                         value={item.category || 'General'}
                         onChange={e => {
                           const n = [...(activePackage.inclusionsRich || [])];
@@ -1028,8 +1024,8 @@ export const AdminPackagesManager = () => {
                         <option value="Guides">Guides</option>
                         <option value="General">General</option>
                       </select>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={item.text}
                         onChange={e => {
                           const n = [...(activePackage.inclusionsRich || [])];
@@ -1040,7 +1036,7 @@ export const AdminPackagesManager = () => {
                         className="w-full border-none outline-none font-bold text-xs uppercase"
                       />
                     </div>
-                    <button 
+                    <button
                       onClick={() => {
                         const n = [...(activePackage.inclusionsRich || [])];
                         n.splice(idx, 1);
@@ -1062,7 +1058,7 @@ export const AdminPackagesManager = () => {
                   <h4 className="font-brand font-black text-2xl uppercase tracking-tighter text-[#9E1B1D]">Excluded.</h4>
                   <p className="text-[8px] font-bold uppercase tracking-widest text-gray-400 mt-1">External liabilities and costs</p>
                 </div>
-                <button 
+                <button
                   onClick={() => {
                     const exc = [...(activePackage.exclusionsRich || [])];
                     exc.push({ text: '', category: 'General', icon: 'X' });
@@ -1080,8 +1076,8 @@ export const AdminPackagesManager = () => {
                       <div className="size-10 bg-red-50 border border-red-200 flex items-center justify-center text-[#9E1B1D]">
                         <IconPreview name={item.icon || 'X'} size={20} />
                       </div>
-                      <select 
-                        value={item.icon || 'X'} 
+                      <select
+                        value={item.icon || 'X'}
                         onChange={e => {
                           const n = [...(activePackage.exclusionsRich || [])];
                           n[idx].icon = e.target.value;
@@ -1095,7 +1091,7 @@ export const AdminPackagesManager = () => {
                       </select>
                     </div>
                     <div className="flex-1 space-y-2">
-                       <select 
+                      <select
                         value={item.category || 'General'}
                         onChange={e => {
                           const n = [...(activePackage.exclusionsRich || [])];
@@ -1109,8 +1105,8 @@ export const AdminPackagesManager = () => {
                         <option value="Personal">Personal</option>
                         <option value="General">General</option>
                       </select>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={item.text}
                         onChange={e => {
                           const n = [...(activePackage.exclusionsRich || [])];
@@ -1121,7 +1117,7 @@ export const AdminPackagesManager = () => {
                         className="w-full border-none outline-none font-bold text-xs uppercase"
                       />
                     </div>
-                    <button 
+                    <button
                       onClick={() => {
                         const n = [...(activePackage.exclusionsRich || [])];
                         n.splice(idx, 1);
@@ -1142,7 +1138,7 @@ export const AdminPackagesManager = () => {
         {activeTab === 'MEDIA' && (
           <div className="space-y-12">
             <div className="max-w-xl">
-              <ImageInput 
+              <ImageInput
                 label="Primary Thumbnail (Hero)"
                 value={activePackage.media.thumbnail}
                 storagePath={`packages/${activePackage.slug}/hero`}
@@ -1154,7 +1150,7 @@ export const AdminPackagesManager = () => {
             <div className="space-y-6">
               <div className="flex justify-between items-center border-b-2 border-[#121212] pb-4">
                 <h4 className="font-black text-xs uppercase tracking-widest">Gallery Assets</h4>
-                <button 
+                <button
                   onClick={() => {
                     const gal = [...(activePackage.media.gallery || [])];
                     gal.push('');
@@ -1165,12 +1161,12 @@ export const AdminPackagesManager = () => {
                   + Add Image Slot
                 </button>
               </div>
-              
+
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
                 {(activePackage.media.gallery || []).map((img, i) => (
                   <div key={i} className="space-y-2">
-                    <ImageInput 
-                      label={`Gallery Image #${i+1}`}
+                    <ImageInput
+                      label={`Gallery Image #${i + 1}`}
                       value={img}
                       storagePath={`packages/${activePackage.slug}/gallery_${i}`}
                       onSave={(url) => {
@@ -1180,7 +1176,7 @@ export const AdminPackagesManager = () => {
                       }}
                       aspectClass="aspect-square"
                     />
-                    <button 
+                    <button
                       onClick={() => {
                         const gal = [...(activePackage.media.gallery || [])];
                         gal.splice(i, 1);
@@ -1197,19 +1193,364 @@ export const AdminPackagesManager = () => {
           </div>
         )}
 
-        {/* FAQS TAB (Simplified sub-collection proxy) */}
-        {activeTab === 'FAQS' && (
-          <div className="p-12 text-center border-4 border-dashed border-[#121212]/10 bg-white">
-            <HelpCircle size={48} className="mx-auto text-gray-200 mb-4" />
-            <h4 className="font-brand font-black text-2xl uppercase text-[#121212]">Global Package FAQs</h4>
-            <p className="font-bold text-xs uppercase tracking-widest text-gray-500 mt-2 max-w-md mx-auto">
-              FAQs are currently managed via the database seeder. 
-              Interactive FAQ management for individual packages is coming in the next administrative update.
+        {/* RELATED TAB */}
+        {activeTab === 'RELATED' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-end border-b-4 border-[#121212] pb-6">
+              <div>
+                <h4 className="font-brand font-black text-3xl uppercase tracking-tighter text-[#121212]">Related Journeys.</h4>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-2">Select alternative expeditions to display at the bottom of the page</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {packages.filter(p => p.id !== activePackage.id).map(p => {
+                const isSelected = activePackage.relatedTripIds?.includes(p.id);
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => {
+                      const current = activePackage.relatedTripIds || [];
+                      if (isSelected) {
+                        updateActivePackage({ relatedTripIds: current.filter(id => id !== p.id) });
+                      } else {
+                        updateActivePackage({ relatedTripIds: [...current, p.id] });
+                      }
+                    }}
+                    className={`text-left border-4 p-6 transition-all ${isSelected
+                      ? 'border-[#9E1B1D] bg-[#FCFBF7] shadow-[4px_4px_0_0_#9E1B1D]'
+                      : 'border-[#121212]/20 hover:border-[#121212] hover:bg-gray-50'
+                      }`}
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 border ${isSelected ? 'border-[#9E1B1D] text-[#9E1B1D]' : 'border-gray-300 text-gray-400'
+                        }`}>
+                        {isSelected ? 'Selected' : 'Select'}
+                      </span>
+                      {isSelected && <CheckCircle size={16} className="text-[#9E1B1D]" />}
+                    </div>
+                    <h5 className={`font-brand font-black text-xl uppercase tracking-tighter ${isSelected ? 'text-[#121212]' : 'text-gray-500'}`}>
+                      {p.title}
+                    </h5>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-4">
+              * Note: If none are selected, the system will automatically display 3 random active trips.
             </p>
           </div>
         )}
+
+        {/* FAQS TAB */}
+        {activeTab === 'FAQS' && <PackageFaqsManager pkgId={activePackage.id} />}
+
+        {/* FIELD LOGS TAB */}
+        {activeTab === 'FIELD LOGS' && <PackageReviewsManager pkgId={activePackage.id} />}
 
       </div>
     </div>
   );
 };
+
+// --- HELPER COMPONENTS FOR SUBCOLLECTIONS ---
+
+const PackageFaqsManager = ({ pkgId }: { pkgId: string }) => {
+  const [faqs, setFaqs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadFaqs = async () => {
+    setLoading(true);
+    try {
+      const data = await getSubcollectionData('packages', pkgId, 'faqs');
+      setFaqs(data.sort((a: any, b: any) => (a.order || 0) - (b.order || 0)));
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { loadFaqs(); }, [pkgId]);
+
+  const handleSaveFaq = async (idx: number) => {
+    const faq = faqs[idx];
+    if (!faq.id) faq.id = `faq_${Date.now()}`;
+    await setSubcollectionDocument('packages', pkgId, 'faqs', faq.id, { ...faq, updatedAt: Timestamp.now() });
+    alert("FAQ Saved!");
+  };
+
+  const handleDeleteFaq = async (idx: number) => {
+    if (!window.confirm("Delete FAQ?")) return;
+    const faq = faqs[idx];
+    if (faq.id) {
+      await deleteSubcollectionDocument('packages', pkgId, 'faqs', faq.id);
+    }
+    const newFaqs = [...faqs];
+    newFaqs.splice(idx, 1);
+    setFaqs(newFaqs);
+  };
+
+  if (loading) return <div className="text-center font-black p-12">Loading FAQs...</div>;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-end border-b-4 border-[#121212] pb-6">
+        <div>
+          <h4 className="font-brand font-black text-3xl uppercase tracking-tighter text-[#121212]">Trip FAQ.</h4>
+        </div>
+        <button
+          onClick={() => setFaqs([{ question: '', answer: '', active: true, order: faqs.length }, ...faqs])}
+          className="bg-[#121212] text-[#F4BF4B] px-6 py-3 font-black text-[10px] uppercase tracking-[0.2em] shadow-[4px_4px_0_0_#9E1B1D]"
+        >
+          + ADD FAQ
+        </button>
+      </div>
+      <div className="space-y-6">
+        {faqs.map((faq, i) => (
+          <div key={i} className="border-2 border-[#121212] bg-[#FCFBF7] p-6 shadow-[4px_4px_0_0_#121212]">
+            <div className="flex gap-4 mb-4">
+              <div className="flex-1">
+                <label className="text-[10px] font-black uppercase text-gray-500 mb-1 block">Question</label>
+                <input
+                  className="w-full p-3 border-2 border-[#121212] font-bold outline-none"
+                  value={faq.question}
+                  onChange={e => { const n = [...faqs]; n[i].question = e.target.value; setFaqs(n); }}
+                />
+              </div>
+              <div className="w-24">
+                <label className="text-[10px] font-black uppercase text-gray-500 mb-1 block">Order</label>
+                <input
+                  type="number"
+                  className="w-full p-3 border-2 border-[#121212] font-black outline-none"
+                  value={faq.order || 0}
+                  onChange={e => { const n = [...faqs]; n[i].order = parseInt(e.target.value); setFaqs(n); }}
+                />
+              </div>
+            </div>
+            <div className="mb-4">
+              <label className="text-[10px] font-black uppercase text-gray-500 mb-1 block">Answer</label>
+              <textarea
+                className="w-full p-3 border-2 border-[#121212] font-serif outline-none"
+                rows={3}
+                value={faq.answer}
+                onChange={e => { const n = [...faqs]; n[i].answer = e.target.value; setFaqs(n); }}
+              />
+            </div>
+            <div className="flex justify-end gap-4 border-t border-[#121212]/10 pt-4">
+              <button onClick={() => handleDeleteFaq(i)} className="text-[#9E1B1D] font-black text-[10px] uppercase tracking-widest px-4 py-2 border-2 border-[#9E1B1D] hover:bg-[#9E1B1D] hover:text-white transition-colors">Delete</button>
+              <button onClick={() => handleSaveFaq(i)} className="text-[#121212] bg-[#F4BF4B] font-black text-[10px] uppercase tracking-widest px-6 py-2 border-2 border-[#F4BF4B] hover:bg-[#121212] hover:text-[#F4BF4B] transition-colors">Save FAQ</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const PackageReviewsManager = ({ pkgId }: { pkgId: string }) => {
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [globalLogs, setGlobalLogs] = useState<any[]>([]);
+  const [showAddMenu, setShowAddMenu] = useState(false);
+  const [selectorLoading, setSelectorLoading] = useState(false);
+
+  const loadReviews = async () => {
+    setLoading(true);
+    try {
+      const data = await getSubcollectionData('packages', pkgId, 'reviews');
+      setReviews(data.sort((a, b) => (a.order || 0) - (b.order || 0)));
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { loadReviews(); }, [pkgId]);
+
+  const loadGlobalLogs = async () => {
+    setSelectorLoading(true);
+    try {
+      const data = await getCollectionData('global_reviews');
+      setGlobalLogs(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSelectorLoading(false);
+    }
+  };
+
+  const handleToggleGlobal = async (log: any) => {
+    const existing = reviews.find(r => r.sourceId === log.id);
+    if (existing) {
+      await handleDeleteReview(reviews.indexOf(existing), true);
+    } else {
+      const newId = `rev_${Date.now()}`;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { id, ...logData } = log;
+      await setSubcollectionDocument('packages', pkgId, 'reviews', newId, {
+        ...logData,
+        sourceId: log.id,
+        order: reviews.length,
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now()
+      });
+      loadReviews();
+    }
+  };
+
+  const moveReview = async (index: number, direction: 'up' | 'down') => {
+    const newReviews = [...reviews];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= reviews.length) return;
+
+    [newReviews[index], newReviews[targetIndex]] = [newReviews[targetIndex], newReviews[index]];
+    setReviews(newReviews);
+
+    try {
+      await Promise.all(newReviews.map((r, i) =>
+        setSubcollectionDocument('packages', pkgId, 'reviews', r.id, { ...r, order: i, updatedAt: Timestamp.now() })
+      ));
+    } catch (e) { console.error(e); }
+  };
+
+  const handleDeleteReview = async (index: number, skipConfirm = false) => {
+    if (!skipConfirm && !window.confirm("Remove this log from the mission sequence?")) return;
+    const rev = reviews[index];
+    if (rev.id) {
+      await deleteSubcollectionDocument('packages', pkgId, 'reviews', rev.id);
+    }
+    const n = [...reviews];
+    n.splice(index, 1);
+    const updated = n.map((r, i) => ({ ...r, order: i }));
+    setReviews(updated);
+    try {
+      await Promise.all(updated.map((r, i) =>
+        setSubcollectionDocument('packages', pkgId, 'reviews', r.id, { ...r, order: i, updatedAt: Timestamp.now() })
+      ));
+    } catch (e) { console.error(e); }
+  };
+
+
+
+  if (loading) return <div className="text-center font-black p-12">Syncing Field Logs...</div>;
+
+  return (
+    <div className="bg-[#FCFBF7] border-4 border-[#121212] p-8 shadow-[12px_12px_0_0_#121212] space-y-8">
+      {/* Header */}
+      <div className="flex justify-between items-center border-b-4 border-[#121212] pb-6">
+        <h3 className="font-brand font-black text-3xl uppercase tracking-tighter text-[#121212]">Voices From The Field</h3>
+        <span className="bg-[#121212] text-[#F4BF4B] px-4 py-1 font-black text-[10px] uppercase tracking-widest border-2 border-[#121212]">
+          {reviews.length} Selected
+        </span>
+      </div>
+
+      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 -mt-4">
+        Select the authenticated reviews to display in the carousel.
+      </p>
+
+      {/* Add Review Dropdown/Expander */}
+      <div className="relative">
+        <button
+          onClick={() => {
+            if (!showAddMenu) loadGlobalLogs();
+            setShowAddMenu(!showAddMenu);
+          }}
+          className="w-full flex justify-between items-center bg-white border-4 border-[#121212] p-6 text-left font-black text-sm uppercase tracking-widest hover:bg-gray-50 transition-colors shadow-[4px_4px_0_0_#121212]"
+        >
+          <span>+ Add Review</span>
+          <LucideIcons.ChevronDown className={`transition-transform ${showAddMenu ? 'rotate-180' : ''}`} size={20} />
+        </button>
+
+        {showAddMenu && (
+          <div className="absolute top-full left-0 right-0 z-50 bg-white border-4 border-t-0 border-[#121212] shadow-[8px_8px_0_0_#121212] max-h-[400px] overflow-y-auto">
+            <div className="p-4 border-b-2 border-[#121212] bg-[#121212] text-white">
+              <span className="text-[10px] font-black uppercase tracking-widest">Shared Logistics Pool</span>
+            </div>
+            
+            {selectorLoading ? (
+              <div className="p-12 text-center text-[10px] font-black uppercase animate-pulse">Scanning Data...</div>
+            ) : (
+              <div className="p-2 space-y-2">
+                {globalLogs.map((log, i) => {
+                  const isSelected = reviews.some(r => r.sourceId === log.id);
+                  return (
+                    <div key={i} className="flex items-center justify-between p-4 border-2 border-[#121212] hover:bg-[#FCFBF7]">
+                      <div className="flex items-center gap-4">
+                        <img src={log.avatar} className="size-8 border-2 border-[#121212] grayscale object-cover" />
+                        <div>
+                          <p className="font-black text-xs uppercase">{log.travelerName}</p>
+                          <p className="text-[9px] font-bold text-gray-400 uppercase">{log.role}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleToggleGlobal(log)}
+                        className={`px-4 py-2 font-black text-[9px] uppercase tracking-widest border-2 ${
+                          isSelected 
+                            ? 'bg-[#9E1B1D] border-[#9E1B1D] text-white' 
+                            : 'bg-white border-[#121212] text-[#121212] hover:bg-[#121212] hover:text-[#F4BF4B]'
+                        }`}
+                      >
+                        {isSelected ? 'Deselect' : 'Select'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Active Sequence */}
+      <div className="border-4 border-[#121212] p-8 space-y-6">
+        <div className="border-b-2 border-[#121212] pb-2 inline-block">
+          <h4 className="font-black text-xs uppercase tracking-widest text-[#121212]">- Active Sequence</h4>
+        </div>
+
+        <div className="space-y-4">
+          {reviews.map((rev, i) => (
+            <div key={rev.id || i} className="flex items-center gap-4 bg-white border-2 border-[#121212] p-4 shadow-[4px_4px_0_0_#121212]">
+              <span className="font-mono text-xs text-gray-300">{(i + 1).toString().padStart(2, ' ')}</span>
+              <span className="text-gray-300">|</span>
+              <span className="flex-1 font-black text-xs uppercase tracking-widest text-[#121212]">
+                {rev.travelerName}
+              </span>
+
+              <div className="flex items-center gap-1">
+                <button
+                  disabled={i === 0}
+                  onClick={() => moveReview(i, 'up')}
+                  className="p-2 border-2 border-[#121212] text-[#121212] hover:bg-[#F4BF4B] disabled:opacity-20 disabled:hover:bg-transparent transition-colors"
+                >
+                  <LucideIcons.ArrowUp size={14} />
+                </button>
+                <button
+                  disabled={i === reviews.length - 1}
+                  onClick={() => moveReview(i, 'down')}
+                  className="p-2 border-2 border-[#121212] text-[#121212] hover:bg-[#F4BF4B] disabled:opacity-20 disabled:hover:bg-transparent transition-colors"
+                >
+                  <LucideIcons.ArrowDown size={14} />
+                </button>
+                <button
+                  onClick={() => handleDeleteReview(i)}
+                  className="p-2 bg-[#121212] border-2 border-[#121212] text-[#F4BF4B] hover:bg-[#9E1B1D] hover:text-white transition-colors"
+                >
+                  <LucideIcons.X size={14} />
+                </button>
+              </div>
+            </div>
+          ))}
+          
+          {reviews.length === 0 && (
+            <div className="text-center py-12 border-2 border-dashed border-gray-200">
+               <p className="text-[10px] font-black uppercase text-gray-300 tracking-[0.2em]">No logs active in current sequence</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+

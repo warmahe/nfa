@@ -43,16 +43,16 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({ pkg }) => {
     <section
       id="reviews"
       className="py-24 px-6 md:px-16 max-w-[1440px] mx-auto"
-      aria-label="Reviews"
+      aria-label="Field Logs"
     >
       {/* Header + aggregate */}
       <div className="flex flex-col md:flex-row md:items-end gap-8 mb-16">
         <div className="flex-1">
           <span className="block font-sans font-black text-[10px] uppercase tracking-[0.4em] text-[#9E1B1D] mb-3">
-            What Travelers Say
+            Mission Debriefs
           </span>
           <h2 className="font-brand font-black text-[clamp(3rem,7vw,5rem)] uppercase tracking-tighter text-[#121212] leading-[0.85]">
-            Real Voices.
+            Field Logs.
           </h2>
         </div>
 
@@ -63,7 +63,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({ pkg }) => {
           </span>
           <StarRating rating={Math.round(avg)} size={18} />
           <span className="block font-black text-[9px] uppercase tracking-widest text-white/40 mt-2">
-            {totalReviews} Review{totalReviews !== 1 ? 's' : ''}
+            {totalReviews} Log{totalReviews !== 1 ? 's' : ''}
           </span>
         </div>
       </div>

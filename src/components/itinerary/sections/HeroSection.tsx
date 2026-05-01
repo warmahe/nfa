@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Star, Flame, ArrowRight } from 'lucide-react';
+import { Flame, ArrowRight, MapPin } from 'lucide-react';
 import { Package } from '../../../types/database';
 
 interface HeroSectionProps {
@@ -15,85 +15,91 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ pkg }) => {
   return (
     <section
       id="hero"
-      className="relative w-full h-[100svh] min-h-[600px] max-h-[960px] overflow-hidden bg-[#121212]"
+      className="relative w-full min-h-[100svh] bg-[#FCFBF7] pt-24 pb-12 px-4 md:px-8 lg:px-12 flex items-center justify-center"
       aria-label="Trip hero"
     >
-      {/* Background Image */}
-      <div className="absolute inset-0 z-0">
-        <img
-          src={heroImage}
-          alt={pkg?.title || 'Trip'}
-          className="w-full h-full object-cover object-center scale-105 transition-transform duration-[8s] ease-out will-change-transform"
-          style={{ animation: 'heroZoom 8s ease-out forwards' }}
-        />
-        {/* Multi-layer gradient for depth */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#121212] via-[#121212]/30 to-[#121212]/50" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#121212]/60 via-transparent to-transparent" />
-      </div>
-
-      {/* Limited Seats Badge */}
-      {pkg?.limitedSeats && (
-        <div className="absolute top-32 right-6 md:right-12 z-20 animate-pulse">
-          <div className="bg-[#9E1B1D] text-white px-5 py-2.5 border-2 border-white font-black text-[11px] uppercase tracking-[0.3em] flex items-center gap-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.5)]">
-            <Flame size={14} fill="white" /> Limited Seats
+      {/* Postcard/Poster Frame */}
+      <div className="relative w-full max-w-[1440px] h-[85vh] min-h-[600px] border-4 border-[#121212] bg-[#121212] flex flex-col overflow-hidden shadow-[12px_12px_0px_0px_#F4BF4B]">
+        
+        {/* Top Bar of the Poster */}
+        <div className="h-14 border-b-4 border-[#121212] bg-[#FCFBF7] flex justify-between items-center px-6 z-20 shrink-0">
+          <div className="flex gap-2">
+             <div className="w-3 h-3 rounded-full bg-[#9E1B1D] border-2 border-[#121212]" />
+             <div className="w-3 h-3 rounded-full bg-[#F4BF4B] border-2 border-[#121212]" />
+             <div className="w-3 h-3 rounded-full bg-[#121212] border-2 border-[#121212]" />
+          </div>
+          <div className="font-mono text-[10px] font-bold tracking-[0.2em] uppercase text-[#121212]">
+            NFA / Trip Dossier / 001
           </div>
         </div>
-      )}
 
-      {/* Content */}
-      <div className="relative z-10 h-full flex flex-col justify-end px-6 md:px-16 pb-16 md:pb-20 max-w-[1440px] mx-auto w-full">
+        {/* Image Area */}
+        <div className="relative flex-1 bg-[#121212] overflow-hidden group">
+          <img
+            src={heroImage}
+            alt={pkg?.title || 'Trip'}
+            className="w-full h-full object-cover object-center opacity-90 transition-transform duration-[10s] ease-in-out group-hover:scale-105"
+          />
+          <div className="absolute inset-0 bg-[#9E1B1D] mix-blend-overlay opacity-20 pointer-events-none" />
+          
+          {/* Central Title Plate (Wes Anderson Symmetry) */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-4 md:p-6 text-center z-10 pointer-events-none">
+            <div className="bg-[#FCFBF7] border-4 border-[#121212] p-6 md:p-12 shadow-[8px_8px_0px_0px_#121212] max-w-4xl w-full pointer-events-auto transform transition-transform hover:-translate-y-1">
+              
+              <div className="flex flex-wrap justify-center gap-2 mb-4">
+                {pkg?.destinations?.map((dest, i) => (
+                  <span
+                    key={i}
+                    className="border-2 border-[#121212] text-[#121212] px-3 py-1 font-black text-[10px] uppercase tracking-[0.2em] bg-[#F4BF4B]"
+                  >
+                    <MapPin size={12} className="inline mr-1" />{dest}
+                  </span>
+                ))}
+              </div>
 
-        <div className="flex flex-wrap gap-3 mb-6">
-          {pkg?.destinations?.map((dest, i) => (
-            <span
-              key={i}
-              className="bg-white/10 backdrop-blur-sm text-white border border-white/20 px-4 py-1.5 font-black text-[10px] uppercase tracking-[0.3em]"
-            >
-              📍 {dest}
-            </span>
-          ))}
-        </div>
+              <h1 className="font-brand font-black text-4xl md:text-6xl lg:text-7xl text-[#121212] leading-[0.9] uppercase tracking-tight mb-6">
+                {pkg?.title || 'Untitled Journey'}
+              </h1>
+              
+              <div className="w-24 h-1 bg-[#9E1B1D] mx-auto mb-6 border border-[#121212]" />
+              
+              <p className="font-sans text-[#121212] font-bold text-xs md:text-sm uppercase tracking-widest max-w-2xl mx-auto mb-8">
+                {pkg?.overview || pkg?.description?.substring(0, 120) + '…'}
+              </p>
 
-        {/* Title */}
-        <h1 className="font-brand font-black text-[clamp(3rem,10vw,8rem)] text-white leading-[0.85] uppercase tracking-tighter mb-6 drop-shadow-2xl max-w-5xl">
-          {pkg?.title || 'Untitled Journey'}
-        </h1>
+              {/* Price & CTA row */}
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-6 pt-6 border-t-4 border-[#121212] border-dashed">
+                <div className="text-center sm:text-right">
+                  <span className="block text-[10px] font-black uppercase tracking-widest text-[#121212]/60 mb-1">Investment</span>
+                  <div className="flex items-baseline gap-1 justify-center sm:justify-end">
+                    <span className="font-display font-black text-3xl text-[#9E1B1D] leading-none tracking-tighter">
+                      {price.toLocaleString()}
+                    </span>
+                    <span className="text-[#121212] font-black text-sm">{currency}</span>
+                  </div>
+                </div>
+                
+                <Link
+                  to={`/booking/${pkg?.id}`}
+                  className="bg-[#121212] text-[#FCFBF7] border-2 border-[#121212] px-8 py-4 font-black text-[11px] uppercase tracking-[0.3em] flex items-center gap-3 hover:bg-[#F4BF4B] hover:text-[#121212] transition-colors shadow-[4px_4px_0px_0px_#9E1B1D] active:translate-x-1 active:translate-y-1 active:shadow-none group"
+                >
+                  Embark <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                </Link>
+              </div>
 
-        {/* Subtitle & Price Row */}
-        <div className="flex flex-col sm:flex-row sm:items-end gap-6 sm:gap-10 border-t border-white/20 pt-8">
-          <div className="flex-1">
-            <p className="font-sans text-white/70 text-sm uppercase tracking-widest font-bold max-w-md">
-              {pkg?.overview || pkg?.description?.substring(0, 120) + '…'}
-            </p>
-          </div>
-
-          {/* Price + CTA */}
-          <div className="flex items-center gap-6 shrink-0">
-            <div className="text-right">
-              <span className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1">Starting From</span>
-              <span className="font-display font-black text-4xl md:text-5xl text-[#F4BF4B] leading-none tracking-tighter">
-                {price.toLocaleString()}
-              </span>
-              <span className="text-white/60 font-black text-sm ml-2">{currency}</span>
             </div>
-            <Link
-              to={`/booking/${pkg?.id}`}
-              className="bg-[#F4BF4B] text-[#121212] px-8 py-5 font-black text-[11px] uppercase tracking-[0.3em] flex items-center gap-3 hover:bg-white transition-all shadow-[6px_6px_0px_0px_rgba(244,191,75,0.4)] active:translate-x-1 active:translate-y-1 active:shadow-none border-2 border-[#121212] group"
-            >
-              Book Now <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-            </Link>
           </div>
+          
+          {/* Limited Seats Badge (Stamp style) */}
+          {pkg?.limitedSeats && (
+            <div className="absolute top-8 right-8 z-20 animate-pulse">
+              <div className="bg-[#FCFBF7] text-[#9E1B1D] px-4 py-2 border-4 border-[#9E1B1D] font-black text-[12px] uppercase tracking-[0.2em] flex items-center gap-2 transform rotate-6 shadow-[4px_4px_0px_0px_#9E1B1D]">
+                <Flame size={14} /> Rare
+              </div>
+            </div>
+          )}
         </div>
       </div>
-
-
-
-      <style>{`
-        @keyframes heroZoom {
-          from { transform: scale(1.05); }
-          to { transform: scale(1); }
-        }
-      `}</style>
     </section>
   );
 };

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, MapPin } from 'lucide-react';
 import { getSubcollectionData } from '../../../services/firebaseService';
 import { FAQ, Package } from '../../../types/database';
 
@@ -28,65 +28,81 @@ export const FAQSection: React.FC<FAQSectionProps> = ({ pkg }) => {
   return (
     <section
       id="faqs"
-      className="py-24 px-6 md:px-16 bg-[#121212] overflow-hidden"
-      aria-label="Frequently asked questions"
+      className="py-24 px-6 md:px-16 bg-[#FCFBF7] border-t-4 border-[#121212]"
+      aria-label="Trip Essentials"
     >
-      <div className="max-w-[1440px] mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-16">
+      <div className="max-w-[900px] mx-auto">
+        {/* Simple Header Area */}
+        <div className="text-center mb-16">
+          <span className="inline-flex items-center gap-2 font-black text-[10px] uppercase tracking-[0.4em] text-[#9E1B1D] mb-4">
+            <MapPin size={12} strokeWidth={3} /> Trip Essentials
+          </span>
+          <h2 className="font-brand font-black text-5xl md:text-6xl uppercase tracking-tighter text-[#121212] leading-none">
+            Common Questions.
+          </h2>
+          <p className="mt-6 font-bold text-gray-500 text-xs md:text-sm uppercase tracking-widest max-w-lg mx-auto">
+            Everything you need to know about the logistics, gear, and requirements before we depart.
+          </p>
+        </div>
 
-          {/* Left header */}
-          <div className="lg:col-span-1">
-            <span className="block font-sans font-black text-[10px] uppercase tracking-[0.4em] text-[#F4BF4B] mb-4">
-              Got Questions?
-            </span>
-            <h2 className="font-brand font-black text-5xl md:text-6xl uppercase tracking-tighter text-white leading-[0.85] mb-6">
-              FAQ.
-            </h2>
-            <p className="font-sans font-bold text-white/40 text-xs uppercase tracking-widest leading-relaxed max-w-xs">
-              Still have questions? Drop us a message and our team will get back to you within 24 hours.
-            </p>
-          </div>
-
-          {/* FAQ accordion */}
-          <div className="lg:col-span-2 space-y-0">
-            {faqs.map((faq, i) => (
-              <div key={i} className="border-b border-white/10 last:border-0">
+        {/* Simplified Accordion */}
+        <div className="space-y-4">
+          {faqs.map((faq, i) => {
+            const isOpen = openIndex === i;
+            return (
+              <div 
+                key={i} 
+                className={`border-4 border-[#121212] transition-all duration-300 ${
+                  isOpen ? 'bg-white shadow-[6px_6px_0_0_#F4BF4B]' : 'bg-white hover:border-[#F4BF4B]'
+                }`}
+              >
                 <button
-                  onClick={() => setOpenIndex(openIndex === i ? null : i)}
-                  className="w-full flex items-start gap-4 py-6 text-left group"
-                  aria-expanded={openIndex === i}
-                  id={`faq-btn-${i}`}
-                  aria-controls={`faq-panel-${i}`}
+                  onClick={() => setOpenIndex(isOpen ? null : i)}
+                  className="w-full flex items-center justify-between p-6 md:p-8 text-left group"
+                  aria-expanded={isOpen}
                 >
-                  {/* Number */}
-                  <span className="font-brand font-black text-2xl text-white/20 group-hover:text-[#F4BF4B] transition-colors shrink-0 w-10 text-right leading-none mt-0.5">
-                    {(i + 1).toString().padStart(2, '0')}
-                  </span>
-
-                  <span className="flex-1 font-black text-sm uppercase tracking-tight text-white/80 group-hover:text-white transition-colors leading-tight pt-0.5">
-                    {faq.question}
-                  </span>
-
-                  <div className="shrink-0 mt-0.5 size-6 border border-white/20 flex items-center justify-center group-hover:border-[#F4BF4B] group-hover:text-[#F4BF4B] transition-colors text-white/40">
-                    {openIndex === i ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                  <div className="flex gap-6 items-center">
+                     <span className={`hidden sm:block font-brand font-black text-2xl transition-colors ${
+                       isOpen ? 'text-[#F4BF4B]' : 'text-gray-200'
+                     }`}>
+                      {(i + 1).toString().padStart(2, '0')}
+                    </span>
+                    <span className={`font-black text-sm md:text-lg uppercase tracking-tight leading-tight ${
+                      isOpen ? 'text-[#121212]' : 'text-[#121212]/70'
+                    }`}>
+                      {faq.question}
+                    </span>
+                  </div>
+                  
+                  <div className={`shrink-0 size-10 border-2 border-[#121212] flex items-center justify-center transition-all ${
+                    isOpen ? 'bg-[#121212] text-white shadow-[2px_2px_0_0_#F4BF4B]' : 'bg-white text-[#121212]'
+                  }`}>
+                    {isOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                   </div>
                 </button>
 
-                {openIndex === i && (
-                  <div
-                    id={`faq-panel-${i}`}
-                    role="region"
-                    aria-labelledby={`faq-btn-${i}`}
-                    className="pb-6 pl-14 pr-10 animate-in fade-in slide-in-from-top-2 duration-300"
-                  >
-                    <p className="font-serif italic text-white/60 text-base leading-relaxed">
-                      {faq.answer}
-                    </p>
+                {isOpen && (
+                  <div className="px-6 md:px-20 pb-8 animate-in fade-in slide-in-from-top-4 duration-500">
+                    <div className="pt-4 border-t-2 border-gray-50">
+                      <p className="font-serif italic text-gray-600 text-sm md:text-base leading-relaxed">
+                        {faq.answer}
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
-            ))}
-          </div>
+            );
+          })}
+        </div>
+
+        {/* Bottom Contact Help */}
+        <div className="mt-16 p-8 border-2 border-dashed border-[#121212]/10 text-center">
+           <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+             Still have questions? Our support team is standing by.
+           </p>
+           <button className="mt-4 font-black text-xs uppercase tracking-widest text-[#121212] border-b-2 border-[#F4BF4B] pb-1 hover:text-[#9E1B1D] transition-colors">
+             Contact HQ
+           </button>
         </div>
       </div>
     </section>

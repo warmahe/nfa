@@ -23,21 +23,26 @@ export const RelatedTrips: React.FC<RelatedTripsProps> = ({ pkg }) => {
           filtered = all.filter(p => pkg.relatedTripIds!.includes(p.id) && p.id !== pkg.id);
         }
 
-        // Fallback: latest active packages excluding current
+        // Fallback: random active packages excluding current
         if (filtered.length < 3) {
-          const extras = all.filter(p => p.id !== pkg?.id && p.status === 'active');
-          filtered = [...filtered, ...extras].slice(0, 4);
+          const extras = all.filter(p => p.id !== pkg?.id && p.status === 'active' && !filtered.find(f => f.id === p.id));
+          const shuffled = extras.sort(() => 0.5 - Math.random());
+          filtered = [...filtered, ...shuffled].slice(0, 4);
         }
 
         // If still empty, use static fallback
         if (filtered.length === 0) {
-          filtered = PACKAGES.filter(p => p.id !== pkg?.id).slice(0, 3);
+          const staticFallback = PACKAGES.filter(p => p.id !== pkg?.id);
+          const shuffledStatic = staticFallback.sort(() => 0.5 - Math.random());
+          filtered = shuffledStatic.slice(0, 3);
         }
 
         setRelatedPkgs(filtered.slice(0, 4));
       } catch {
         // Fallback to static
-        setRelatedPkgs(PACKAGES.filter(p => p.id !== pkg?.id).slice(0, 3));
+        const staticFallback = PACKAGES.filter(p => p.id !== pkg?.id);
+        const shuffledStatic = staticFallback.sort(() => 0.5 - Math.random());
+        setRelatedPkgs(shuffledStatic.slice(0, 3));
       } finally {
         setLoading(false);
       }

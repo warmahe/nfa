@@ -1,8 +1,9 @@
+import React from 'react';
 import { Package } from '../../../types/database';
 import * as LucideIcons from 'lucide-react';
 
 const IconRenderer = ({ name, className, size = 18 }: { name: string, className?: string, size?: number }) => {
-  const Icon = (LucideIcons as any)[name] || LucideIcons.Sparkles;
+  const Icon = (LucideIcons as any)[name] || LucideIcons.Crosshair;
   return <Icon className={className} size={size} />;
 };
 
@@ -18,54 +19,54 @@ export const HighlightsSection: React.FC<HighlightsSectionProps> = ({ pkg }) => 
   return (
     <section
       id="highlights"
-      className="py-24 px-6 md:px-16 bg-[#121212] overflow-hidden"
-      aria-label="Trip highlights"
+      className="py-24 px-4 md:px-8 max-w-[1440px] mx-auto bg-[#FCFBF7]"
+      aria-label="Mission Objectives"
     >
-      <div className="max-w-[1440px] mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
+      <div className="border-4 border-[#121212] bg-white p-8 md:p-16 shadow-[12px_12px_0px_0px_#121212] relative overflow-hidden">
+        {/* Background stamp */}
+        <div className="absolute -bottom-20 -right-20 opacity-5 pointer-events-none">
+           <LucideIcons.Target size={400} />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 relative z-10">
 
           {/* Left: Header */}
-          <div className="lg:sticky lg:top-32">
-            <span className="block font-sans font-black text-[10px] uppercase tracking-[0.4em] text-[#F4BF4B] mb-4">
-              Why This Trip
+          <div className="lg:col-span-5 lg:sticky lg:top-32 self-start">
+            <span className="inline-block border-2 border-[#121212] px-4 py-1 font-mono font-black text-[10px] uppercase tracking-[0.3em] text-[#FCFBF7] bg-[#9E1B1D] mb-6 shadow-[4px_4px_0_0_#121212]">
+              Key Intel
             </span>
-            <h2 className="font-brand font-black text-[clamp(3rem,7vw,6rem)] uppercase tracking-tighter text-white leading-[0.85] mb-8">
-              Trip<br />Highlights.
+            <h2 className="font-brand font-black text-5xl md:text-7xl uppercase tracking-tighter text-[#121212] leading-[0.85] mb-8">
+              Mission<br />Objectives
             </h2>
-            <p className="font-sans text-white/50 text-sm leading-relaxed tracking-wide max-w-sm">
-              These aren't just activities. They're the defining moments that make this expedition unlike anything else.
+            <div className="w-24 h-2 bg-[#F4BF4B] mb-8 border-2 border-[#121212]" />
+            <p className="font-mono font-bold text-[#121212]/70 text-xs leading-relaxed tracking-widest max-w-sm uppercase">
+              These are not mere activities. They are the defining operational parameters of this expedition.
             </p>
-
-            {/* Decorative number */}
-            <div className="mt-12 font-brand font-black text-[140px] text-white/5 leading-none select-none">
-              {displayItems.length.toString().padStart(2, '0')}
-            </div>
           </div>
 
           {/* Right: Highlights list */}
-          <div className="space-y-0">
+          <div className="lg:col-span-7 space-y-6">
             {displayItems.map((item, i) => {
-              const icon = typeof item === 'string' ? '✦' : (item.icon || '✦');
               const text = typeof item === 'string' ? item : item.text;
+              const iconName = typeof item === 'string' ? 'Crosshair' : (item.icon || 'Crosshair');
 
               return (
                 <div
                   key={i}
-                  className="group flex items-start gap-6 py-6 border-b border-white/10 hover:border-[#F4BF4B]/50 transition-colors"
-                  style={{ animationDelay: `${i * 80}ms` }}
+                  className="group flex flex-col sm:flex-row items-start gap-4 sm:gap-6 p-6 border-2 border-dashed border-[#121212]/30 hover:border-[#121212] hover:bg-[#F4BF4B] transition-colors relative bg-[#FCFBF7]"
                 >
                   {/* Number */}
-                  <span className="font-brand font-black text-3xl text-white/20 group-hover:text-[#F4BF4B] transition-colors shrink-0 w-10 text-right">
+                  <span className="font-brand font-black text-4xl text-[#121212]/20 group-hover:text-[#121212] transition-colors shrink-0 leading-none">
                     {(i + 1).toString().padStart(2, '0')}
                   </span>
 
                   {/* Icon badge */}
-                  <div className="size-10 bg-[#F4BF4B]/10 border border-[#F4BF4B]/20 flex items-center justify-center shrink-0 group-hover:bg-[#F4BF4B] group-hover:text-[#121212] group-hover:scale-110 transition-all">
-                    <IconRenderer name={typeof item === 'string' ? 'Sparkles' : (item.icon || 'Sparkles')} size={20} />
+                  <div className="size-12 bg-white border-2 border-[#121212] flex items-center justify-center shrink-0 shadow-[4px_4px_0_0_#121212] group-hover:shadow-none group-hover:translate-x-1 group-hover:translate-y-1 transition-all">
+                    <IconRenderer name={iconName} size={20} className="text-[#9E1B1D]" />
                   </div>
 
                   {/* Text */}
-                  <p className="font-sans font-bold text-white/70 text-sm uppercase tracking-wider leading-relaxed group-hover:text-white transition-colors pt-2">
+                  <p className="font-sans font-bold text-[#121212] text-sm uppercase tracking-wide leading-relaxed pt-1">
                     {text}
                   </p>
                 </div>

@@ -37,7 +37,6 @@ export const InclusionsExclusions: React.FC<InclusionsExclusionsProps> = ({ pkg 
   const legacyInclusions = pkg?.inclusions || [];
   const legacyExclusions = pkg?.exclusions || [];
 
-  // Group rich items by category
   const groupedInclusions = inclusionsRich.reduce((acc, item) => {
     const cat = item.category || 'General';
     if (!acc[cat]) acc[cat] = [];
@@ -56,59 +55,65 @@ export const InclusionsExclusions: React.FC<InclusionsExclusionsProps> = ({ pkg 
   if (!hasContent) return null;
 
   return (
-    <section id="inclusions" className="py-24 px-6 md:px-16 bg-white border-y-4 border-[#121212]">
-      <div className="max-w-[1440px] mx-auto">
+    <section id="inclusions" className="py-24 px-4 md:px-8 max-w-[1440px] mx-auto bg-[#FCFBF7]">
+      <div className="border-4 border-[#121212] bg-[#FCFBF7] shadow-[12px_12px_0_0_#121212] p-8 md:p-12 relative overflow-hidden">
+        
+        {/* Background stamp */}
+        <div className="absolute top-10 right-10 opacity-5 pointer-events-none rotate-12">
+          <Shield size={200} />
+        </div>
+
         {/* Header */}
-        <div className="mb-12">
-          <span className="block font-sans font-black text-[10px] uppercase tracking-[0.4em] text-[#9E1B1D] mb-3">
-            Mission Briefing
+        <div className="mb-12 relative z-10">
+          <span className="inline-block border-2 border-[#121212] px-4 py-1 font-mono font-black text-[10px] uppercase tracking-[0.3em] text-[#121212] bg-[#F4BF4B] mb-6 shadow-[4px_4px_0_0_#121212]">
+            What's Covered / What's Not
           </span>
-          <h2 className="font-brand font-black text-[clamp(3rem,7vw,5rem)] uppercase tracking-tighter text-[#121212] leading-[0.85]">
-            Assets & <br />Liabilities.
+          <h2 className="font-brand font-black text-5xl md:text-7xl uppercase tracking-tighter text-[#121212] leading-[0.85]">
+            Provisions & <br />Omissions
           </h2>
         </div>
 
-        {/* Tab bar */}
-        <div className="flex flex-col sm:flex-row border-4 border-[#121212] mb-12 w-full sm:w-fit">
+        {/* Tab bar (Clipboard style) */}
+        <div className="flex flex-col sm:flex-row border-4 border-[#121212] mb-12 w-full sm:w-fit relative z-10 bg-white shadow-[6px_6px_0_0_#121212]">
           <button
             onClick={() => setActiveTab('inclusions')}
-            className={`px-12 py-5 font-black text-[11px] uppercase tracking-[0.3em] transition-all border-b-4 sm:border-b-0 sm:border-r-4 border-[#121212] ${
+            className={`px-8 md:px-12 py-5 font-brand font-black text-sm md:text-lg uppercase tracking-wide transition-all sm:border-r-4 border-[#121212] ${
               activeTab === 'inclusions'
                 ? 'bg-[#121212] text-[#F4BF4B]'
                 : 'bg-white text-[#121212] hover:bg-[#FCFBF7]'
             }`}
           >
-            Tactical Inclusions ({inclusionsRich.length || legacyInclusions.length})
+            Tactical Provisions ({inclusionsRich.length || legacyInclusions.length})
           </button>
           <button
             onClick={() => setActiveTab('exclusions')}
-            className={`px-12 py-5 font-black text-[11px] uppercase tracking-[0.3em] transition-all ${
+            className={`px-8 md:px-12 py-5 font-brand font-black text-sm md:text-lg uppercase tracking-wide transition-all border-t-4 sm:border-t-0 border-[#121212] ${
               activeTab === 'exclusions'
-                ? 'bg-[#9E1B1D] text-white'
+                ? 'bg-[#9E1B1D] text-[#FCFBF7]'
                 : 'bg-white text-[#121212] hover:bg-[#FCFBF7]'
             }`}
           >
-            Operational Exclusions ({exclusionsRich.length || legacyExclusions.length})
+            Operational Omissions ({exclusionsRich.length || legacyExclusions.length})
           </button>
         </div>
 
         {/* Content panel */}
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 relative z-10">
           {activeTab === 'inclusions' ? (
             inclusionsRich.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {Object.entries(groupedInclusions).map(([category, items], ci) => (
                   <div key={ci} className="space-y-4">
-                    <h4 className="font-brand font-black text-xl uppercase tracking-tighter text-[#121212] flex items-center gap-3">
-                      <div className="w-8 h-1 bg-green-500" /> {category}
+                    <h4 className="font-brand font-black text-2xl uppercase tracking-tighter text-[#121212] flex items-center gap-3 border-b-4 border-[#121212] pb-2">
+                      <div className="size-4 bg-[#F4BF4B] border-2 border-[#121212]" /> {category}
                     </h4>
                     <div className="space-y-3">
                       {items.map((item, i) => (
-                        <div key={i} className="flex items-center gap-4 p-4 border-2 border-gray-100 hover:border-green-500/30 transition-colors bg-gray-50/30 group">
-                          <div className="size-10 rounded-full bg-white border-2 border-gray-100 flex items-center justify-center text-green-600 group-hover:scale-110 transition-transform">
+                        <div key={i} className="flex items-center gap-4 p-4 border-2 border-dashed border-[#121212]/30 hover:border-[#121212] hover:bg-[#F4BF4B] transition-colors bg-white group">
+                          <div className="size-10 bg-white border-2 border-[#121212] flex items-center justify-center text-[#121212] group-hover:scale-110 transition-transform">
                             <IconRenderer name={item.icon} />
                           </div>
-                          <span className="font-bold text-xs uppercase tracking-wide text-gray-700">{item.text}</span>
+                          <span className="font-bold text-xs uppercase tracking-wide text-[#121212]">{item.text}</span>
                         </div>
                       ))}
                     </div>
@@ -119,9 +124,11 @@ export const InclusionsExclusions: React.FC<InclusionsExclusionsProps> = ({ pkg 
               /* Fallback to legacy inclusions */
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {legacyInclusions.map((item, i) => (
-                  <div key={i} className="flex items-start gap-4 p-6 border-2 border-[#121212] bg-[#FCFBF7]">
-                    <Check size={18} className="text-green-600 shrink-0 mt-1" />
-                    <span className="font-bold text-sm uppercase tracking-wide">{item}</span>
+                  <div key={i} className="flex items-start gap-4 p-6 border-4 border-[#121212] bg-[#F4BF4B]/10 hover:bg-[#F4BF4B] transition-colors">
+                    <div className="bg-[#121212] text-[#F4BF4B] p-1 shrink-0 mt-1">
+                       <Check size={16} strokeWidth={4} />
+                    </div>
+                    <span className="font-bold text-sm uppercase tracking-wide text-[#121212]">{item}</span>
                   </div>
                 ))}
               </div>
@@ -131,16 +138,16 @@ export const InclusionsExclusions: React.FC<InclusionsExclusionsProps> = ({ pkg 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {Object.entries(groupedExclusions).map(([category, items], ci) => (
                   <div key={ci} className="space-y-4">
-                    <h4 className="font-brand font-black text-xl uppercase tracking-tighter text-[#121212] flex items-center gap-3">
-                      <div className="w-8 h-1 bg-red-500" /> {category}
+                    <h4 className="font-brand font-black text-2xl uppercase tracking-tighter text-[#121212] flex items-center gap-3 border-b-4 border-[#121212] pb-2">
+                      <div className="size-4 bg-[#9E1B1D] border-2 border-[#121212]" /> {category}
                     </h4>
                     <div className="space-y-3">
                       {items.map((item, i) => (
-                        <div key={i} className="flex items-center gap-4 p-4 border-2 border-gray-100 hover:border-red-500/30 transition-colors bg-gray-50/30 group">
-                          <div className="size-10 rounded-full bg-white border-2 border-gray-100 flex items-center justify-center text-red-500 group-hover:scale-110 transition-transform">
+                        <div key={i} className="flex items-center gap-4 p-4 border-2 border-dashed border-[#121212]/30 hover:border-[#121212] hover:bg-[#9E1B1D]/10 transition-colors bg-white group">
+                          <div className="size-10 bg-white border-2 border-[#121212] flex items-center justify-center text-[#9E1B1D] group-hover:scale-110 transition-transform">
                             <IconRenderer name={item.icon} />
                           </div>
-                          <span className="font-bold text-xs uppercase tracking-wide text-gray-700">{item.text}</span>
+                          <span className="font-bold text-xs uppercase tracking-wide text-[#121212]">{item.text}</span>
                         </div>
                       ))}
                     </div>
@@ -151,9 +158,11 @@ export const InclusionsExclusions: React.FC<InclusionsExclusionsProps> = ({ pkg 
               /* Fallback to legacy exclusions */
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {legacyExclusions.map((item, i) => (
-                  <div key={i} className="flex items-start gap-4 p-6 border-2 border-red-200 bg-red-50/30">
-                    <X size={18} className="text-red-500 shrink-0 mt-1" />
-                    <span className="font-bold text-sm uppercase tracking-wide text-gray-500">{item}</span>
+                  <div key={i} className="flex items-start gap-4 p-6 border-4 border-[#121212] bg-[#9E1B1D]/5 hover:bg-[#9E1B1D]/10 transition-colors">
+                    <div className="bg-[#9E1B1D] text-white p-1 shrink-0 mt-1">
+                       <X size={16} strokeWidth={4} />
+                    </div>
+                    <span className="font-bold text-sm uppercase tracking-wide text-[#121212]/70">{item}</span>
                   </div>
                 ))}
               </div>

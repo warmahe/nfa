@@ -147,45 +147,45 @@ export const ItineraryDetail = () => {
         </div>
       )}
 
-      {/* ── 1. HERO ── */}
+      {/* ── 1. HERO (The Hook) ── */}
       <HeroSection pkg={pkg} />
 
-      {/* ── 2. QUICK INFO BAR ── */}
+      {/* ── 2. QUICK INFO BAR (The Basics) ── */}
       <QuickInfoBar pkg={pkg} />
 
-      {/* ── 3. ABOUT TRIP ── */}
+      {/* ── 3. ABOUT TRIP (The Pitch) ── */}
       <AboutTrip pkg={pkg} />
 
-      {/* ── 4. HIGHLIGHTS ── */}
+      {/* ── 4. HIGHLIGHTS (The Dream) ── */}
       <HighlightsSection pkg={pkg} />
 
-      {/* ── 5. GALLERY ── */}
-      <GallerySection pkg={pkg} />
-
-      {/* ── 6. ITINERARY (critical) ── */}
+      {/* ── 5. ITINERARY (The Journey) ── */}
       <ItineraryCities pkg={pkg} />
 
-      {/* Joining Points (existing subcollection display) */}
-      <div className="px-6 md:px-16 max-w-[1440px] mx-auto pb-12">
+      {/* ── 6. GALLERY (Visual Proof) ── */}
+      <GallerySection pkg={pkg} />
+
+      {/* ── 7. INCLUSIONS / EXCLUSIONS (The Specifics) ── */}
+      <InclusionsExclusions pkg={pkg} />
+
+      {/* ── 8. JOINING POINTS (Logistics) ── */}
+      <div className="px-4 md:px-8 max-w-[1440px] mx-auto pb-12">
         <JoiningPointsDisplay packageId={pkg.id} packageTitle={pkg.title} isEditing={isEditing} />
       </div>
 
-      {/* ── 7. INCLUSIONS / EXCLUSIONS ── */}
-      <InclusionsExclusions pkg={pkg} />
-
-      {/* ── 8. DOWNLOAD CTA ── */}
-      <DownloadCTA pkg={pkg} />
-
-      {/* ── 9. DATES & PRICING ── */}
+      {/* ── 9. DATES & PRICING (The Investment) ── */}
       <PricingDates pkg={pkg} />
 
-      {/* ── 10. REVIEWS ── */}
+      {/* ── 10. DOWNLOAD CTA (The Takeaway) ── */}
+      <DownloadCTA pkg={pkg} />
+
+      {/* ── 11. REVIEWS (Social Proof) ── */}
       <ReviewsSection pkg={pkg} />
 
-      {/* ── 11. FAQs ── */}
+      {/* ── 12. FAQs (Objections) ── */}
       <FAQSection pkg={pkg} />
 
-      {/* ── 12. RELATED TRIPS ── */}
+      {/* ── 13. RELATED TRIPS (Alternatives) ── */}
       <RelatedTrips pkg={pkg} />
 
       {/* ── MOBILE STICKY CTA ── */}
