@@ -1,0 +1,157 @@
+// Firestore Security Rules
+// 
+// HOW TO DEPLOY THESE RULES:
+// 1. Go to Firebase Console → Your Project
+// 2. Navigate to Firestore Database
+// 3. Click on "Rules" tab
+// 4. Replace the default rules with the content below
+// 5. Click "Publish"
+//
+// IMPORTANT: Set your service account email address in custom claims as admin
+// Instructions: https://firebase.google.com/docs/firestore/security/rules-query
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ========================================================================
+    // PACKAGES COLLECTION
+    // ========================================================================
+    // Public: Anyone can read packages
+    // Write: Only admins can create/update/delete
+    match /packages/{packageId} {
+      allow read: if true;
+      allow create, update, delete: if request.auth != null && isAdmin();
+      
+      // Subcollection: Joining Points
+      match /joiningPoints/{pointId} {
+        allow read: if true;
+        allow create, update, delete: if request.auth != null && isAdmin();
+      }
+      
+      // Subcollection: Activities
+      match /activities/{activityId} {
+        allow read: if true;
+        allow create, update, delete: if request.auth != null && isAdmin();
+      }
+      
+      // Subcollection: FAQs
+      match /faqs/{faqId} {
+        allow read: if true;
+        allow create, update, delete: if request.auth != null && isAdmin();
+      }
+      
+      // Subcollection: Reviews
+      match /reviews/{reviewId} {
+        // Users can read all reviews or edit their own
+        allow read: if resource.data.approved == true || 
+                      (request.auth != null && request.auth.uid == resource.data.userId);
+        // Users can create reviews if authenticated
+        allow create: if request.auth != null;
+        // Users can only update/delete their own reviews, or admins can edit any
+        allow update, delete: if request.auth != null && 
+                               (request.auth.uid == resource.data.userId || isAdmin());
+      }
+    }
+    
+    // ========================================================================
+    // BOOKINGS COLLECTION
+    // ========================================================================
+    // Users can read their own bookings, admins can read all
+    // Users can create, admins can update/delete
+    match /bookings/{bookingId} {
+      allow read: if request.auth != null && 
+                     (request.auth.uid == resource.data.userId || isAdmin());
+      allow create: if request.auth != null && 
+                      request.auth.uid == request.resource.data.userId;
+      allow update: if request.auth != null && 
+                      (request.auth.uid == resource.data.userId || isAdmin());
+      allow delete: if request.auth != null && isAdmin();
+    }
+    
+    // ========================================================================
+    // USERS COLLECTION
+    // ========================================================================
+    // Users can read their own profile, admins can read all
+    // Users can create their own account, update their own profile
+    // Admins can update any user, delete is admin only
+    match /users/{userId} {
+      allow read: if request.auth != null && 
+                     (request.auth.uid == userId || isAdmin());
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && 
+                      (request.auth.uid == userId || isAdmin());
+      allow delete: if request.auth != null && isAdmin();
+    }
+    
+    // ========================================================================
+    // DESTINATIONS COLLECTION
+    // ========================================================================
+    // Public: Anyone can read
+    // Write: Only admins
+    match /destinations/{destinationId} {
+      allow read: if true;
+      allow create, update, delete: if request.auth != null && isAdmin();
+    }
+    
+    // ========================================================================
+    // BLOGS COLLECTION
+    // ========================================================================
+    // Public: Anyone can read published posts
+    // Write: Only admins
+    match /blogs/{blogId} {
+      allow read: if resource.data.status == "published" || 
+                     (request.auth != null && isAdmin());
+      allow create, update, delete: if request.auth != null && isAdmin();
+    }
+    
+    // ========================================================================
+    // CUSTOM HELPER FUNCTIONS
+    // ========================================================================
+    
+    // Check if user is an admin
+    // For this to work, you need to set custom claims on the user's Firebase token
+    // See: https://firebase.google.com/docs/auth/admin/custom-claims
+    function isAdmin() {
+      return request.auth.token.admin == true;
+    }
+    
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Check if user is the document owner
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Check if user can modify bookings (owner or admin)
+    function canModifyBooking() {
+      return request.auth != null && 
+             (request.auth.uid == resource.data.userId || isAdmin());
+    }
+  }
+}
+
+// ============================================================================
+// HOW TO SET ADMIN CLAIMS
+// ============================================================================
+// 
+// Run this using Firebase Admin SDK (backend):
+// 
+// const admin = require('firebase-admin');
+// admin.initializeApp();
+// 
+// async function setAdminClaim(uid) {
+//   await admin.auth().setCustomUserClaims(uid, { admin: true });
+//   console.log(`Admin claim set for user: ${uid}`);
+// }
+// 
+// // Call like this:
+// setAdminClaim('user-id-here');
+//
+// Or use the Firebase CLI:
+// firebase auth:import --hash-algo=scrypt users.json
+//
+// ============================================================================
