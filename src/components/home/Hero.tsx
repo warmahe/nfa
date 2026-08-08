@@ -4,11 +4,9 @@ import { ArrowRight, Zap } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface HeroProps {
-  customImage?: string;
 }
 
-export const Hero: React.FC<HeroProps> = ({ customImage }) => {
-  const defaultImage = "https://static.wixstatic.com/media/bac227_5e350ad8886048cd8be917eab76f0555~mv2.jpg/v1/fill/w_1351,h_542,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/bac227_5e350ad8886048cd8be917eab76f0555~mv2.jpg";
+export const Hero: React.FC<HeroProps> = () => {
 
   return (
     <section
@@ -42,7 +40,7 @@ export const Hero: React.FC<HeroProps> = ({ customImage }) => {
       >
         {/* LEFT */}
         <div className="min-w-0 self-center">
-          
+
 
           <div className="min-w-0">
             <motion.h1
@@ -181,7 +179,7 @@ export const Hero: React.FC<HeroProps> = ({ customImage }) => {
 
             <div className="absolute inset-0 border-[3px] border-nfa-charcoal bg-nfa-charcoal p-2 md:p-3 shadow-[8px_8px_0px_0px_#121212]">
               <img
-                src={customImage || defaultImage}
+                src='https://firebasestorage.googleapis.com/v0/b/no-fixed-address-8482.firebasestorage.app/o/homepage%2F1786180197679_giphy.jpg?alt=media&token=9adbb1c5-d10c-4fe8-9615-91fd102285ba'
                 alt="Hero"
                 className="h-full w-full object-cover object-center transition-all duration-700 hover:grayscale-0"
               />

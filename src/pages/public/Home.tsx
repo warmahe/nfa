@@ -11,7 +11,7 @@ import { STATIC_HOMEPAGE_DATA } from '../../utils/staticHomeData';
 export const Home = () => {
   return (
     <div className="w-full overflow-hidden">
-      <Hero customImage={STATIC_HOMEPAGE_DATA.heroImage} />
+      <Hero />
       <AboutBrand />
       <ExpeditionGrid customItems={STATIC_HOMEPAGE_DATA.dropZones} />
       <FieldArchive customItems={STATIC_HOMEPAGE_DATA.archive} />
