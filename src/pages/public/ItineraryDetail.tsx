@@ -226,10 +226,10 @@ export const ItineraryDetail = () => {
             </span>
           </div>
           <Link
-            to={`/booking/${pkg.id}`}
+            to={`/contact?trip=${encodeURIComponent(pkg.title)}`}
             className="bg-[#F4BF4B] text-[#121212] px-8 py-3 font-black text-xs uppercase tracking-widest flex items-center gap-2 active:scale-95 transition-transform"
           >
-            Book Now <ArrowRight size={16} />
+            Inquire Now <ArrowRight size={16} />
           </Link>
         </div>
       )}

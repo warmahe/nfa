@@ -20,7 +20,6 @@ import { Terms } from "./pages/public/Terms";
 import { Login } from "./pages/system/Login";
 
 // USER & SYSTEM
-import { Booking } from "./pages/user/Booking";
 import { Dashboard } from "./pages/user/Dashboard";
 import { Wishlist } from "./pages/user/Wishlist";
 import { PriceAlerts } from "./pages/user/PriceAlerts";
@@ -56,9 +55,6 @@ export default function App() {
 
           {/* Authentication */}
           <Route path="login" element={<Login />} />
-
-          {/* User Secure Area */}
-          <Route path="booking/:id" element={<Booking />} />
 
           {/* Fallback - 404 */}
           <Route path="*" element={<Navigate to="/" replace />} />

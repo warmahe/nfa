@@ -83,10 +83,10 @@ export const PricingDates: React.FC<PricingDatesProps> = ({ pkg }) => {
 
                   {!isSoldOut && (
                     <Link
-                      to={`/booking/${pkg?.id}`}
+                      to={`/contact?trip=${encodeURIComponent(pkg?.title || '')}&date=${encodeURIComponent(d.date_range)}`}
                       className="bg-[#121212] text-[#F4BF4B] px-5 py-3 font-black text-[9px] uppercase tracking-[0.2em] flex items-center gap-2 hover:bg-[#9E1B1D] transition-colors border-2 border-[#121212] group"
                     >
-                      {isComingSoon ? 'Notify Me' : 'Book Now'}
+                      {isComingSoon ? 'Get Notified' : 'Request Slot'}
                       <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
                     </Link>
                   )}

@@ -77,10 +77,10 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ pkg }) => {
               <span className="text-white/60 font-black text-sm ml-2">{currency}</span>
             </div>
             <Link
-              to={`/booking/${pkg?.id}`}
+              to={`/contact?trip=${encodeURIComponent(pkg?.title || '')}`}
               className="bg-[#F4BF4B] text-[#121212] px-8 py-5 font-black text-[11px] uppercase tracking-[0.3em] flex items-center gap-3 hover:bg-white transition-all shadow-[6px_6px_0px_0px_rgba(244,191,75,0.4)] active:translate-x-1 active:translate-y-1 active:shadow-none border-2 border-[#121212] group"
             >
-              Book Now <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+              Inquire Now <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
             </Link>
           </div>
         </div>

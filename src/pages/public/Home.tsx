@@ -5,28 +5,17 @@ import { TheJourney } from '../../components/home/TheJourney';
 import { Voices } from '../../components/home/Voices';
 import { OracleCTA } from '../../components/home/OracleCTA';
 import { FieldArchive } from '../../components/home/FieldArchive';
-import { useHomepageContent } from '../../hooks/useHomepageContent';
-import { AboutBrand } from '@/src/components/home/AboutBrand';
-import { NewsletterSignup } from '../../components/home/NewsletterSignup';
+import { AboutBrand } from '../../components/home/AboutBrand';
+import { STATIC_HOMEPAGE_DATA } from '../../utils/staticHomeData';
 
 export const Home = () => {
-  const { data, loading } = useHomepageContent();
-
-  if (loading) return <div className="min-h-screen bg-[#FCFBF7]" />;
-
   return (
     <div className="w-full overflow-hidden">
-      {/* Hero gets the image from DB */}
-      <Hero customImage={data?.heroImage} />
+      <Hero customImage={STATIC_HOMEPAGE_DATA.heroImage} />
       <AboutBrand />
-      {/* Grid gets the selected packages from DB */}
-      <ExpeditionGrid customItems={data?.dropZones} />
-      
-      {/* Archive gets the selected destinations from DB */}
-      <FieldArchive customItems={data?.archive} />
-      
-      <Voices customReviews={data?.voices} />
-      <NewsletterSignup />
+      <ExpeditionGrid customItems={STATIC_HOMEPAGE_DATA.dropZones} />
+      <FieldArchive customItems={STATIC_HOMEPAGE_DATA.archive} />
+      <Voices customReviews={STATIC_HOMEPAGE_DATA.voices} />
       <TheJourney />
       <OracleCTA />
     </div>
