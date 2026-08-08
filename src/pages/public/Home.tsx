@@ -1,11 +1,11 @@
 import React from 'react';
 import { Hero } from '../../components/home/Hero';
-import { ExpeditionGrid } from '../../components/home/ExpeditionGrid';
-import { TheJourney } from '../../components/home/TheJourney';
-import { Voices } from '../../components/home/Voices';
-import { OracleCTA } from '../../components/home/OracleCTA';
-import { FieldArchive } from '../../components/home/FieldArchive';
+import { BannerBlank } from '../../components/home/BannerBlank';
 import { AboutBrand } from '../../components/home/AboutBrand';
+import { ExpeditionGrid } from '../../components/home/ExpeditionGrid';
+import { StoriesFromRoad } from '../../components/home/StoriesFromRoad';
+import { WhyNFA } from '../../components/home/WhyNFA';
+import { NewsletterSignup } from '../../components/home/NewsletterSignup';
 import { useHomepageContent } from '../../hooks/useHomepageContent';
 import { STATIC_HOMEPAGE_DATA } from '../../utils/staticHomeData';
 
@@ -13,19 +13,32 @@ export const Home = () => {
   const { data } = useHomepageContent();
 
   const heroImage = data?.heroImage || STATIC_HOMEPAGE_DATA.heroImage;
-  const dropZones = data?.dropZones?.length ? data.dropZones : STATIC_HOMEPAGE_DATA.dropZones;
-  const archive = data?.archive?.length ? data.archive : STATIC_HOMEPAGE_DATA.archive;
-  const voices = data?.voices?.length ? data.voices : STATIC_HOMEPAGE_DATA.voices;
+  const dropZones = (data?.dropZones && data.dropZones.length > 0)
+    ? data.dropZones
+    : STATIC_HOMEPAGE_DATA.dropZones;
 
   return (
     <div className="w-full overflow-hidden">
+      {/* Banner 1 */}
       <Hero customImage={heroImage} />
+
+      {/* Banner 2 */}
+      <BannerBlank />
+
+      {/* Banner 3 */}
       <AboutBrand />
+
+      {/* Banner 4 */}
       <ExpeditionGrid customItems={dropZones} />
-      <FieldArchive customItems={archive} />
-      <Voices customReviews={voices} />
-      <TheJourney />
-      <OracleCTA />
+
+      {/* Banner 5 (3D Flip Cards & Stories) */}
+      <StoriesFromRoad />
+
+      {/* Banner 6 */}
+      <WhyNFA />
+
+      {/* Banner 7 */}
+      <NewsletterSignup />
     </div>
   );
 };

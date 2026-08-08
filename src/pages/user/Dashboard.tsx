@@ -6,7 +6,6 @@ import { db } from "../../services/firebaseService";
 import { Booking } from "../../types/database";
 import { Link } from "react-router-dom";
 import { motion } from "motion/react";
-import { generateBookingPDF, BookingInvoice } from "../../services/pdfService";
 
 const TABS = ["Overview", "My Bookings", "My Documents", "Settings"];
 
@@ -38,32 +37,7 @@ export const Dashboard = () => {
   const completedBookings = bookings.filter(b => b.bookingStatus === 'completed');
   const totalSpent = bookings.reduce((acc, b) => acc + (b.pricing?.total || 0), 0);
 
-  const handleDownloadInvoice = async (booking: Booking) => {
-    setDownloadingId(booking.id);
-    try {
-      const invoice: BookingInvoice = {
-        bookingId: booking.id,
-        packageTitle: booking.packageId || 'NFA Expedition',
-        destination: (booking as any).destinations?.[0] || 'Global',
-        travelDate: booking.checkinDate ? new Date((booking.checkinDate as any).toDate?.() || booking.checkinDate).toLocaleDateString('en-IN') : 'TBD',
-        travelers: `${booking.primaryTraveler?.firstName} ${booking.primaryTraveler?.lastName}`,
-        travelersCount: booking.numberOfTravelers || 1,
-        basePrice: `₹${(booking.pricing?.basePricePerPerson || 0).toLocaleString()}`,
-        insurance: booking.pricing?.insurance || false,
-        insurancePrice: booking.pricing?.insuranceCost ? `₹${booking.pricing.insuranceCost.toLocaleString()}` : undefined,
-        serviceFee: `₹${(booking.pricing?.serviceFee || 0).toLocaleString()}`,
-        totalPrice: `₹${(booking.pricing?.total || 0).toLocaleString()}`,
-        leadTravelerEmail: booking.primaryTraveler?.email || '',
-        leadTravelerPhone: booking.primaryTraveler?.phone,
-        bookingDate: booking.createdAt ? new Date((booking.createdAt as any).toDate?.() || booking.createdAt).toLocaleDateString('en-IN') : new Date().toLocaleDateString('en-IN'),
-      };
-      await generateBookingPDF(invoice, `NFA-Invoice-${booking.id}.pdf`);
-    } catch (err) {
-      console.error("PDF generation failed", err);
-    } finally {
-      setDownloadingId(null);
-    }
-  };
+
 
   return (
     <div className="min-h-screen bg-[#FCFBF7] pt-24 pb-24 px-[clamp(1rem,4vw,3rem)] nfa-texture selection:bg-nfa-gold">
@@ -83,9 +57,8 @@ export const Dashboard = () => {
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-6 py-3 font-black text-[10px] uppercase tracking-[0.2em] border-2 transition-all ${
-                  activeTab === tab ? "bg-[#121212] text-[#F4BF4B] border-[#121212]" : "bg-white border-[#121212] hover:bg-[#F4BF4B]"
-                }`}
+                className={`px-6 py-3 font-black text-[10px] uppercase tracking-[0.2em] border-2 transition-all ${activeTab === tab ? "bg-[#121212] text-[#F4BF4B] border-[#121212]" : "bg-white border-[#121212] hover:bg-[#F4BF4B]"
+                  }`}
               >
                 {tab}
               </button>
