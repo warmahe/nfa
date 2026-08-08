@@ -6,7 +6,6 @@ import {
   Clock, Target, CreditCard, ChevronDown, Heart, Tag, Loader2, Star
 } from "lucide-react";
 import { useDestinations } from "../../hooks/useDestinations";
-import { DestinationMap } from "../../components/destinations/DestinationMap";
 import { addToWishlist, removeFromWishlist, isInWishlist } from "../../services/wishlistService";
 
 const SORT_OPTIONS = [
@@ -117,21 +116,13 @@ export const Packages = () => {
               <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
 
-            {/* View Toggle */}
             <div className="flex border-2 border-[#121212]">
               <button
                 onClick={() => setViewMode("grid")}
-                className={`p-3 transition-colors ${viewMode === "grid" ? "bg-[#121212] text-[#F4BF4B]" : "bg-white hover:bg-gray-100"}`}
+                className="p-3 bg-[#121212] text-[#F4BF4B]"
                 title="Grid View"
               >
                 <Grid size={16} />
-              </button>
-              <button
-                onClick={() => setViewMode("map")}
-                className={`p-3 border-l-2 border-[#121212] transition-colors ${viewMode === "map" ? "bg-[#121212] text-[#F4BF4B]" : "bg-white hover:bg-gray-100"}`}
-                title="Map View"
-              >
-                <MapIcon size={16} />
               </button>
             </div>
 
@@ -198,10 +189,6 @@ export const Packages = () => {
       {loading ? (
         <div className="flex items-center justify-center py-32">
           <Loader2 className="animate-spin text-[#9E1B1D]" size={40} />
-        </div>
-      ) : viewMode === "map" ? (
-        <div className="max-w-[1440px] mx-auto px-6">
-          <DestinationMap packages={filtered} />
         </div>
       ) : (
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">

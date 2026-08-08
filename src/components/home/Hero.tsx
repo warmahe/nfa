@@ -4,9 +4,10 @@ import { ArrowRight, Zap } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface HeroProps {
+  customImage?: string;
 }
 
-export const Hero: React.FC<HeroProps> = () => {
+export const Hero: React.FC<HeroProps> = ({ customImage }) => {
 
   return (
     <section
@@ -179,7 +180,7 @@ export const Hero: React.FC<HeroProps> = () => {
 
             <div className="absolute inset-0 border-[3px] border-nfa-charcoal bg-nfa-charcoal p-2 md:p-3 shadow-[8px_8px_0px_0px_#121212]">
               <img
-                src='https://firebasestorage.googleapis.com/v0/b/no-fixed-address-8482.firebasestorage.app/o/homepage%2F1786180197679_giphy.jpg?alt=media&token=9adbb1c5-d10c-4fe8-9615-91fd102285ba'
+                src={customImage || 'https://firebasestorage.googleapis.com/v0/b/no-fixed-address-8482.firebasestorage.app/o/homepage%2F1786180197679_giphy.jpg?alt=media&token=9adbb1c5-d10c-4fe8-9615-91fd102285ba'}
                 alt="Hero"
                 className="h-full w-full object-cover object-center transition-all duration-700 hover:grayscale-0"
               />

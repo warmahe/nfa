@@ -84,31 +84,14 @@ export interface FAQ extends BaseDocument {
 }
 
 export interface Review extends BaseDocument {
-  // Review content
-  rating: number; // 1-5 stars
-  title: string; // "Amazing experience!"
-  content: string; // Review text
-
-  // Author
+  rating: number;
+  title?: string;
+  content: string;
   travelerName: string;
-  email?: string; // Private, for follow-ups
-  isAnonymous: boolean;
-  role?: string; // e.g. "Photographer"
-  avatar?: string; // Profile image URL
-
-  // Verification
-  verifiedPurchase: boolean;
-  bookingId?: string; // Reference to booking if verified
-
-  // Engagement
-  helpfulCount: number;
-  unhelpfulCount: number;
-
-  // Admin
-  approved: boolean; // false = pending
-  featured: boolean; // Highlight review
-
-  userId?: string; // User who wrote the review
+  role?: string;
+  avatar?: string;
+  approved: boolean;
+  featured?: boolean;
 }
 
 export interface PricingTier {
@@ -126,17 +109,15 @@ export interface GroupPricingTier {
 }
 
 export interface PackagePricing {
-  basePrice: number; // 1500
-  currency: string; // "INR"
-  discount?: number; // Percentage discount (0-100)
-  seasonalPricing: PricingTier[];
-  groupPricing: GroupPricingTier[];
+  basePrice: number;
+  currency: string;
+  discount?: number;
 }
 
 export interface PackageMedia {
-  thumbnail: string; // URL
-  gallery: string[]; // Array of URLs
-  videos: string[]; // YouTube URLs
+  thumbnail: string;
+  gallery: string[];
+  videos?: string[];
 }
 
 export interface PackageRating {
@@ -197,96 +178,37 @@ export interface TripPricingDate {
 export interface QuickInfoItem {
   label: string;
   value: string;
-  icon: string; // Lucide icon name
+  icon: string;
+}
+
+export interface HomepageSettings {
+  heroImage: string;
+  featuredDropZones: string[];
+  featuredArchive: string[];
+  featuredReviewIds: string[];
+  updatedAt?: Timestamp;
 }
 
 export interface Package extends BaseDocument {
-  // Identification
-  title: string; // "Iceland Adventure"
-  slug: string; // "iceland-adventure"
-
-  // Content
-  overview: string; // Short summary
-  description: string; // Long description (rich text HTML)
-  aboutImage?: string; // URL for about section left-side image
-  aboutTitle?: string;    // New: Custom title for about section
-  aboutQuestion?: string; // New: "Why This Trip" or similar question text
-
-  // Classification
-  destinations: string[]; // Array of destination IDs / location names
+  title: string;
+  slug: string;
+  overview: string;
+  description: string;
+  aboutImage?: string;
+  aboutTitle?: string;
+  aboutQuestion?: string;
+  destinations: string[];
   difficulty: 'Easy' | 'Moderate' | 'Challenging' | 'Expert';
-  duration: string; // "5 Days / 4 Nights"
-  departureDate?: string; // "2024-06-15" (ISO date format)
-  maxTravelers: number; // 12
+  duration: string;
   status: 'draft' | 'active' | 'archived';
-
-  // Quick Info fields (dynamic slots)
-  tripStyle?: string;       // Legacy
-  accommodation?: string;   // Legacy
-  guideType?: string;       // Legacy
-  quickInfo?: QuickInfoItem[]; // New: Dynamic array of 6 slots
-  limitedSeats?: boolean;   // Show "Limited Seats" badge on hero
-
-  // Rich content (new)
-  highlights?: TripHighlight[];         // Bullet highlights list
-  itineraryDays?: ItineraryDay[];       // Flat day list (legacy / fallback)
-  itineraryCities?: ItineraryCity[];    // City-grouped itinerary (new)
-  inclusions?: string[];                // What's included (legacy)
-  exclusions?: string[];                // What's NOT included (legacy)
-  inclusionsRich?: RichInclusionExclusion[]; // New: Detailed inclusions
-  exclusionsRich?: RichInclusionExclusion[]; // New: Detailed exclusions
-  pricingDates?: TripPricingDate[];     // Departure date pricing cards
-  relatedTripIds?: string[];            // IDs of related packages
-
-  // Pricing
+  quickInfo?: QuickInfoItem[];
+  highlights?: TripHighlight[];
+  itineraryDays?: ItineraryDay[];
+  itineraryCities?: ItineraryCity[];
+  inclusionsRich?: RichInclusionExclusion[];
+  exclusionsRich?: RichInclusionExclusion[];
   pricing: PackagePricing;
-
-  // Availability
-  availability: PackageAvailability;
-
-  // Media
   media: PackageMedia;
-  itineraryPDF?: string; // URL to downloadable itinerary PDF
-
-  // Ratings
-  rating: PackageRating;
-
-  // Slot Management
-  maxSlots: number; // Total available seats (default from availability.maxSlots)
-  bookedSlots: number; // AUTO: Number of booked slots
-
-  // Advance Payment Configuration
-  advancePaymentFixed?: number; // Fixed advance amount (e.g., 5000 INR)
-  advancePaymentPercentage?: number; // Percentage of total (e.g., 30%)
-
-  // Add-ons
-  predefinedAddons?: Array<{
-    id: string;
-    name: string; // e.g., "Professional Photography"
-    description?: string;
-    price: number;
-    optional: boolean;
-  }>;
-
-  // Insurance Options (admin-managed)
-  insuranceOptions?: Array<{
-    id: string;
-    name: string;       // e.g., "Basic Medical Cover"
-    description?: string;
-    pricePerPerson: number; // Per-traveler cost
-    active: boolean;
-  }>;
-
-  // References to subcollections (for quick display)
-  joiningPointCount: number;
-  activitiesIncludedCount: number;
-  activitiesOptionalCount: number;
-  reviewsCount: number;
-  faqsCount: number;
-
-  // Creation info
-  createdBy: string; // Admin user ID
-  updatedBy: string; // Admin user ID
 }
 
 // ============================================================================
@@ -543,44 +465,13 @@ export interface DestinationClimate {
 }
 
 export interface Destination extends BaseDocument {
-  // Basic info
-  name: string; // "Iceland"
-  country: string; // "Iceland"
-  continent: string; // "Europe"
-  timezone: string; // "GMT"
-
-  // Details
-  description: string; // Rich HTML
-  highlights: string[]; // ["Northern Lights", "Golden Circle"]
-
-  // Travel info
-  bestTimeToVisit: string; // "June to August"
-  visaRequirements: string; // Rich HTML
-  currency: string; // "ISK"
-  languageSpoken: string[]; // ["Icelandic", "English"]
-
-  // Climate
-  averageTemperature: DestinationClimate;
-  rainfall: number; // mm per year
-
-  // Practical
-  bestDaysDuration: string; // "5-7 days"
-  distanceFromAirport: string; // "50 km"
-
-  // Media
-  coverImage: string; // URL
-  gallery: string[]; // URLs
-  mapCoordinates: {
-    latitude: number;
-    longitude: number;
-  };
-
-  // SEO
-  slug: string; // "iceland"
-  seoDescription: string;
-  seoKeywords: string[];
-
-  // Activity
+  name: string;
+  country: string;
+  continent?: string;
+  description: string;
+  coverImage: string;
+  gallery?: string[];
+  slug: string;
   active: boolean;
 }
 

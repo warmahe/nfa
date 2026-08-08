@@ -22,7 +22,6 @@ import { Login } from "./pages/system/Login";
 // USER & SYSTEM
 import { Dashboard } from "./pages/user/Dashboard";
 import { Wishlist } from "./pages/user/Wishlist";
-import { PriceAlerts } from "./pages/user/PriceAlerts";
 import { Admin } from "./pages/system/Admin";
 import { ProtectedRoute } from "./components/shared/ProtectedRoute";
 
@@ -47,7 +46,6 @@ export default function App() {
           <Route path="testimonials" element={<Testimonials />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="wishlist" element={<Wishlist />} />
-          <Route path="price-alerts" element={<PriceAlerts />} />
 
           {/* Legal Pages */}
           <Route path="privacy" element={<Privacy />} />

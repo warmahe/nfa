@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { useDestinations } from "../../hooks/useDestinations";
 import { OperationalCard } from "../../components/destinations/OperationalCard";
-import { DestinationMap } from "../../components/destinations/DestinationMap";
 import { SlidersHorizontal, X, Target, Map as MapIcon, Grid, ChevronDown, Search, CreditCard, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -80,21 +79,13 @@ export const Destinations = () => {
               <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
 
-            {/* View Mode Toggle */}
             <div className="flex border-2 border-[#121212]">
               <button
                 onClick={() => setViewMode("grid")}
-                className={`p-3 transition-colors ${viewMode === "grid" ? "bg-[#121212] text-[#F4BF4B]" : "bg-white hover:bg-gray-100"}`}
+                className="p-3 bg-[#121212] text-[#F4BF4B]"
                 title="Grid View"
               >
                 <Grid size={16} />
-              </button>
-              <button
-                onClick={() => setViewMode("map")}
-                className={`p-3 border-l-2 border-[#121212] transition-colors ${viewMode === "map" ? "bg-[#121212] text-[#F4BF4B]" : "bg-white hover:bg-gray-100"}`}
-                title="Map View"
-              >
-                <MapIcon size={16} />
               </button>
             </div>
 
@@ -143,10 +134,6 @@ export const Destinations = () => {
       {loading ? (
         <div className="flex items-center justify-center py-32">
           <Loader2 className="animate-spin text-[#9E1B1D]" size={40} />
-        </div>
-      ) : viewMode === "map" ? (
-        <div className="max-w-[1440px] mx-auto px-6">
-          <DestinationMap packages={filtered} height="65vh" />
         </div>
       ) : (
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6 lg:gap-8">

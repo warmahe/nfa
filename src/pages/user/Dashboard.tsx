@@ -156,7 +156,7 @@ export const Dashboard = () => {
               <div className="grid grid-cols-2 gap-4">
                 {[
                   { label: "My Wishlist", href: "/wishlist", icon: Heart },
-                  { label: "Price Alerts", href: "/price-alerts", icon: Bell },
+                  { label: "Contact Support", href: "/contact", icon: Bell },
                 ].map(({ label, href, icon: Icon }) => (
                   <Link
                     key={label}
@@ -313,10 +313,10 @@ export const Dashboard = () => {
                 View Wishlist
               </Link>
               <Link
-                to="/price-alerts"
+                to="/contact"
                 className="w-full block text-center border-2 border-white/20 text-white py-3.5 font-black text-[10px] uppercase tracking-widest hover:bg-white/10 transition-colors"
               >
-                Price Alerts
+                Contact Support
               </Link>
             </div>
           </div>

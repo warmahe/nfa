@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ContactInfo, Address, PageContent, RazorpaySettings } from '../../types/database';
+import { ContactInfo, Address, PageContent } from '../../types/database';
 import {
   getCollectionData,
   setDocument,
@@ -9,12 +9,11 @@ import {
 import { Save, Check, Trash2, RefreshCw, Edit2 } from 'lucide-react';
 
 export const AdminSettingsManager: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'contact' | 'address' | 'about' | 'contact-page' | 'payment'>('contact');
+  const [activeTab, setActiveTab] = useState<'contact' | 'address' | 'about' | 'contact-page'>('contact');
   const [contactInfo, setContactInfo] = useState<Partial<ContactInfo> | null>(null);
   const [address, setAddress] = useState<Partial<Address> | null>(null);
   const [aboutPage, setAboutPage] = useState<Partial<PageContent> | null>(null);
   const [contactPageContent, setContactPageContent] = useState<Partial<PageContent> | null>(null);
-  const [razorpaySettings, setRazorpaySettings] = useState<Partial<RazorpaySettings> | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -105,20 +104,6 @@ export const AdminSettingsManager: React.FC = () => {
         });
       }
 
-      // Load Razorpay Settings
-      const paymentData = await getCollectionData('payment-settings');
-      const razorpay = (paymentData as any[])?.[0];
-      if (razorpay) {
-        setRazorpaySettings(razorpay);
-      } else {
-        setRazorpaySettings({
-          keyId: '',
-          keySecret: '',
-          webhookUrl: '',
-          webhookSecret: '',
-          isActive: false,
-        });
-      }
     } catch (err) {
       setError('Failed to load settings: ' + (err as Error).message);
     } finally {
@@ -157,10 +142,6 @@ export const AdminSettingsManager: React.FC = () => {
     } else {
       setContactPageContent(prev => ({ ...prev, [field]: value }));
     }
-  };
-
-  const handleRazorpayChange = (field: string, value: any) => {
-    setRazorpaySettings(prev => ({ ...prev, [field]: value }));
   };
 
   const saveContactInfo = async () => {
@@ -424,16 +405,6 @@ export const AdminSettingsManager: React.FC = () => {
             }`}
           >
             ✉️ Contact Page
-          </button>
-          <button
-            onClick={() => setActiveTab('payment')}
-            className={`flex-1 px-4 py-4 font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap ${
-              activeTab === 'payment'
-                ? 'text-[#121212] border-b-2 border-[#F4BF4B] bg-[#F4BF4B]/10'
-                : 'text-[#121212]/50 hover:text-[#121212] hover:bg-[#121212]/5'
-            }`}
-          >
-            💳 Razorpay Settings
           </button>
         </div>
 
@@ -1057,89 +1028,6 @@ export const AdminSettingsManager: React.FC = () => {
             </div>
           )}
 
-          {/* Razorpay Settings Tab */}
-          {activeTab === 'payment' && razorpaySettings && (
-            <div className="space-y-6 max-w-2xl">
-              <h3 className="font-brand font-black text-xl uppercase tracking-tight text-[#121212]">Razorpay Payment Configuration</h3>
-              
-              <div className="rounded-[14px] bg-[#F4BF4B]/10 border-2 border-[#F4BF4B]/30 p-4 space-y-2">
-                <p className="text-[10px] font-black uppercase tracking-widest text-[#121212]">⚠️ Global Configuration</p>
-                <p className="text-xs font-bold text-[#121212]/60">These settings will be used for ALL itineraries. Configure once and all packages will use these payment credentials.</p>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-[#121212]/60 mb-2">Razorpay Key ID</label>
-                <input
-                  type="text"
-                  value={razorpaySettings.keyId || ''}
-                  onChange={(e) => handleRazorpayChange('keyId', e.target.value)}
-                  placeholder="rzp_live_xxxxxxxxxxxxx"
-                  className="w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-bold text-sm text-[#121212] transition-all font-mono"
-                />
-                <p className="text-[9px] font-bold uppercase tracking-widest text-[#121212]/40 mt-2">Your Razorpay public key (from Dashboard &gt; Settings &gt; API Keys)</p>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-[#121212]/60 mb-2">Razorpay Key Secret</label>
-                <input
-                  type="password"
-                  value={razorpaySettings.keySecret || ''}
-                  onChange={(e) => handleRazorpayChange('keySecret', e.target.value)}
-                  placeholder="••••••••••••••••••••"
-                  className="w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-bold text-sm text-[#121212] transition-all font-mono"
-                />
-                <p className="text-[9px] font-bold uppercase tracking-widest text-[#121212]/40 mt-2">Your Razorpay secret key - keep this confidential (from Dashboard &gt; Settings &gt; API Keys)</p>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-[#121212]/60 mb-2">Webhook URL</label>
-                <input
-                  type="url"
-                  value={razorpaySettings.webhookUrl || ''}
-                  onChange={(e) => handleRazorpayChange('webhookUrl', e.target.value)}
-                  placeholder="https://yourdomain.com/api/webhooks/razorpay"
-                  className="w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-bold text-sm text-[#121212] transition-all font-mono"
-                />
-                <p className="text-[9px] font-bold uppercase tracking-widest text-[#121212]/40 mt-2">Full URL where Razorpay will send payment notifications. Must be publicly accessible.</p>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-[#121212]/60 mb-2">Webhook Secret</label>
-                <input
-                  type="password"
-                  value={razorpaySettings.webhookSecret || ''}
-                  onChange={(e) => handleRazorpayChange('webhookSecret', e.target.value)}
-                  placeholder="••••••••••••••••••••"
-                  className="w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-bold text-sm text-[#121212] transition-all font-mono"
-                />
-                <p className="text-[9px] font-bold uppercase tracking-widest text-[#121212]/40 mt-2">Webhook signature secret for verifying authentic Razorpay webhooks (from Dashboard &gt; Account &gt; Webhooks)</p>
-              </div>
-
-              <div className="flex items-center gap-3 bg-[#FCFBF7] p-4 rounded-[14px] border-2 border-[#121212]/10">
-                <input
-                  type="checkbox"
-                  checked={razorpaySettings.isActive || false}
-                  onChange={(e) => handleRazorpayChange('isActive', e.target.checked)}
-                  className="w-5 h-5 accent-[#121212] rounded"
-                />
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-widest text-[#121212]">Enable Razorpay Payments</label>
-                  <p className="text-[10px] font-bold text-[#121212]/50 mt-1">When disabled, payment options will be hidden from all booking pages</p>
-                </div>
-              </div>
-
-              <div className="flex flex-col md:flex-row justify-end gap-3 pt-6 border-t-2 border-[#121212]/10">
-                <button
-                  onClick={saveRazorpaySettings}
-                  disabled={saving}
-                  className="flex items-center gap-2 px-6 py-3 rounded-[14px] bg-[#121212] text-[#F4BF4B] font-black text-[11px] uppercase tracking-widest shadow-[0_12px_24px_rgba(18,18,18,0.12)] hover:bg-[#9E1B1D] hover:text-white transition-all disabled:opacity-50"
-                >
-                  <Save size={18} />
-                  {saving ? 'Saving...' : 'Save Razorpay Settings'}
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 

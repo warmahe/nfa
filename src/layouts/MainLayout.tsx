@@ -173,8 +173,7 @@ const MainLayout = () => {
             <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#F4BF4B] bg-[#121212] px-3 py-1.5 w-fit mb-4 shadow-[3px_3px_0_0_#9E1B1D]">MY ACCOUNT</h4>
             <Link to="/dashboard" className="font-sans text-xs uppercase font-bold tracking-[0.2em] text-[#121212] hover:text-[#9E1B1D] transition-colors">Dashboard</Link>
             <Link to="/wishlist" className="font-sans text-xs uppercase font-bold tracking-[0.2em] text-[#121212] hover:text-[#9E1B1D] transition-colors">My Wishlist</Link>
-            <Link to="/price-alerts" className="font-sans text-xs uppercase font-bold tracking-[0.2em] text-[#121212] hover:text-[#9E1B1D] transition-colors">Price Alerts</Link>
-            <Link to="/booking" className="font-sans text-xs uppercase font-bold tracking-[0.2em] text-[#121212] hover:text-[#9E1B1D] transition-colors">Book a Trip</Link>
+            <Link to="/contact" className="font-sans text-xs uppercase font-bold tracking-[0.2em] text-[#121212] hover:text-[#9E1B1D] transition-colors">Contact Us</Link>
           </div>
 
           <div className="flex flex-col gap-4">

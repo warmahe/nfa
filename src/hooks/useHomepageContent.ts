@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { doc, getDoc, collection, query, where, documentId, getDocs, collectionGroup } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { db } from '../services/firebaseService';
+import { STATIC_HOMEPAGE_DATA } from '../utils/staticHomeData';
 
 export const useHomepageContent = () => {
   const [data, setData] = useState<any>(null);
@@ -11,55 +12,50 @@ export const useHomepageContent = () => {
       try {
         const settingsRef = doc(db, 'settings', 'homepage');
         const settingsSnap = await getDoc(settingsRef);
-        
-        if (!settingsSnap.exists()) {
-          setLoading(false);
-          return;
-        }
+        const settings = settingsSnap.exists() ? settingsSnap.data() : {};
 
-        const settings = settingsSnap.data();
+        const [pkgSnaps, destSnaps, reviewSnaps] = await Promise.all([
+          getDocs(collection(db, 'packages')),
+          getDocs(collection(db, 'destinations')),
+          getDocs(collection(db, 'global_reviews'))
+        ]);
 
-        // 1. Fetch ALL packages from Firestore
-        const packageSnaps = await getDocs(collection(db, 'packages'));
-        const allPkgs = packageSnaps.docs.map(d => ({ id: d.id, ...d.data() }));
-        
-        // 2. Fetch ALL destinations
-        const destSnaps = await getDocs(collection(db, 'destinations'));
+        const allPkgs = pkgSnaps.docs.map(d => ({ id: d.id, ...d.data() }));
         const allDests = destSnaps.docs.map(d => ({ id: d.id, ...d.data() }));
-
-        // 3. Fetch ALL reviews
-        const reviewSnaps = await getDocs(collection(db, 'global_reviews'));
         const allReviews = reviewSnaps.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        // 4. Local Filtering based on Admin selection
-        let dropZones = allPkgs.filter(p => settings.featuredDropZones?.includes(p.id));
-        const archive = allDests.filter(d => settings.featuredArchive?.includes(d.id));
-        
-        // Fallback: If nothing featured, show most recent packages
+        let dropZones = allPkgs.filter((p: any) => settings.featuredDropZones?.includes(p.id));
         if (dropZones.length === 0 && allPkgs.length > 0) {
           dropZones = allPkgs.slice(0, 4);
         }
-        
-        // Ensure reviews follow the order selected
-        const voices = settings.featuredReviewIds
-          ?.map((id: string) => allReviews.find(r => r.id === id))
+
+        let archive = allDests.filter((d: any) => settings.featuredArchive?.includes(d.id));
+        if (archive.length === 0 && allDests.length > 0) {
+          archive = allDests.slice(0, 4);
+        }
+
+        let voices = settings.featuredReviewIds
+          ?.map((id: string) => allReviews.find((r: any) => r.id === id))
           .filter(Boolean);
+        if ((!voices || voices.length === 0) && allReviews.length > 0) {
+          voices = allReviews.slice(0, 3);
+        }
 
         setData({
-          heroImage: settings.heroImage,
+          heroImage: settings.heroImage || null,
           dropZones,
           archive,
-          voices,
-          footer: settings.footer
+          voices
         });
       } catch (err) {
-        console.error("Error fetching homepage content:", err);
+        console.error('Error fetching homepage content:', err);
       } finally {
         setLoading(false);
       }
     };
+
     fetchContent();
   }, []);
 
-  return { data, loading };
+  return { data: data || STATIC_HOMEPAGE_DATA, loading };
 };
