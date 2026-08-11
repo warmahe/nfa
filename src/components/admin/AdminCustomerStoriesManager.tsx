@@ -3,7 +3,8 @@ import {
   BookOpen, Plus, Search, Edit2, Trash2, Eye, EyeOff, Star,
   CheckCircle2, AlertCircle, X, Upload, RefreshCw, Sparkles,
   MapPin, Calendar, Clock, User, Quote, Layers, ChevronRight,
-  ExternalLink, ShieldCheck, Tag, ArrowRight, ChevronUp, ChevronDown, Check
+  ExternalLink, ShieldCheck, Tag, ArrowRight, ChevronUp, ChevronDown, Check,
+  AlertTriangle, ClipboardCheck
 } from 'lucide-react';
 import {
   subscribeToAllCustomerStories,
@@ -23,6 +24,133 @@ import {
 } from '../../types/database';
 import { ImageInput } from './ImageInput';
 import { getPublicCustomerDisplayName } from '../stories/CustomerStoryCard';
+import {
+  checkCustomerStoryContent, getStoryBadge,
+  ContentCheckResult, ContentQualityBadge, CustomerStoryCheckInput
+} from '../../utils/contentQuality';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CONTENT CHECK CARD (story)
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface ContentCheckCardProps {
+  result: ContentCheckResult;
+  onClickFix?: (targetTab: string) => void;
+}
+
+const ContentCheckCard: React.FC<ContentCheckCardProps> = ({ result, onClickFix }) => {
+  const [expanded, setExpanded] = useState(false);
+  const { isPublishable, required, recommended, requiredFailCount, recommendedFailCount } = result;
+  const failedRecommended = recommended.filter((r) => !r.passed);
+
+  const summaryColor = !isPublishable
+    ? 'bg-rose-50 border-rose-200'
+    : recommendedFailCount > 0
+    ? 'bg-amber-50 border-amber-200'
+    : 'bg-emerald-50 border-emerald-200';
+
+  const summaryText = !isPublishable
+    ? `${requiredFailCount} required detail${requiredFailCount !== 1 ? 's' : ''} missing before publishing`
+    : recommendedFailCount > 0
+    ? `Ready to publish — ${recommendedFailCount} optional detail${recommendedFailCount !== 1 ? 's' : ''} could be improved`
+    : 'Ready to publish';
+
+  const Icon = !isPublishable ? AlertTriangle : recommendedFailCount > 0 ? AlertTriangle : Check;
+  const iconClass = !isPublishable ? 'text-rose-500' : recommendedFailCount > 0 ? 'text-amber-500' : 'text-emerald-600';
+  const textClass = !isPublishable ? 'text-rose-700' : recommendedFailCount > 0 ? 'text-amber-700' : 'text-emerald-700';
+
+  return (
+    <div className={`rounded-xl border-2 overflow-hidden ${summaryColor}`} role="region" aria-label="Content check results">
+      <div className="px-4 py-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <ClipboardCheck size={15} className="text-slate-600 shrink-0" />
+          <span className="text-[11px] font-black uppercase tracking-widest text-slate-700">Content Check</span>
+        </div>
+        <button type="button" onClick={() => setExpanded((e) => !e)}
+          className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+          aria-expanded={expanded}
+        >
+          {expanded ? 'Hide details' : 'Show details'}
+          {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+        </button>
+      </div>
+      {!expanded && (
+        <div className="px-4 pb-3 flex items-center gap-2">
+          <Icon size={14} className={`${iconClass} shrink-0`} aria-hidden="true" />
+          <span className={`text-xs font-bold ${textClass}`} aria-live="polite">{summaryText}</span>
+        </div>
+      )}
+      {expanded && (
+        <div className="px-4 pb-4 space-y-3">
+          {required.length > 0 && (
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5">Required</p>
+              <ul className="space-y-1" role="list">
+                {required.map((item) => (
+                  <li key={item.id} className="flex items-start gap-2">
+                    {item.passed ? <Check size={13} className="text-emerald-600 mt-0.5 shrink-0" aria-label="Passed" />
+                      : <AlertTriangle size={13} className="text-rose-500 mt-0.5 shrink-0" aria-label="Missing" />}
+                    <div className="flex-1">
+                      <button type="button"
+                        onClick={() => item.targetTab && onClickFix?.(item.targetTab)}
+                        disabled={item.passed || !item.targetTab}
+                        className={`text-xs font-semibold text-left ${
+                          !item.passed && item.targetTab ? 'text-rose-700 hover:text-rose-900 underline cursor-pointer'
+                          : item.passed ? 'text-slate-600 cursor-default' : 'text-slate-500 cursor-default'
+                        }`}
+                      >{item.label}</button>
+                      {!item.passed && item.detail && <p className="text-[10px] text-rose-600 font-medium mt-0.5">{item.detail}</p>}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {failedRecommended.length > 0 && (
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5">Recommended</p>
+              <ul className="space-y-1" role="list">
+                {failedRecommended.map((item) => (
+                  <li key={item.id} className="flex items-start gap-2">
+                    <AlertTriangle size={13} className="text-amber-500 mt-0.5 shrink-0" />
+                    <button type="button" onClick={() => item.targetTab && onClickFix?.(item.targetTab)}
+                      disabled={!item.targetTab}
+                      className={`text-xs font-semibold text-left ${
+                        item.targetTab ? 'text-amber-700 hover:text-amber-900 underline cursor-pointer' : 'text-slate-500 cursor-default'
+                      }`}
+                    >{item.label}</button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <div className={`pt-2 border-t border-current/20 flex items-center gap-2 ${textClass}`}>
+            <Icon size={14} className={`${iconClass} shrink-0`} />
+            <span className="text-xs font-bold" aria-live="polite">{summaryText}</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const QualityBadge: React.FC<{ badge: ContentQualityBadge }> = ({ badge }) => {
+  if (badge === 'ready') return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-800 font-black text-[9px] uppercase tracking-wider rounded-md" aria-label="Content ready">
+      <Check size={9} /> Ready
+    </span>
+  );
+  if (badge === 'needs_details') return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-rose-100 text-rose-700 font-black text-[9px] uppercase tracking-wider rounded-md" aria-label="Needs details">
+      <AlertTriangle size={9} /> Needs details
+    </span>
+  );
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-500 font-black text-[9px] uppercase tracking-wider rounded-md" aria-label="Draft">
+      Draft
+    </span>
+  );
+};
 
 type EditorTab = 'STORY' | 'TRAVELLER' | 'JOURNEY' | 'PHOTOS' | 'PUBLISH';
 
@@ -240,6 +368,16 @@ export const AdminCustomerStoriesManager: React.FC = () => {
       return;
     }
 
+    // E32 — Content quality check on publish
+    if (finalStatus === 'PUBLISHED' && contentCheck && !contentCheck.isPublishable) {
+      setNotice({
+        type: 'error',
+        text: `This story needs a few details before it can be published. ${contentCheck.requiredFailCount} required detail${contentCheck.requiredFailCount !== 1 ? 's are' : ' is'} missing.`,
+      });
+      setActiveTab('PUBLISH');
+      return;
+    }
+
     try {
       setSaving(true);
       setNotice(null);
@@ -349,13 +487,18 @@ export const AdminCustomerStoriesManager: React.FC = () => {
     }
   };
 
-  // Filtered stories
   const filteredStories = useMemo(() => {
     return stories.filter((story) => {
       // Status Filter
       if (statusFilter === 'DRAFT' && story.status !== 'DRAFT') return false;
       if (statusFilter === 'PUBLISHED' && story.status !== 'PUBLISHED') return false;
       if (statusFilter === 'FEATURED' && !story.featured) return false;
+
+      // E32: Content quality filter
+      if (contentFilter !== 'all') {
+        const badge = getStoryBadge(story);
+        if (badge !== contentFilter) return false;
+      }
 
       // Search Query
       if (searchQuery.trim()) {
@@ -368,15 +511,53 @@ export const AdminCustomerStoriesManager: React.FC = () => {
       }
       return true;
     });
-  }, [stories, statusFilter, searchQuery]);
+  }, [stories, statusFilter, searchQuery, contentFilter]);
 
   const stats = useMemo(() => {
     const total = stories.length;
     const published = stories.filter((s) => s.status === 'PUBLISHED').length;
     const drafts = total - published;
     const featuredCount = stories.filter((s) => s.featured).length;
-    return { total, published, drafts, featuredCount };
+    const needsAttention = stories.filter((s) => getStoryBadge(s) === 'needs_details').length;
+    return { total, published, drafts, featuredCount, needsAttention };
   }, [stories]);
+
+  // E32 — Content status filter
+  const [contentFilter, setContentFilter] = useState<'all' | 'ready' | 'needs_details' | 'draft'>('all');
+
+  // E32 — Live content quality check on editor state
+  const contentCheck = useMemo((): ContentCheckResult | null => {
+    if (!isEditorOpen) return null;
+    const input: CustomerStoryCheckInput = {
+      title,
+      slug,
+      storyContent,
+      coverImage,
+      customerName,
+      customerDisplayMode,
+      adminConsent,
+      targetStatus: status as 'DRAFT' | 'PUBLISHED',
+      customerQuote,
+      customerLocation,
+      highlights,
+      experiences,
+      gallery,
+      itineraryId,
+      itineraryTitle,
+      destinationId,
+      destination,
+      tripDuration,
+      travellerCount,
+      allPackages: packages,
+      allDestinations: destinations,
+    };
+    return checkCustomerStoryContent(input);
+  }, [
+    isEditorOpen, title, slug, storyContent, coverImage, customerName,
+    customerDisplayMode, adminConsent, status, customerQuote, customerLocation,
+    highlights, experiences, gallery, itineraryId, itineraryTitle,
+    destinationId, destination, tripDuration, travellerCount, packages, destinations,
+  ]);
 
   const inputClass = 'saas-input w-full text-xs text-slate-900 font-sans focus:ring-2 focus:ring-[#121212] focus:border-transparent';
   const labelClass = 'block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1';
@@ -424,19 +605,19 @@ export const AdminCustomerStoriesManager: React.FC = () => {
 
       {/* Stats Overview */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="p-4 bg-white border border-slate-200/80 rounded-xl flex items-center gap-4">
-          <div className="size-10 bg-slate-100 rounded-lg flex items-center justify-center shrink-0">
-            <BookOpen size={20} className="text-slate-700" />
+        <div className="p-4 bg-white border border-slate-200/80 rounded-xl flex items-center gap-3">
+          <div className="size-9 bg-slate-100 rounded-lg flex items-center justify-center shrink-0">
+            <BookOpen size={18} className="text-slate-700" />
           </div>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Stories</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total</p>
             <p className="font-black text-xl text-slate-900">{stats.total}</p>
           </div>
         </div>
 
-        <div className="p-4 bg-white border border-slate-200/80 rounded-xl flex items-center gap-4">
-          <div className="size-10 bg-emerald-50 rounded-lg flex items-center justify-center shrink-0">
-            <CheckCircle2 size={20} className="text-emerald-600" />
+        <div className="p-4 bg-white border border-slate-200/80 rounded-xl flex items-center gap-3">
+          <div className="size-9 bg-emerald-50 rounded-lg flex items-center justify-center shrink-0">
+            <CheckCircle2 size={18} className="text-emerald-600" />
           </div>
           <div>
             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Published</p>
@@ -444,9 +625,9 @@ export const AdminCustomerStoriesManager: React.FC = () => {
           </div>
         </div>
 
-        <div className="p-4 bg-white border border-slate-200/80 rounded-xl flex items-center gap-4">
-          <div className="size-10 bg-amber-50 rounded-lg flex items-center justify-center shrink-0">
-            <Clock size={20} className="text-amber-600" />
+        <div className="p-4 bg-white border border-slate-200/80 rounded-xl flex items-center gap-3">
+          <div className="size-9 bg-amber-50 rounded-lg flex items-center justify-center shrink-0">
+            <Clock size={18} className="text-amber-600" />
           </div>
           <div>
             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Drafts</p>
@@ -454,13 +635,13 @@ export const AdminCustomerStoriesManager: React.FC = () => {
           </div>
         </div>
 
-        <div className="p-4 bg-white border border-slate-200/80 rounded-xl flex items-center gap-4">
-          <div className="size-10 bg-rose-50 rounded-lg flex items-center justify-center shrink-0">
-            <Star size={20} className="text-[#9E1B1D]" />
+        <div className="p-4 bg-white border border-slate-200/80 rounded-xl flex items-center gap-3">
+          <div className="size-9 bg-rose-50 rounded-lg flex items-center justify-center shrink-0">
+            <AlertTriangle size={18} className="text-rose-500" />
           </div>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Featured</p>
-            <p className="font-black text-xl text-[#9E1B1D]">{stats.featuredCount}</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Needs Attention</p>
+            <p className="font-black text-xl text-rose-600">{stats.needsAttention}</p>
           </div>
         </div>
       </div>
@@ -896,6 +1077,14 @@ export const AdminCustomerStoriesManager: React.FC = () => {
             {/* Tab 5: PUBLISHING & CONSENT */}
             {activeTab === 'PUBLISH' && (
               <div className="space-y-6">
+                {/* E32 Content Check Card */}
+                {contentCheck && (
+                  <ContentCheckCard
+                    result={contentCheck}
+                    onClickFix={(tab) => setActiveTab(tab as EditorTab)}
+                  />
+                )}
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
                     <label className={labelClass}>Story Publication Status</label>
@@ -1006,7 +1195,7 @@ export const AdminCustomerStoriesManager: React.FC = () => {
             )}
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as any)}
@@ -1017,6 +1206,17 @@ export const AdminCustomerStoriesManager: React.FC = () => {
               <option value="PUBLISHED">Published ({stats.published})</option>
               <option value="DRAFT">Drafts ({stats.drafts})</option>
               <option value="FEATURED">Featured ({stats.featuredCount})</option>
+            </select>
+            <select
+              value={contentFilter}
+              onChange={(e) => setContentFilter(e.target.value as any)}
+              className="saas-input text-xs text-slate-900 font-bold"
+              aria-label="Filter customer stories by content quality"
+            >
+              <option value="all">All Content</option>
+              <option value="ready">✓ Ready</option>
+              <option value="needs_details">⚠ Needs Details</option>
+              <option value="draft">● Draft</option>
             </select>
           </div>
         </div>
@@ -1065,6 +1265,8 @@ export const AdminCustomerStoriesManager: React.FC = () => {
                         >
                           {isPublished ? 'PUBLISHED' : 'DRAFT'}
                         </span>
+                        {/* E32 Quality Badge */}
+                        <QualityBadge badge={getStoryBadge(story)} />
                       </div>
 
                       <div className="flex flex-wrap items-center gap-3 text-xs font-medium text-slate-500 mt-1">

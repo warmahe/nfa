@@ -33,7 +33,134 @@ import {
   Thermometer,
   Lock,
   Layers,
+  ClipboardCheck,
 } from 'lucide-react';
+import {
+  checkDestinationContent, getDestinationBadge, ContentCheckResult, ContentQualityBadge
+} from '../../utils/contentQuality';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CONTENT CHECK CARD (destination)
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface ContentCheckCardProps {
+  result: ContentCheckResult;
+  onClickFix?: (targetTab: string) => void;
+}
+
+const ContentCheckCard: React.FC<ContentCheckCardProps> = ({ result, onClickFix }) => {
+  const [expanded, setExpanded] = useState(false);
+  const { isPublishable, required, recommended, requiredFailCount, recommendedFailCount } = result;
+  const failedRecommended = recommended.filter((r) => !r.passed);
+
+  const summaryColor = !isPublishable
+    ? 'bg-rose-50 border-rose-200'
+    : recommendedFailCount > 0
+    ? 'bg-amber-50 border-amber-200'
+    : 'bg-emerald-50 border-emerald-200';
+
+  const summaryText = !isPublishable
+    ? `${requiredFailCount} required detail${requiredFailCount !== 1 ? 's' : ''} missing before publishing`
+    : recommendedFailCount > 0
+    ? `Ready to publish — ${recommendedFailCount} optional detail${recommendedFailCount !== 1 ? 's' : ''} could be improved`
+    : 'Ready to publish';
+
+  const Icon = !isPublishable ? AlertTriangle : recommendedFailCount > 0 ? AlertTriangle : Check;
+  const iconClass = !isPublishable ? 'text-rose-500' : recommendedFailCount > 0 ? 'text-amber-500' : 'text-emerald-600';
+  const textClass = !isPublishable ? 'text-rose-700' : recommendedFailCount > 0 ? 'text-amber-700' : 'text-emerald-700';
+
+  return (
+    <div className={`rounded-xl border-2 overflow-hidden ${summaryColor}`} role="region" aria-label="Content check results">
+      <div className="px-4 py-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <ClipboardCheck size={15} className="text-slate-600 shrink-0" />
+          <span className="text-[11px] font-black uppercase tracking-widest text-slate-700">Content Check</span>
+        </div>
+        <button type="button" onClick={() => setExpanded((e) => !e)}
+          className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+          aria-expanded={expanded}
+        >
+          {expanded ? 'Hide details' : 'Show details'}
+          {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+        </button>
+      </div>
+      {!expanded && (
+        <div className="px-4 pb-3 flex items-center gap-2">
+          <Icon size={14} className={`${iconClass} shrink-0`} aria-hidden="true" />
+          <span className={`text-xs font-bold ${textClass}`} aria-live="polite">{summaryText}</span>
+        </div>
+      )}
+      {expanded && (
+        <div className="px-4 pb-4 space-y-3">
+          {required.length > 0 && (
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5">Required</p>
+              <ul className="space-y-1" role="list">
+                {required.map((item) => (
+                  <li key={item.id} className="flex items-start gap-2">
+                    {item.passed ? <Check size={13} className="text-emerald-600 mt-0.5 shrink-0" aria-label="Passed" />
+                      : <AlertTriangle size={13} className="text-rose-500 mt-0.5 shrink-0" aria-label="Missing" />}
+                    <div className="flex-1">
+                      <button type="button"
+                        onClick={() => item.targetTab && onClickFix?.(item.targetTab)}
+                        disabled={item.passed || !item.targetTab}
+                        className={`text-xs font-semibold text-left ${
+                          !item.passed && item.targetTab ? 'text-rose-700 hover:text-rose-900 underline cursor-pointer'
+                          : item.passed ? 'text-slate-600 cursor-default' : 'text-slate-500 cursor-default'
+                        }`}
+                      >{item.label}</button>
+                      {!item.passed && item.detail && <p className="text-[10px] text-rose-600 font-medium mt-0.5">{item.detail}</p>}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {failedRecommended.length > 0 && (
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5">Recommended</p>
+              <ul className="space-y-1" role="list">
+                {failedRecommended.map((item) => (
+                  <li key={item.id} className="flex items-start gap-2">
+                    <AlertTriangle size={13} className="text-amber-500 mt-0.5 shrink-0" />
+                    <button type="button" onClick={() => item.targetTab && onClickFix?.(item.targetTab)}
+                      disabled={!item.targetTab}
+                      className={`text-xs font-semibold text-left ${
+                        item.targetTab ? 'text-amber-700 hover:text-amber-900 underline cursor-pointer' : 'text-slate-500 cursor-default'
+                      }`}
+                    >{item.label}</button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <div className={`pt-2 border-t border-current/20 flex items-center gap-2 ${textClass}`}>
+            <Icon size={14} className={`${iconClass} shrink-0`} />
+            <span className="text-xs font-bold" aria-live="polite">{summaryText}</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const QualityBadge: React.FC<{ badge: ContentQualityBadge }> = ({ badge }) => {
+  if (badge === 'ready') return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-800 font-black text-[9px] uppercase tracking-wider rounded-md" aria-label="Content ready">
+      <Check size={9} /> Ready
+    </span>
+  );
+  if (badge === 'needs_details') return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-rose-100 text-rose-700 font-black text-[9px] uppercase tracking-wider rounded-md" aria-label="Needs details">
+      <AlertTriangle size={9} /> Needs details
+    </span>
+  );
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-500 font-black text-[9px] uppercase tracking-wider rounded-md" aria-label="Draft">
+      Draft
+    </span>
+  );
+};
 
 interface AdminDestinationManagerProps {
   destinationId?: string;
@@ -235,7 +362,13 @@ export const AdminDestinationManager: React.FC<AdminDestinationManagerProps> = (
   };
 
   const handleToggleActive = () => {
-    setFormState((prev) => ({ ...prev, active: !prev.active }));
+    const newActive = !formState.active;
+    // E32 — Publishing safety gate
+    if (newActive && contentCheck && !contentCheck.isPublishable) {
+      setError(`This destination needs a few details before it can be published. ${contentCheck.requiredFailCount} required detail${contentCheck.requiredFailCount !== 1 ? 's are' : ' is'} missing.`);
+      return;
+    }
+    setFormState((prev) => ({ ...prev, active: newActive }));
     setIsDirty(true);
   };
 
@@ -375,6 +508,12 @@ export const AdminDestinationManager: React.FC<AdminDestinationManagerProps> = (
       if (statusFilter === 'published' && dest.active === false) return false;
       if (statusFilter === 'unpublished' && dest.active !== false) return false;
 
+      // E32: Content quality filter
+      if (contentFilter !== 'all') {
+        const badge = getDestinationBadge(dest);
+        if (badge !== contentFilter) return false;
+      }
+
       // Search query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
@@ -385,14 +524,24 @@ export const AdminDestinationManager: React.FC<AdminDestinationManagerProps> = (
       }
       return true;
     });
-  }, [destinations, statusFilter, searchQuery]);
+  }, [destinations, statusFilter, searchQuery, contentFilter]);
 
   const stats = useMemo(() => {
     const total = destinations.length;
     const published = destinations.filter((d) => d.active !== false).length;
     const unpublished = total - published;
-    return { total, published, unpublished };
+    const needsAttention = destinations.filter((d) => getDestinationBadge(d) === 'needs_details').length;
+    return { total, published, unpublished, needsAttention };
   }, [destinations]);
+
+  // E32 — Live content quality check on the active form state
+  const contentCheck = useMemo(() => {
+    if (!showForm) return null;
+    return checkDestinationContent(formState);
+  }, [formState, showForm]);
+
+  // E32 — Content status filter
+  const [contentFilter, setContentFilter] = useState<'all' | 'ready' | 'needs_details' | 'draft'>('all');
 
   const inputClass = 'saas-input w-full text-xs text-slate-900 font-sans focus:ring-2 focus:ring-[#121212] focus:border-transparent';
   const labelClass = 'block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1';
@@ -466,20 +615,20 @@ export const AdminDestinationManager: React.FC<AdminDestinationManagerProps> = (
       </div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="p-4 bg-white border border-slate-200/80 rounded-xl flex items-center gap-4">
-          <div className="size-10 bg-slate-100 rounded-lg flex items-center justify-center shrink-0">
-            <Globe size={20} className="text-slate-700" />
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="p-4 bg-white border border-slate-200/80 rounded-xl flex items-center gap-3">
+          <div className="size-9 bg-slate-100 rounded-lg flex items-center justify-center shrink-0">
+            <Globe size={18} className="text-slate-700" />
           </div>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Destinations</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total</p>
             <p className="font-black text-xl text-slate-900">{stats.total}</p>
           </div>
         </div>
 
-        <div className="p-4 bg-white border border-slate-200/80 rounded-xl flex items-center gap-4">
-          <div className="size-10 bg-emerald-50 rounded-lg flex items-center justify-center shrink-0">
-            <Check size={20} className="text-emerald-600" />
+        <div className="p-4 bg-white border border-slate-200/80 rounded-xl flex items-center gap-3">
+          <div className="size-9 bg-emerald-50 rounded-lg flex items-center justify-center shrink-0">
+            <Check size={18} className="text-emerald-600" />
           </div>
           <div>
             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Published</p>
@@ -487,13 +636,23 @@ export const AdminDestinationManager: React.FC<AdminDestinationManagerProps> = (
           </div>
         </div>
 
-        <div className="p-4 bg-white border border-slate-200/80 rounded-xl flex items-center gap-4">
-          <div className="size-10 bg-amber-50 rounded-lg flex items-center justify-center shrink-0">
-            <Lock size={20} className="text-amber-600" />
+        <div className="p-4 bg-white border border-slate-200/80 rounded-xl flex items-center gap-3">
+          <div className="size-9 bg-amber-50 rounded-lg flex items-center justify-center shrink-0">
+            <Lock size={18} className="text-amber-600" />
           </div>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Draft / Unpublished</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Unpublished</p>
             <p className="font-black text-xl text-amber-700">{stats.unpublished}</p>
+          </div>
+        </div>
+
+        <div className="p-4 bg-white border border-slate-200/80 rounded-xl flex items-center gap-3">
+          <div className="size-9 bg-rose-50 rounded-lg flex items-center justify-center shrink-0">
+            <AlertTriangle size={18} className="text-rose-500" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Needs Attention</p>
+            <p className="font-black text-xl text-rose-600">{stats.needsAttention}</p>
           </div>
         </div>
       </div>
@@ -1207,6 +1366,51 @@ export const AdminDestinationManager: React.FC<AdminDestinationManagerProps> = (
             {/* Tab 9: Map & SEO */}
             {activeTab === 'seo' && (
               <div className="space-y-4">
+                {/* E32 Content Check Card */}
+                {contentCheck && (
+                  <ContentCheckCard
+                    result={contentCheck}
+                    onClickFix={(tab) => setActiveTab(tab as TabType)}
+                  />
+                )}
+
+                {/* Publish / Unpublish toggle */}
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-slate-900 uppercase tracking-wider">Destination Visibility</p>
+                      <p className="text-xs text-slate-500 font-medium mt-0.5">
+                        {formState.active !== false
+                          ? 'Published — Visible to website visitors.'
+                          : 'Unpublished — Hidden from public destination listings.'}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleToggleActive}
+                      className={`px-4 py-2 font-black text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
+                        formState.active !== false
+                          ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                          : contentCheck && !contentCheck.isPublishable
+                          ? 'bg-slate-200 text-slate-400'
+                          : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                      }`}
+                      aria-label={formState.active !== false ? 'Unpublish destination' : 'Publish destination'}
+                    >
+                      {formState.active !== false ? 'PUBLISHED' : 'PUBLISH DESTINATION'}
+                    </button>
+                  </div>
+                  {formState.active === false && contentCheck && !contentCheck.isPublishable && (
+                    <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs font-semibold text-rose-700 flex items-start gap-2">
+                      <AlertTriangle size={14} className="shrink-0 mt-0.5 text-rose-500" />
+                      <span>This destination needs a few details before it can be published. Review the required items above.</span>
+                    </div>
+                  )}
+                  <p className="text-[10px] font-medium text-slate-400">
+                    Saving is always allowed. Publishing makes this destination visible to website visitors.
+                  </p>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className={labelClass}>Map Latitude</label>
@@ -1354,7 +1558,7 @@ export const AdminDestinationManager: React.FC<AdminDestinationManagerProps> = (
             )}
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
             <Filter size={14} className="text-slate-400" />
             <select
               value={statusFilter}
@@ -1364,6 +1568,17 @@ export const AdminDestinationManager: React.FC<AdminDestinationManagerProps> = (
               <option value="all">All Visibility ({stats.total})</option>
               <option value="published">Published Only ({stats.published})</option>
               <option value="unpublished">Unpublished Only ({stats.unpublished})</option>
+            </select>
+            <select
+              value={contentFilter}
+              onChange={(e) => setContentFilter(e.target.value as any)}
+              className="saas-input text-xs text-slate-900 font-bold"
+              aria-label="Filter by content quality"
+            >
+              <option value="all">All Content</option>
+              <option value="ready">✓ Ready</option>
+              <option value="needs_details">⚠ Needs Details</option>
+              <option value="draft">● Draft</option>
             </select>
           </div>
         </div>
@@ -1376,15 +1591,16 @@ export const AdminDestinationManager: React.FC<AdminDestinationManagerProps> = (
                 <th className="px-4 py-3.5">Destination</th>
                 <th className="px-4 py-3.5">Country / Region</th>
                 <th className="px-4 py-3.5">Best Time</th>
-                <th className="px-4 py-3.5 text-center">Highlights & Experiences</th>
+                <th className="px-4 py-3.5 text-center">Highlights &amp; Experiences</th>
                 <th className="px-4 py-3.5 text-center">Visibility</th>
+                <th className="px-4 py-3.5 text-center">Content</th>
                 <th className="px-4 py-3.5 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredDestinations.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-5 py-12 text-center text-xs text-slate-400 font-bold uppercase tracking-wider space-y-2">
+                  <td colSpan={7} className="px-5 py-12 text-center text-xs text-slate-400 font-bold uppercase tracking-wider space-y-2">
                     <Globe size={32} className="mx-auto text-slate-300" />
                     <p>No destinations found matching your criteria.</p>
                   </td>
@@ -1447,6 +1663,11 @@ export const AdminDestinationManager: React.FC<AdminDestinationManagerProps> = (
                         >
                           {isPublished ? 'Published' : 'Unpublished'}
                         </span>
+                      </td>
+
+                      {/* E32 Content Quality Badge */}
+                      <td className="px-4 py-3.5 text-center">
+                        <QualityBadge badge={getDestinationBadge(dest)} />
                       </td>
 
                       {/* Actions */}
