@@ -106,92 +106,92 @@ export const AdminGalleryManager = () => {
     }]);
   };
 
-  const inputClass = "w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-black text-[11px] uppercase tracking-widest text-[#121212] transition-all";
+  const inputClass = "saas-input w-full text-xs text-slate-900 font-sans";
 
-  if (loading) return <div className="p-10 font-black uppercase text-[#121212]/20 tracking-widest text-sm">Loading Archive...</div>;
+  if (loading) return <div className="p-10 font-medium text-slate-400 text-xs uppercase tracking-wider text-center">Loading Archive...</div>;
 
   return (
-    <div className="space-y-6 relative">
+    <div className="space-y-5 relative">
       {notification && <Notification text={notification.text} type={notification.type} />}
 
-      {/* CUSTOM CONFIRMATION MODAL */}
+      {/* CONFIRMATION MODAL */}
       {confirmDelete.show && (
-        <div className="fixed inset-0 z-[2000] bg-black/30 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-[18px] p-6 lg:p-8 max-w-sm w-full shadow-[0_24px_48px_rgba(18,18,18,0.15)]">
-            <h3 className="font-brand font-black text-xl uppercase tracking-tight text-[#121212] mb-2">Are you sure?</h3>
-            <p className="font-bold text-[10px] uppercase tracking-widest text-[#121212]/50 mb-6 pb-4 border-b-2 border-[#121212]/10">
+        <div className="fixed inset-0 z-[2000] bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="saas-card bg-white p-6 max-w-sm w-full border-slate-200 shadow-xl space-y-4">
+            <h3 className="font-sans font-bold text-base text-slate-900">Are you sure?</h3>
+            <p className="text-xs text-slate-500 pb-3 border-b border-slate-100">
               This will permanently delete the file from your cloud storage.
             </p>
-            <div className="grid grid-cols-2 gap-3">
-              <button onClick={handleConfirmDelete} className="rounded-[14px] bg-[#9E1B1D] text-white py-3 font-black text-[10px] uppercase tracking-widest hover:bg-[#121212] transition-colors">Yes, Delete</button>
-              <button onClick={() => setConfirmDelete({show:false, type:'folder', fIdx:-1})} className="rounded-[14px] border-2 border-[#121212]/10 text-[#121212] py-3 font-black text-[10px] uppercase tracking-widest hover:bg-[#121212]/5 transition-colors">Cancel</button>
+            <div className="grid grid-cols-2 gap-2.5">
+              <button onClick={handleConfirmDelete} className="rounded-lg bg-rose-600 text-white py-2 font-semibold text-xs hover:bg-rose-700 transition-colors cursor-pointer">Yes, Delete</button>
+              <button onClick={() => setConfirmDelete({show:false, type:'folder', fIdx:-1})} className="rounded-lg border border-slate-200 text-slate-700 py-2 font-semibold text-xs hover:bg-slate-50 transition-colors cursor-pointer">Cancel</button>
             </div>
           </div>
         </div>
       )}
 
       {/* HEADER */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-3 border-b border-slate-100">
+        <div className="flex items-center gap-3">
           {activeFolderIdx !== null && (
-            <button onClick={() => setActiveFolderIdx(null)} className="p-3 rounded-[14px] border-2 border-[#121212]/10 bg-white hover:bg-[#F4BF4B]/10 transition-colors"><ArrowLeft size={20}/></button>
+            <button onClick={() => setActiveFolderIdx(null)} className="p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition-colors cursor-pointer"><ArrowLeft size={18}/></button>
           )}
           <div>
-            <h2 className="font-brand font-black text-2xl uppercase tracking-tight text-[#121212]">
+            <h2 className="font-sans font-bold text-lg text-slate-900 tracking-tight">
               {activeFolderIdx !== null ? `${folders[activeFolderIdx].title} // Files` : 'Gallery Archive'}
             </h2>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#121212]/50 mt-1">Manage visual assets</p>
+            <p className="text-xs text-slate-500 mt-0.5">Manage visual assets and photo galleries</p>
           </div>
         </div>
-        <button onClick={handleGlobalSave} disabled={saving} className="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-[#121212] text-[#F4BF4B] font-black text-[11px] uppercase tracking-widest rounded-[18px] shadow-[0_12px_24px_rgba(18,18,18,0.12)] hover:bg-[#9E1B1D] hover:text-white transition-all disabled:opacity-50">
+        <button onClick={handleGlobalSave} disabled={saving} className="w-full md:w-auto flex items-center justify-center gap-1.5 px-4 py-2 bg-[#121212] text-[#F4BF4B] font-semibold text-xs rounded-lg hover:bg-slate-800 transition-colors shadow-xs cursor-pointer disabled:opacity-50">
           {saving ? 'Saving...' : 'Save All Changes'}
         </button>
       </div>
 
       {/* VIEW 1: INSIDE FOLDER */}
       {activeFolderIdx !== null ? (
-        <div className="space-y-6">
+        <div className="space-y-4">
           <button onClick={() => {
             const nf = [...folders];
             nf[activeFolderIdx].images = [...(nf[activeFolderIdx].images || []), { id: Date.now().toString(), url: '', title: '', photographer: '' }];
             setFolders(nf);
-          }} className="w-full py-8 rounded-[18px] border-2 border-dashed border-[#121212]/10 bg-white font-black text-[11px] uppercase tracking-widest text-[#121212]/40 hover:bg-[#F4BF4B]/10 hover:border-[#F4BF4B] transition-all">+ Add New Photo</button>
+          }} className="w-full py-6 rounded-lg border border-dashed border-slate-300 bg-slate-50/50 font-semibold text-xs text-slate-600 hover:bg-slate-100/60 hover:border-slate-400 transition-all cursor-pointer flex items-center justify-center gap-2">+ Add New Photo</button>
           
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
             {folders[activeFolderIdx].images?.map((img: any, imgIdx: number) => (
-              <div key={img.id} className="rounded-[18px] bg-white border-2 border-[#121212]/10 shadow-[0_12px_24px_rgba(18,18,18,0.06)] p-4 flex flex-col">
-                <div className="aspect-square bg-[#FCFBF7] relative rounded-[14px] border-2 border-[#121212]/10 overflow-hidden mb-4">
-                  {img.url ? <img src={img.url} className="w-full h-full object-cover" /> : <div className="h-full flex items-center justify-center text-[10px] font-black text-[#121212]/15 uppercase tracking-widest">No Data</div>}
-                  {uploadingIdx === imgIdx && <div className="absolute inset-0 bg-[#121212]/80 flex items-center justify-center text-[#F4BF4B]"><Loader2 className="animate-spin" /></div>}
+              <div key={img.id} className="saas-card bg-white p-3.5 border-slate-200/80 flex flex-col">
+                <div className="aspect-square bg-slate-50 relative rounded-lg border border-slate-200/80 overflow-hidden mb-3">
+                  {img.url ? <img src={img.url} className="w-full h-full object-cover" /> : <div className="h-full flex items-center justify-center text-xs text-slate-400 font-medium">No Data</div>}
+                  {uploadingIdx === imgIdx && <div className="absolute inset-0 bg-slate-900/80 flex items-center justify-center text-[#F4BF4B]"><Loader2 className="animate-spin" /></div>}
                 </div>
-                <label className="block rounded-[12px] border-2 border-[#121212]/10 bg-white hover:bg-[#F4BF4B]/10 text-[#121212] py-3 text-center text-[10px] font-black uppercase tracking-widest cursor-pointer transition-colors mb-3">
+                <label className="block rounded-md border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 py-2 text-center text-xs font-semibold cursor-pointer transition-colors mb-2.5">
                   Upload File <input type="file" className="hidden" accept="image/*" onChange={(e) => onUpload(activeFolderIdx, imgIdx, e)} />
                 </label>
                 <input className={inputClass + " mb-2"} placeholder="Photo Title" value={img.title} onChange={e => { const nf = [...folders]; nf[activeFolderIdx].images[imgIdx].title = e.target.value; setFolders(nf); }} />
-                <input className={inputClass + " mb-3"} placeholder="Photographer" value={img.photographer} onChange={e => { const nf = [...folders]; nf[activeFolderIdx].images[imgIdx].photographer = e.target.value; setFolders(nf); }} />
-                <button onClick={() => setConfirmDelete({ show: true, type: 'image', fIdx: activeFolderIdx, imgIdx })} className="w-full mt-auto rounded-[12px] bg-[#121212] text-[#F4BF4B] hover:bg-[#9E1B1D] hover:text-white py-3 font-black text-[10px] uppercase tracking-widest transition-colors">Remove Slot</button>
+                <input className={inputClass + " mb-2.5"} placeholder="Photographer" value={img.photographer} onChange={e => { const nf = [...folders]; nf[activeFolderIdx].images[imgIdx].photographer = e.target.value; setFolders(nf); }} />
+                <button onClick={() => setConfirmDelete({ show: true, type: 'image', fIdx: activeFolderIdx, imgIdx })} className="w-full mt-auto rounded-lg bg-rose-50 border border-rose-100 text-rose-600 hover:bg-rose-100 py-2 font-semibold text-xs transition-colors cursor-pointer">Remove Slot</button>
               </div>
             ))}
           </div>
         </div>
       ) : (
         /* VIEW 2: FOLDER LIST */
-        <div className="space-y-6">
-          <button onClick={addFolder} className="w-full py-10 rounded-[18px] border-2 border-dashed border-[#121212]/10 bg-white font-black text-sm uppercase tracking-widest text-[#121212]/30 hover:bg-[#F4BF4B]/10 hover:border-[#F4BF4B] transition-all">+ Create New Trip Archive</button>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="space-y-4">
+          <button onClick={addFolder} className="w-full py-8 rounded-lg border border-dashed border-slate-300 bg-slate-50/50 font-semibold text-xs text-slate-600 hover:bg-slate-100/60 hover:border-slate-400 transition-all cursor-pointer flex items-center justify-center gap-2">+ Create New Trip Archive</button>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
             {folders.map((f, fIdx) => (
-              <div key={f.id} className="rounded-[18px] bg-white border-2 border-[#121212]/10 shadow-[0_12px_24px_rgba(18,18,18,0.06)] p-5 flex flex-col">
-                <div className="aspect-square bg-[#FCFBF7] rounded-[14px] border-2 border-[#121212]/10 mb-4 relative overflow-hidden">
-                  {f.url ? <img src={f.url} className="w-full h-full object-cover" /> : <div className="h-full flex items-center justify-center text-[10px] font-black text-[#121212]/15 text-center uppercase tracking-widest">Empty Folder</div>}
-                  {uploadingIdx === -99 && <div className="absolute inset-0 bg-[#121212]/80 flex items-center justify-center text-[#F4BF4B]"><Loader2 className="animate-spin" /></div>}
+              <div key={f.id} className="saas-card bg-white p-4 border-slate-200/80 flex flex-col">
+                <div className="aspect-square bg-slate-50 rounded-lg border border-slate-200/80 mb-3 relative overflow-hidden">
+                  {f.url ? <img src={f.url} className="w-full h-full object-cover" /> : <div className="h-full flex items-center justify-center text-xs text-slate-400 text-center font-medium">Empty Folder</div>}
+                  {uploadingIdx === -99 && <div className="absolute inset-0 bg-slate-900/80 flex items-center justify-center text-[#F4BF4B]"><Loader2 className="animate-spin" /></div>}
                 </div>
-                <label className="rounded-[12px] border-2 border-[#121212]/10 bg-white hover:bg-[#F4BF4B]/10 p-3 text-center text-[10px] font-black uppercase tracking-widest cursor-pointer mb-4 transition-colors">
+                <label className="rounded-md border border-slate-200 bg-white hover:bg-slate-50 p-2 text-center text-xs font-semibold text-slate-700 cursor-pointer mb-3 transition-colors">
                   Set Cover Image <input type="file" className="hidden" accept="image/*" onChange={(e) => onUpload(fIdx, null, e)} />
                 </label>
-                <input className={inputClass + " mb-4"} placeholder="Trip Title" value={f.title} onChange={e => { const n = [...folders]; n[fIdx].title = e.target.value; setFolders(n); }} />
-                <div className="space-y-2 mt-auto">
-                   <button onClick={() => setActiveFolderIdx(fIdx)} className="w-full rounded-[12px] bg-[#121212] text-[#F4BF4B] hover:bg-[#9E1B1D] hover:text-white py-3 font-black text-[10px] uppercase tracking-widest transition-colors">Manage Files ({f.images?.length || 0})</button>
-                   <button onClick={() => setConfirmDelete({ show: true, type: 'folder', fIdx })} className="w-full rounded-[12px] border-2 border-[#9E1B1D]/20 text-[#9E1B1D] hover:bg-[#9E1B1D] hover:text-white py-3 font-black text-[10px] uppercase tracking-widest transition-colors">Delete Folder</button>
+                <input className={inputClass + " mb-3"} placeholder="Trip Title" value={f.title} onChange={e => { const n = [...folders]; n[fIdx].title = e.target.value; setFolders(n); }} />
+                <div className="space-y-1.5 mt-auto">
+                   <button onClick={() => setActiveFolderIdx(fIdx)} className="w-full rounded-lg bg-[#121212] text-[#F4BF4B] hover:bg-slate-800 py-2 font-semibold text-xs transition-colors cursor-pointer">Manage Files ({f.images?.length || 0})</button>
+                   <button onClick={() => setConfirmDelete({ show: true, type: 'folder', fIdx })} className="w-full rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 py-2 font-semibold text-xs transition-colors cursor-pointer">Delete Folder</button>
                 </div>
               </div>
             ))}

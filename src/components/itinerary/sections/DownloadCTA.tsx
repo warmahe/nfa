@@ -72,7 +72,7 @@ export const DownloadCTA: React.FC<DownloadCTAProps> = ({ pkg }) => {
               We'll send the complete day-by-day itinerary, packing list, and briefing doc directly to you. No spam. Just the essentials.
             </p>
             {/* Direct PDF Download if Available */}
-            {pkg?.itineraryPDF && (
+            {pkg?.itineraryPDF ? (
               <div className="mt-8 pt-8 border-t-2 border-[#121212]/20">
                 <p className="text-[9px] font-black uppercase tracking-widest text-[#121212]/60 mb-4">Or download immediately:</p>
                 <a
@@ -83,6 +83,12 @@ export const DownloadCTA: React.FC<DownloadCTAProps> = ({ pkg }) => {
                 >
                   <Download size={16} /> Download PDF Now
                 </a>
+              </div>
+            ) : (
+              <div className="mt-8 pt-8 border-t-2 border-[#121212]/20">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#121212]/60">
+                  ℹ Itinerary PDF is currently unavailable. Enter your number above and our team will send you the itinerary PDF directly.
+                </p>
               </div>
             )}
           </div>
@@ -98,15 +104,20 @@ export const DownloadCTA: React.FC<DownloadCTAProps> = ({ pkg }) => {
                 <p className="font-sans font-bold text-white/60 text-xs uppercase tracking-widest mb-6">
                   Our team will reach out shortly with your itinerary.
                 </p>
-                {/* Show actual PDF or mock link */}
-                <a
-                  href={pkg?.itineraryPDF || "/itinerary-sample.pdf"}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 bg-[#F4BF4B] text-[#121212] px-8 py-4 font-black text-[10px] uppercase tracking-widest border-2 border-[#F4BF4B] hover:bg-white transition-colors"
-                >
-                  <Download size={16} /> Download PDF Now
-                </a>
+                {pkg?.itineraryPDF ? (
+                  <a
+                    href={pkg.itineraryPDF}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 bg-[#F4BF4B] text-[#121212] px-8 py-4 font-black text-[10px] uppercase tracking-widest border-2 border-[#F4BF4B] hover:bg-white transition-colors"
+                  >
+                    <Download size={16} /> Download PDF Now
+                  </a>
+                ) : (
+                  <p className="text-[10px] font-black text-[#F4BF4B] uppercase tracking-widest">
+                    Your request has been logged. We will WhatsApp the itinerary shortly.
+                  </p>
+                )}
               </div>
             ) : (
               <form

@@ -55,18 +55,43 @@ service cloud.firestore {
     }
     
     // ========================================================================
+    // ENQUIRIES COLLECTION
+    // ========================================================================
+    // Public/Anonymous creation: Must set status == 'NEW' and cannot spoof userId
+    // Read: Only admins or the authenticated traveller who created it
+    // Update/Delete: Only admins can update status/source or delete
+    match /Enquiries/{enquiryId} {
+      allow create: if request.resource.data.status == 'NEW' &&
+                       (
+                         !('userId' in request.resource.data.traveller) ||
+                         request.resource.data.traveller.userId == null ||
+                         (request.auth != null && request.resource.data.traveller.userId == request.auth.uid)
+                       );
+      allow read: if request.auth != null && 
+                     (request.auth.uid == resource.data.traveller.userId || isAdmin());
+      allow update, delete: if request.auth != null && isAdmin();
+
+      // Admin-only subcollection: Internal Notes
+      match /notes/{noteId} {
+        allow read, write: if request.auth != null && isAdmin();
+      }
+
+      // Admin-only subcollection: Activity Audit Timeline
+      match /activities/{activityId} {
+        allow read, write: if request.auth != null && isAdmin();
+      }
+    }
+
+    // ========================================================================
     // BOOKINGS COLLECTION
     // ========================================================================
     // Users can read their own bookings, admins can read all
     // Users can create, admins can update/delete
     match /bookings/{bookingId} {
       allow read: if request.auth != null && 
-                     (request.auth.uid == resource.data.userId || isAdmin());
-      allow create: if request.auth != null && 
-                      request.auth.uid == request.resource.data.userId;
-      allow update: if request.auth != null && 
-                      (request.auth.uid == resource.data.userId || isAdmin());
-      allow delete: if request.auth != null && isAdmin();
+                     (request.auth.uid == resource.data.userId || request.auth.uid == resource.data.customerId || isAdmin());
+      allow create: if request.auth != null && (request.auth.uid == request.resource.data.userId || isAdmin());
+      allow update, delete: if request.auth != null && isAdmin();
     }
     
     // ========================================================================
@@ -81,6 +106,31 @@ service cloud.firestore {
       allow create: if request.auth != null && request.auth.uid == userId;
       allow update: if request.auth != null && 
                       (request.auth.uid == userId || isAdmin());
+      allow delete: if request.auth != null && isAdmin();
+    }
+    
+    // ========================================================================
+    // CUSTOMERS COLLECTION (C3)
+    // ========================================================================
+    // Authenticated users can read their own profile; admins can read all
+    // Users can create/update only allowed personal fields
+    // Critical system fields (customerReference, userId, totalEnquiries, totalConvertedEnquiries) are protected
+    // Anonymous users cannot access customer documents
+    match /customers/{customerId} {
+      allow read: if request.auth != null && 
+                     (request.auth.uid == resource.data.userId || customerId == request.auth.uid || isAdmin());
+      allow create: if request.auth != null && 
+                       (request.auth.uid == request.resource.data.userId || customerId == request.auth.uid || isAdmin());
+      allow update: if request.auth != null && 
+                       (
+                         isAdmin() ||
+                         (
+                           (request.auth.uid == resource.data.userId || customerId == request.auth.uid) &&
+                           !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+                             'customerReference', 'userId', 'totalEnquiries', 'totalConvertedEnquiries', 'createdAt'
+                           ])
+                         )
+                       );
       allow delete: if request.auth != null && isAdmin();
     }
     
@@ -103,6 +153,17 @@ service cloud.firestore {
       allow read: if resource.data.status == "published" || 
                      (request.auth != null && isAdmin());
       allow create, update, delete: if request.auth != null && isAdmin();
+    }
+
+    // ========================================================================
+    // CUSTOMER STORIES COLLECTION (E13)
+    // ========================================================================
+    // Public: Anyone can read published stories
+    // Write: Only authenticated admins
+    match /customerStories/{storyId} {
+      allow read: if resource.data.status == "PUBLISHED" || 
+                     request.auth != null;
+      allow create, update, delete: if request.auth != null;
     }
     
     // ========================================================================

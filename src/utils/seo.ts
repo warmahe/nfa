@@ -62,9 +62,9 @@ export const pageMetadata: Record<string, SeoMetadata> = {
   },
 
   blog: {
-    title: "Adventure Travel Blog - NO FIXED ADDRESS",
-    description: "Expert insights on adventure travel, expedition tips, destination guides, and travel stories.",
-    keywords: "travel blog, adventure tips, destination guides, travel stories",
+    title: "Customer Stories - NO FIXED ADDRESS",
+    description: "Expert insights on adventure travel, expedition tips, destination guides, and customer travel stories.",
+    keywords: "customer stories, travel stories, adventure tips, destination guides",
     type: "website",
   },
 
@@ -76,17 +76,17 @@ export const pageMetadata: Record<string, SeoMetadata> = {
   },
 
   dashboard: {
-    title: "My Dashboard - NO FIXED ADDRESS",
-    description: "Manage your bookings, track your expeditions, and access your traveler profile.",
-    keywords: "traveler dashboard, booking management, trip tracking",
+    title: "My Account - NO FIXED ADDRESS",
+    description: "Manage your bookings, track your journeys, and access your traveler profile.",
+    keywords: "traveler profile, booking management, journey tracking",
     type: "website",
     robots: "noindex, nofollow",
   },
 
   admin: {
-    title: "Admin Dashboard - NO FIXED ADDRESS",
-    description: "Administrative panel for managing bookings, destinations, and packages.",
-    keywords: "admin panel, operations dashboard",
+    title: "Admin Workspace - NO FIXED ADDRESS",
+    description: "Administrative workspace for managing bookings, destinations, and journeys.",
+    keywords: "admin workspace, operations dashboard",
     type: "website",
     robots: "noindex, nofollow",
   },

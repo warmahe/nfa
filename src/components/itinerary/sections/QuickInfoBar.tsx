@@ -31,34 +31,63 @@ const InfoItem: React.FC<{
   </div>
 );
 
+const getDynamicGridClass = (count: number) => {
+  switch (count) {
+    case 1:
+      return 'grid-cols-1 max-w-md mx-auto';
+    case 2:
+      return 'grid-cols-1 sm:grid-cols-2 max-w-4xl mx-auto';
+    case 3:
+      return 'grid-cols-1 sm:grid-cols-3 max-w-5xl mx-auto';
+    case 4:
+      return 'grid-cols-2 lg:grid-cols-4';
+    case 5:
+      return 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5';
+    case 6:
+    default:
+      return 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6';
+  }
+};
+
 export const QuickInfoBar: React.FC<QuickInfoBarProps> = ({ pkg }) => {
   const departureDateLabel = pkg?.departureDate
     ? new Date(pkg.departureDate).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })
     : 'Multiple Dates';
 
-  // Default items if no custom quickInfo is provided
   const defaultItems: QuickInfoItem[] = [
-    { icon: 'Clock', label: 'Duration', value: pkg?.duration || '7 Days' },
+    { icon: 'Clock', label: 'Duration', value: pkg?.duration || '' },
     { icon: 'Calendar', label: 'Next Departure', value: departureDateLabel },
-    { icon: 'Users', label: 'Group Size', value: `Max ${pkg?.maxTravelers || 6} People` },
-    { icon: 'Zap', label: 'Trip Style', value: pkg?.tripStyle || 'Adventure' },
-    { icon: 'BedDouble', label: 'Accommodation', value: pkg?.accommodation || 'Luxury Camps' },
-    { icon: 'Compass', label: 'Guide', value: pkg?.guideType || 'Expert Local Guides' },
+    { icon: 'Users', label: 'Group Size', value: pkg?.maxTravelers ? `Max ${pkg.maxTravelers} People` : '' },
+    { icon: 'Zap', label: 'Trip Style', value: pkg?.tripStyle || '' },
+    { icon: 'BedDouble', label: 'Accommodation', value: pkg?.accommodation || '' },
+    { icon: 'Compass', label: 'Guide', value: pkg?.guideType || '' },
   ];
 
-  const displayItems = (pkg?.quickInfo && pkg.quickInfo.length > 0) ? pkg.quickInfo : defaultItems;
+  const rawItems = (pkg?.quickInfo && pkg.quickInfo.length > 0) ? pkg.quickInfo : defaultItems;
+
+  // Filter out any empty, undefined, NaN, or null fields
+  const displayItems = rawItems.filter(item => {
+    if (!item || !item.label || !item.value) return false;
+    const v = String(item.value).trim();
+    const l = String(item.label).trim();
+    return v !== '' && v !== 'undefined' && v !== 'null' && v !== 'NaN' && l !== '';
+  });
+
+  if (displayItems.length === 0) return null;
+
+  const dynamicGridClass = getDynamicGridClass(displayItems.length);
 
   return (
     <section
       id="quick-info"
-      className="border-y-4 border-[#121212] bg-white relative"
+      className="border-y-4 border-[#121212] bg-white relative overflow-hidden"
       aria-label="Trip quick info"
     >
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-[0.02] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#121212 1px, transparent 0)', backgroundSize: '24px 24px' }} />
 
       <div className="max-w-[1440px] mx-auto relative">
-        <div className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-${Math.min(displayItems.length, 6)} xl:grid-cols-${Math.min(displayItems.length, 8)}`}>
+        <div className={`grid ${dynamicGridClass} divide-x-2 divide-y-2 sm:divide-y-0 divide-[#121212]/10`}>
           {displayItems.map((item, i) => (
             <InfoItem key={i} icon={item.icon} label={item.label} value={item.value} />
           ))}

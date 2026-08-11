@@ -1,321 +1,849 @@
-import React, { useState, useEffect } from 'react';
-import { Save, Upload, Check, AlertCircle } from 'lucide-react';
-import { doc, getDoc, setDoc, collectionGroup, getDocs, collection } from 'firebase/firestore';
-import { db, uploadImage } from '../../services/firebaseService';
-import { Review, Package, Destination } from '../../types/database';
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  Save, Eye, Plus, Trash2, ChevronUp, ChevronDown, Check, AlertTriangle,
+  Layers, Compass, MapPin, BookOpen, Sparkles, Shield, Image as ImageIcon,
+  X, CheckCircle, HelpCircle, ArrowRight, Video, FileText
+} from 'lucide-react';
+import { doc, onSnapshot, setDoc, collection } from 'firebase/firestore';
+import { db } from '../../services/firebaseService';
+import {
+  HomepageSettings, Package, Destination, CustomerStory,
+  HomepageExperienceCategory, HomepageWhyUsFeature
+} from '../../types/database';
+import { ImageInput } from './ImageInput';
+import { useAdminDialog } from './AdminDialogContext';
 
-export const AdminHomepageManager = () => {
+type SectionTab =
+  | 'HERO'
+  | 'INTRO'
+  | 'JOURNEYS'
+  | 'DESTINATIONS'
+  | 'EXPERIENCES'
+  | 'STORIES'
+  | 'WHY_US'
+  | 'PLANNING_CTA';
+
+export const AdminHomepageManager: React.FC = () => {
+  const { confirm, toast } = useAdminDialog();
+
+  // Data pulled from database for selection lists
+  const [packages, setPackages] = useState<Package[]>([]);
+  const [destinations, setDestinations] = useState<Destination[]>([]);
+  const [stories, setStories] = useState<CustomerStory[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState({ type: '', text: '' });
-  const [uploadingHero, setUploadingHero] = useState(false);
-  const [reviewSearchQuery, setReviewSearchQuery] = useState('');
-  const [showReviewDropdown, setShowReviewDropdown] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
 
-  // Data pulled from database for selection
-  const [availableReviews, setAvailableReviews] = useState<Review[]>([]);
-  const [availablePackages, setAvailablePackages] = useState<Package[]>([]);
-  const [availableDestinations, setAvailableDestinations] = useState<Destination[]>([]);
+  // Tab & Modal State
+  const [activeTab, setActiveTab] = useState<SectionTab>('HERO');
+  const [discardConfirm, setDiscardConfirm] = useState(false);
+  const [heroHideConfirm, setHeroHideConfirm] = useState(false);
+  const [notice, setNotice] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
 
-  // The Master State for Homepage Content
-  const [content, setContent] = useState({
+  // Master Homepage Content State
+  const [settings, setSettings] = useState<HomepageSettings>({
     heroImage: '',
-    featuredDropZones: [] as string[], // Stores Package or Destination IDs
-    featuredArchive: [] as string[],   // Stores Destination IDs
-    featuredReviewIds: [] as string[], // Stores Review IDs
+    featuredDropZones: [],
+    featuredArchive: [],
+    featuredReviewIds: [],
+    hero: {
+      enabled: true,
+      title: 'GO FURTHER. TRAVEL DEEPER.',
+      subtitle: 'NO FIXED ADDRESS',
+      description: 'Journeys shaped around remarkable places, meaningful experiences and time.',
+      primaryBtnLabel: 'EXPLORE JOURNEYS',
+      primaryBtnAction: 'EXPLORE_JOURNEYS',
+      secondaryBtnLabel: 'PLAN YOUR JOURNEY',
+      secondaryBtnAction: 'ENQUIRE_NOW',
+      heroImage: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1600&q=80',
+    },
+    introduction: {
+      enabled: true,
+      sectionLabel: 'ABOUT NO FIXED ADDRESS',
+      heading: 'Travel Should Feel Personal.',
+      description: 'Every journey we create is built around the places you want to experience and the way you want to travel.',
+      ctaLabel: 'EXPLORE OUR PHILOSOPHY',
+      ctaAction: 'EXPLORE_JOURNEYS',
+    },
+    featuredJourneys: {
+      enabled: true,
+      sectionLabel: 'CURATED EXPEDITIONS',
+      heading: 'Featured Journeys & Itineraries',
+      description: 'Handpicked luxury itineraries designed for unforgettable travel.',
+      journeyIds: [],
+    },
+    featuredDestinations: {
+      enabled: true,
+      sectionLabel: 'REMARKABLE LOCATIONS',
+      heading: 'Explore Destinations',
+      description: 'From alpine lakes to ancient cities across the world.',
+      destinationIds: [],
+    },
+    experiences: {
+      enabled: true,
+      sectionLabel: 'TRAVEL CATEGORIES',
+      heading: 'Curated Experiences',
+      description: 'Travel tailored to your passion and pace.',
+      categories: [
+        { title: 'Adventure & Nature', description: 'Raw wilderness, alpine treks, and outdoor discovery.' },
+        { title: 'Luxury & Stays', description: 'Handpicked palace hotels, private chalets, and heritage estates.' },
+        { title: 'Culture & Heritage', description: 'Private guides, historic monuments, and local encounters.' },
+        { title: 'Food & Wine', description: 'Private vineyard visits, Michelin dining, and cooking masterclasses.' },
+      ],
+    },
+    customerStories: {
+      enabled: true,
+      sectionLabel: 'TRAVELLER JOURNEYS',
+      heading: 'Customer Stories',
+      description: 'Real accounts shared by travellers who have journeyed with us.',
+      storyIds: [],
+    },
+    whyUs: {
+      enabled: true,
+      sectionLabel: 'OUR PROMISE',
+      heading: 'Why Travel With No Fixed Address',
+      description: 'Crafted with care, personal attention, and local expertise.',
+      features: [
+        { title: 'Thoughtful Customization', description: 'No two itineraries are ever identical.' },
+        { title: 'Handpicked Accommodations', description: 'Stays chosen for character, luxury, and location.' },
+        { title: 'Local Expertise', description: 'Insiders and private guides at every stop.' },
+        { title: 'Personal Support', description: 'Dedicated assistance from planning to return.' },
+      ],
+    },
+    planningCta: {
+      enabled: true,
+      heading: 'Ready To Plan Your Journey?',
+      description: 'Tell us where you\'d like to go and we\'ll help shape the journey around you.',
+      primaryBtnLabel: 'ENQUIRE NOW',
+      secondaryBtnLabel: 'EXPLORE JOURNEYS',
+    },
   });
 
+  // 1. Subscribe to canonical homepage settings document & reference collections in realtime
   useEffect(() => {
-    loadData();
+    setLoading(true);
+
+    const unsubSettings = onSnapshot(
+      doc(db, 'settings', 'homepage'),
+      (snap) => {
+        if (snap.exists()) {
+          const data = snap.data() as HomepageSettings;
+          setSettings((prev) => ({
+            ...prev,
+            ...data,
+            hero: { ...prev.hero, ...(data.hero || {}) },
+            introduction: { ...prev.introduction, ...(data.introduction || {}) },
+            featuredJourneys: { ...prev.featuredJourneys, ...(data.featuredJourneys || {}) },
+            featuredDestinations: { ...prev.featuredDestinations, ...(data.featuredDestinations || {}) },
+            experiences: { ...prev.experiences, ...(data.experiences || {}) },
+            customerStories: { ...prev.customerStories, ...(data.customerStories || {}) },
+            whyUs: { ...prev.whyUs, ...(data.whyUs || {}) },
+            planningCta: { ...prev.planningCta, ...(data.planningCta || {}) },
+          }));
+        }
+        setLoading(false);
+      },
+      (err) => {
+        console.error('Error loading homepage settings:', err);
+        setNotice({ type: 'error', text: 'Couldn\'t load homepage settings.' });
+        setLoading(false);
+      }
+    );
+
+    const unsubPackages = onSnapshot(collection(db, 'packages'), (snap) => {
+      setPackages(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Package, 'id'>) })));
+    });
+
+    const unsubDestinations = onSnapshot(collection(db, 'destinations'), (snap) => {
+      setDestinations(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Destination, 'id'>) })));
+    });
+
+    const unsubStories = onSnapshot(collection(db, 'customerStories'), (snap) => {
+      setStories(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<CustomerStory, 'id'>) })));
+    });
+
+    return () => {
+      unsubSettings();
+      unsubPackages();
+      unsubDestinations();
+      unsubStories();
+    };
   }, []);
 
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      // 1. Fetch Homepage Settings
-      const docRef = doc(db, 'settings', 'homepage');
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        const data = docSnap.data() as any;
-        setContent({
-          heroImage: data.heroImage || '',
-          featuredDropZones: data.featuredDropZones || [],
-          featuredArchive: data.featuredArchive || [],
-          featuredReviewIds: data.featuredReviewIds || [],
-        });
-      }
-
-      // 2. Fetch all required data for selection lists concurrently
-      const [reviewSnaps, packageSnaps, destSnaps] = await Promise.all([
-        getDocs(collection(db, 'global_reviews')),
-        getDocs(collection(db, 'packages')),
-        getDocs(collection(db, 'destinations'))
-      ]);
-
-      setAvailableReviews(reviewSnaps.docs.map(d => ({ id: d.id, ...d.data() } as Review)));
-      setAvailablePackages(packageSnaps.docs.map(d => ({ id: d.id, ...d.data() } as Package)));
-      setAvailableDestinations(destSnaps.docs.map(d => ({ id: d.id, ...d.data() } as Destination)));
-
-    } catch (error: any) {
-      console.error("FULL LOAD ERROR:", error);
-      setMessage({ type: 'error', text: `LOAD ERROR: ${error.message || 'Network disconnected'}` });
-    } finally {
-      setLoading(false);
-    }
+  const handleFieldChange = (section: keyof HomepageSettings, field: string, value: any) => {
+    setSettings((prev) => {
+      const sectionObj = (prev[section] as any) || {};
+      return {
+        ...prev,
+        [section]: {
+          ...sectionObj,
+          [field]: value,
+        },
+      };
+    });
+    setIsDirty(true);
   };
 
   const handleSave = async () => {
-    setSaving(true);
-    setMessage({ type: '', text: '' });
     try {
-      await setDoc(doc(db, 'settings', 'homepage'), content);
-      setMessage({ type: 'success', text: 'Homepage content updated successfully.' });
-      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
-    } catch (error: any) {
-      console.error("FULL SAVE ERROR:", error);
-      setMessage({ type: 'error', text: `SAVE ERROR: ${error.message || 'Unknown error'}` });
+      setSaving(true);
+      setNotice(null);
+
+      const payload: HomepageSettings = {
+        ...settings,
+        heroImage: settings.hero?.heroImage || settings.heroImage || '',
+        featuredDropZones: settings.featuredJourneys?.journeyIds || settings.featuredDropZones || [],
+        featuredArchive: settings.featuredDestinations?.destinationIds || settings.featuredArchive || [],
+        featuredStoryIds: settings.customerStories?.storyIds || [],
+        updatedAt: new Date() as any,
+      };
+
+      await setDoc(doc(db, 'settings', 'homepage'), payload);
+      setIsDirty(false);
+      setNotice({ type: 'success', text: 'Homepage content updated successfully.' });
+      setTimeout(() => setNotice(null), 3000);
+    } catch (err: any) {
+      console.error('Error saving homepage content:', err);
+      setNotice({ type: 'error', text: err.message || 'Couldn\'t save homepage content.' });
     } finally {
       setSaving(false);
     }
   };
 
-  const handleHeroUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const inputClass = 'saas-input w-full text-xs text-slate-900 font-sans focus:ring-2 focus:ring-[#121212] focus:border-transparent';
+  const labelClass = 'block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1';
 
-    setUploadingHero(true);
-    try {
-      const downloadUrl = await uploadImage(file, 'homepage');
-      setContent(prev => ({ ...prev, heroImage: downloadUrl }));
-    } catch (error: any) {
-      console.error("HERO UPLOAD ERROR:", error);
-      setMessage({ type: 'error', text: `UPLOAD ERROR: ${error.message}` });
-    } finally {
-      setUploadingHero(false);
-    }
-  };
-
-  const toggleSelection = (arrayName: keyof typeof content, id: string, maxLimit?: number) => {
-    setContent(prev => {
-      const currentArray = prev[arrayName] as string[];
-      const isSelected = currentArray.includes(id);
-      
-      if (isSelected) {
-        return { ...prev, [arrayName]: currentArray.filter(itemId => itemId !== id) };
-      } else {
-        if (maxLimit && currentArray.length >= maxLimit) {
-          alert(`Maximum of ${maxLimit} items allowed for this section.`);
-          return prev;
-        }
-        return { ...prev, [arrayName]: [...currentArray, id] };
-      }
-    });
-  };
-
-  const moveItem = (arrayName: 'featuredReviewIds' | 'featuredDropZones' | 'featuredArchive', index: number, direction: 'up' | 'down') => {
-    const newArray = [...content[arrayName]];
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    
-    if (targetIndex < 0 || targetIndex >= newArray.length) return;
-    
-    [newArray[index], newArray[targetIndex]] = [newArray[targetIndex], newArray[index]];
-    setContent({ ...content, [arrayName]: newArray });
-  };
-
-  const inputClass = "w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-bold text-sm text-[#121212] transition-all";
-
-  if (loading) return <div className="p-8 font-black uppercase text-[#121212]/40 tracking-widest text-sm">Loading Configuration...</div>;
+  if (loading) {
+    return (
+      <div className="py-20 text-center space-y-3">
+        <Compass className="size-8 mx-auto text-slate-300 animate-pulse" />
+        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Loading Homepage Settings…</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6 w-full pb-8 md:pb-0">
-      
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="font-brand font-black text-2xl uppercase tracking-tight text-[#121212]">Site Content</h2>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[#121212]/50 mt-1">Manage homepage sections</p>
-        </div>
-        <button 
-          onClick={handleSave} 
-          disabled={saving}
-          className="w-full md:w-auto flex items-center justify-center gap-2 px-5 py-3 bg-[#121212] text-[#F4BF4B] font-black text-[11px] uppercase tracking-widest rounded-[18px] shadow-[0_12px_24px_rgba(18,18,18,0.12)] hover:bg-[#9E1B1D] hover:text-white transition-all disabled:opacity-50"
+    <div className="space-y-6 text-left">
+      {/* Alert Notices */}
+      {notice && (
+        <div
+          className={`p-4 rounded-xl border-2 font-bold text-xs flex items-center justify-between ${
+            notice.type === 'error'
+              ? 'bg-rose-50 border-rose-200 text-rose-700'
+              : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+          }`}
         >
-          {saving ? 'SAVING...' : <><Save size={16} /> Save Changes</>}
-        </button>
-      </div>
-
-      {message.text && (
-        <div className={`p-4 rounded-[14px] font-bold text-xs uppercase tracking-widest flex items-center gap-2 border-2 ${message.type === 'success' ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
-          {message.type === 'success' ? <Check size={16} /> : <AlertCircle size={16} />} {message.text}
+          <div className="flex items-center gap-2">
+            {notice.type === 'error' ? <AlertTriangle size={16} /> : <Check size={16} className="text-emerald-600" />}
+            <span>{notice.text}</span>
+          </div>
+          <button onClick={() => setNotice(null)} className="hover:opacity-75 cursor-pointer" aria-label="Dismiss message">
+            <X size={14} />
+          </button>
         </div>
       )}
 
-      {/* 1. HERO SECTION */}
-      <section className="rounded-[18px] bg-white border-2 border-[#121212]/10 shadow-[0_12px_24px_rgba(18,18,18,0.06)] p-6">
-        <h3 className="text-[11px] font-black uppercase tracking-widest text-[#9E1B1D] mb-4">Hero Background</h3>
-        <div className="space-y-4">
-          <label className="text-[10px] font-bold uppercase tracking-widest text-[#121212]/50">Image URL or Upload File</label>
-          <div className="flex flex-col md:flex-row gap-3">
-            <input 
-              type="text" 
-              value={content.heroImage} 
-              onChange={(e) => setContent({...content, heroImage: e.target.value})}
-              placeholder="https://..." 
-              className={inputClass + " md:flex-1"}
-            />
-            <label className="w-full md:w-auto flex items-center justify-center gap-2 px-5 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white hover:bg-[#F4BF4B]/10 cursor-pointer font-black text-[11px] uppercase tracking-widest transition-colors">
-              {uploadingHero ? 'UPLOADING...' : <><Upload size={16} /> Upload File</>}
-              <input type="file" className="hidden" accept="image/*" onChange={handleHeroUpload} disabled={uploadingHero} />
-            </label>
-          </div>
-          {content.heroImage && (
-            <img src={content.heroImage} alt="Hero Preview" className="w-full h-40 md:h-48 object-cover rounded-[14px] border-2 border-[#121212]/10" />
-          )}
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80">
+        <div>
+          <h2 className="font-brand font-black text-2xl text-slate-900 uppercase tracking-tight flex items-center gap-2">
+            <Layers size={24} className="text-[#9E1B1D]" /> HOMEPAGE CONTENT WORKSPACE
+          </h2>
+          <p className="text-xs text-slate-500 font-medium mt-1">
+            Manage the content, journeys, destinations, and stories travellers see when they arrive.
+          </p>
         </div>
-      </section>
 
-      {/* 2. LOCATE YOUR DROP ZONE */}
-      <section className="rounded-[18px] bg-white border-2 border-[#121212]/10 shadow-[0_12px_24px_rgba(18,18,18,0.06)] p-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4 pb-4 border-b-2 border-[#121212]/10">
-          <h3 className="text-[11px] font-black uppercase tracking-widest text-[#9E1B1D]">Target Sectors (Drop Zone)</h3>
-          <span className="text-[10px] font-black uppercase tracking-widest bg-[#121212] text-[#F4BF4B] px-3 py-1 rounded-full">{content.featuredDropZones.length} / 4 Selected</span>
-        </div>
-        <p className="text-[10px] font-bold uppercase tracking-widest text-[#121212]/40 mb-4">Select exactly 4 packages to feature in the grid.</p>
-        
-        <div className="max-h-60 md:max-h-72 overflow-y-auto rounded-[14px] border-2 border-[#121212]/10 bg-[#FCFBF7] grid grid-cols-1 sm:grid-cols-2 gap-3 p-4">
-          {availablePackages.map(pkg => (
-            <div 
-              key={pkg.id} 
-              className={`flex items-center gap-3 p-4 rounded-[14px] border-2 cursor-pointer transition-all ${content.featuredDropZones.includes(pkg.id) ? 'border-[#F4BF4B] bg-[#F4BF4B]/10 shadow-[0_8px_16px_rgba(244,191,75,0.15)]' : 'border-[#121212]/10 hover:border-[#121212]/20 bg-white'}`}
-              onClick={() => toggleSelection('featuredDropZones', pkg.id, 4)}
-            >
-              <input type="checkbox" checked={content.featuredDropZones.includes(pkg.id)} readOnly className="size-4 accent-[#9E1B1D] cursor-pointer flex-shrink-0" />
-              <span className="font-bold text-sm uppercase truncate">{pkg.title}</span>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* 3. THE FIELD ARCHIVE (GALLERY) */}
-      <section className="rounded-[18px] bg-white border-2 border-[#121212]/10 shadow-[0_12px_24px_rgba(18,18,18,0.06)] p-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4 pb-4 border-b-2 border-[#121212]/10">
-          <h3 className="text-[11px] font-black uppercase tracking-widest text-[#9E1B1D]">The Field Archive</h3>
-          <span className="text-[10px] font-black uppercase tracking-widest bg-[#121212] text-[#F4BF4B] px-3 py-1 rounded-full">{content.featuredArchive.length} Selected</span>
-        </div>
-        <p className="text-[10px] font-bold uppercase tracking-widest text-[#121212]/40 mb-4">Select destinations for the scrolling gallery.</p>
-        
-        <div className="max-h-60 md:max-h-72 overflow-y-auto rounded-[14px] border-2 border-[#121212]/10 bg-[#FCFBF7] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-4">
-          {availableDestinations.map(dest => (
-            <div 
-              key={dest.id} 
-              className={`flex items-center gap-3 p-4 rounded-[14px] border-2 cursor-pointer transition-all ${content.featuredArchive.includes(dest.id) ? 'border-[#F4BF4B] bg-[#F4BF4B]/10 shadow-[0_8px_16px_rgba(244,191,75,0.15)]' : 'border-[#121212]/10 hover:border-[#121212]/20 bg-white'}`}
-              onClick={() => toggleSelection('featuredArchive', dest.id)}
-            >
-              <input type="checkbox" checked={content.featuredArchive.includes(dest.id)} readOnly className="size-4 accent-[#9E1B1D] cursor-pointer flex-shrink-0" />
-              <span className="font-bold text-sm uppercase truncate">{dest.name}</span>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* 4. VOICES FROM THE FIELD (REVIEWS) */}
-      <section className="rounded-[18px] bg-white border-2 border-[#121212]/10 shadow-[0_12px_24px_rgba(18,18,18,0.06)] p-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4 pb-4 border-b-2 border-[#121212]/10">
-          <h3 className="text-[11px] font-black uppercase tracking-widest text-[#9E1B1D]">Voices from the Field</h3>
-          <span className="text-[10px] font-black uppercase tracking-widest bg-[#121212] text-[#F4BF4B] px-3 py-1 rounded-full">{content.featuredReviewIds.length} Selected</span>
-        </div>
-        <p className="text-[10px] font-bold uppercase tracking-widest text-[#121212]/40 mb-4">Select reviews to display in the carousel.</p>
-        
-        {/* Search & Dropdown for Reviews */}
-        <div className="mb-6 relative">
-          <button
-            onClick={() => setShowReviewDropdown(!showReviewDropdown)}
-            className="w-full flex items-center justify-between p-4 rounded-[14px] border-2 border-[#121212]/10 bg-white hover:bg-[#FCFBF7] transition-colors font-black text-[11px] uppercase tracking-widest text-left"
+        <div className="flex items-center gap-3">
+          <a
+            href="/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-4 py-2.5 bg-slate-100 text-slate-800 font-bold text-xs uppercase tracking-wider rounded-xl hover:bg-slate-200 transition-all flex items-center gap-1.5 cursor-pointer"
           >
-            <span>+ Add Review</span>
-            <span className={`text-lg transition-transform duration-300 ${showReviewDropdown ? 'rotate-180' : 'rotate-0'}`}>▼</span>
+            <Eye size={15} /> PREVIEW HOMEPAGE
+          </a>
+
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center gap-2 px-6 py-2.5 bg-[#121212] text-[#F4BF4B] font-black text-xs uppercase tracking-widest rounded-xl hover:bg-slate-800 disabled:opacity-50 transition-all cursor-pointer shadow-sm"
+            aria-label="Save homepage changes"
+          >
+            <Save size={16} /> {saving ? 'SAVING…' : 'SAVE CHANGES'}
           </button>
-          
-          {showReviewDropdown && (
-            <div className="absolute top-full left-0 right-0 mt-2 rounded-[14px] border-2 border-[#121212]/10 bg-white shadow-[0_24px_48px_rgba(18,18,18,0.15)] z-50 overflow-hidden">
-              <input
-                type="text"
-                placeholder="Search by name..."
-                value={reviewSearchQuery}
-                onChange={(e) => setReviewSearchQuery(e.target.value.toLowerCase())}
-                className="w-full p-4 border-b-2 border-[#121212]/10 outline-none focus:bg-[#FCFBF7] text-sm font-bold"
+        </div>
+      </div>
+
+      {/* Section Navigation Tabs */}
+      <div className="saas-card bg-white border border-slate-200/80 rounded-2xl overflow-hidden">
+        <div className="bg-slate-100 border-b border-slate-200 px-5 pt-3 overflow-x-auto flex items-center gap-2 no-scrollbar">
+          {[
+            { id: 'HERO', label: '1. Hero Banner', icon: Compass },
+            { id: 'INTRO', label: '2. Introduction', icon: FileText },
+            { id: 'JOURNEYS', label: '3. Featured Journeys', icon: MapPin },
+            { id: 'DESTINATIONS', label: '4. Destinations', icon: Compass },
+            { id: 'EXPERIENCES', label: '5. Experiences', icon: Sparkles },
+            { id: 'STORIES', label: '6. Customer Stories', icon: BookOpen },
+            { id: 'WHY_US', label: '7. Why Choose Us', icon: Shield },
+            { id: 'PLANNING_CTA', label: '8. Planning CTA', icon: CheckCircle },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as SectionTab)}
+                className={`px-4 py-2.5 font-black text-[11px] uppercase tracking-wider flex items-center gap-2 border-b-2 transition-colors cursor-pointer shrink-0 ${
+                  isActive
+                    ? 'border-[#121212] text-[#121212] bg-white rounded-t-lg'
+                    : 'border-transparent text-slate-500 hover:text-slate-900'
+                }`}
+                aria-label={`Switch to ${tab.label} section editor`}
+              >
+                <Icon size={14} />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Editor Body */}
+        <div className="p-6 space-y-6">
+          {/* Section 1: HERO */}
+          {activeTab === 'HERO' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">HERO BANNER VISIBILITY</h4>
+                  <p className="text-xs text-slate-500 font-medium mt-0.5">Control whether the hero banner displays on the homepage.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (settings.hero?.enabled) {
+                      setHeroHideConfirm(true);
+                    } else {
+                      handleFieldChange('hero', 'enabled', true);
+                    }
+                  }}
+                  className={`px-4 py-2 font-black text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
+                    settings.hero?.enabled !== false
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-slate-200 text-slate-700'
+                  }`}
+                  aria-label="Toggle hero visibility"
+                >
+                  {settings.hero?.enabled !== false ? 'HERO VISIBLE' : 'HERO HIDDEN'}
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className={labelClass}>Hero Subtitle / Tagline</label>
+                  <input
+                    type="text"
+                    value={settings.hero?.subtitle || ''}
+                    onChange={(e) => handleFieldChange('hero', 'subtitle', e.target.value)}
+                    placeholder="e.g. NO FIXED ADDRESS"
+                    className={inputClass}
+                    aria-label="Hero Subtitle"
+                  />
+                </div>
+
+                <div>
+                  <label className={labelClass}>Hero Main Title *</label>
+                  <input
+                    type="text"
+                    value={settings.hero?.title || ''}
+                    onChange={(e) => handleFieldChange('hero', 'title', e.target.value)}
+                    placeholder="e.g. GO FURTHER. TRAVEL DEEPER."
+                    className={inputClass}
+                    aria-label="Hero Title"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className={labelClass}>Hero Description</label>
+                <textarea
+                  value={settings.hero?.description || ''}
+                  onChange={(e) => handleFieldChange('hero', 'description', e.target.value)}
+                  placeholder="Editorial hero narrative..."
+                  rows={3}
+                  className={inputClass + ' resize-none'}
+                  aria-label="Hero Description"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className={labelClass}>Primary Button Label</label>
+                  <input
+                    type="text"
+                    value={settings.hero?.primaryBtnLabel || 'EXPLORE JOURNEYS'}
+                    onChange={(e) => handleFieldChange('hero', 'primaryBtnLabel', e.target.value)}
+                    className={inputClass}
+                    aria-label="Primary Button Label"
+                  />
+                </div>
+
+                <div>
+                  <label className={labelClass}>Secondary Button Label</label>
+                  <input
+                    type="text"
+                    value={settings.hero?.secondaryBtnLabel || 'PLAN YOUR JOURNEY'}
+                    onChange={(e) => handleFieldChange('hero', 'secondaryBtnLabel', e.target.value)}
+                    className={inputClass}
+                    aria-label="Secondary Button Label"
+                  />
+                </div>
+              </div>
+
+              <ImageInput
+                label="HERO COVER IMAGE"
+                value={settings.hero?.heroImage || settings.heroImage || ''}
+                onSave={(url) => handleFieldChange('hero', 'heroImage', url)}
+                storagePath="homepage"
+                aspectClass="aspect-21/9"
               />
-              
-              <div className="max-h-48 md:max-h-56 overflow-y-auto">
-                {availableReviews
-                  .filter(review => !content.featuredReviewIds.includes(review.id) && review.travelerName.toLowerCase().includes(reviewSearchQuery))
-                  .map((review) => (
+            </div>
+          )}
+
+          {/* Section 2: INTRODUCTION */}
+          {activeTab === 'INTRO' && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className={labelClass}>Section Label</label>
+                  <input
+                    type="text"
+                    value={settings.introduction?.sectionLabel || ''}
+                    onChange={(e) => handleFieldChange('introduction', 'sectionLabel', e.target.value)}
+                    placeholder="e.g. ABOUT NO FIXED ADDRESS"
+                    className={inputClass}
+                    aria-label="Introduction Section Label"
+                  />
+                </div>
+
+                <div>
+                  <label className={labelClass}>Section Heading</label>
+                  <input
+                    type="text"
+                    value={settings.introduction?.heading || ''}
+                    onChange={(e) => handleFieldChange('introduction', 'heading', e.target.value)}
+                    placeholder="e.g. Travel Should Feel Personal."
+                    className={inputClass}
+                    aria-label="Introduction Section Heading"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className={labelClass}>Introduction Narrative</label>
+                <textarea
+                  value={settings.introduction?.description || ''}
+                  onChange={(e) => handleFieldChange('introduction', 'description', e.target.value)}
+                  placeholder="Full brand narrative..."
+                  rows={4}
+                  className={inputClass + ' resize-none'}
+                  aria-label="Introduction Description"
+                />
+              </div>
+
+              <ImageInput
+                label="OPTIONAL BRAND PHOTO"
+                value={settings.introduction?.image || ''}
+                onSave={(url) => handleFieldChange('introduction', 'image', url)}
+                storagePath="homepage"
+                aspectClass="aspect-16/9"
+              />
+            </div>
+          )}
+
+          {/* Section 3: FEATURED JOURNEYS */}
+          {activeTab === 'JOURNEYS' && (
+            <div className="space-y-6">
+              <div>
+                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">FEATURED JOURNEYS ON HOMEPAGE</h4>
+                <p className="text-xs text-slate-500 font-medium">Select and order published journeys displayed on the homepage.</p>
+              </div>
+
+              {((settings.featuredJourneys?.journeyIds || settings.featuredDropZones || []).length > 6) && (
+                <div className="p-3 bg-amber-50 border border-amber-200 text-amber-900 font-bold text-xs rounded-xl flex items-center gap-2">
+                  <AlertTriangle size={16} className="text-amber-600 shrink-0" />
+                  <span>Six journeys are recommended for the homepage for optimal editorial presentation.</span>
+                </div>
+              )}
+
+              {/* Package Selector Table */}
+              <div className="space-y-3">
+                <label className={labelClass}>Select Published Journeys</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-72 overflow-y-auto border border-slate-200 rounded-xl p-3 bg-slate-50">
+                  {packages.map((pkg) => {
+                    const currentIds = settings.featuredJourneys?.journeyIds || settings.featuredDropZones || [];
+                    const isSelected = currentIds.includes(pkg.id);
+                    return (
+                      <div
+                        key={pkg.id}
+                        onClick={() => {
+                          const next = isSelected
+                            ? currentIds.filter((id) => id !== pkg.id)
+                            : [...currentIds, pkg.id];
+                          handleFieldChange('featuredJourneys', 'journeyIds', next);
+                        }}
+                        className={`p-3 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-between ${
+                          isSelected
+                            ? 'bg-white border-[#121212] shadow-sm'
+                            : 'bg-white border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="size-10 rounded-md bg-slate-200 overflow-hidden shrink-0">
+                            {pkg.media?.thumbnail && (
+                              <img src={pkg.media.thumbnail} alt={pkg.title} className="w-full h-full object-cover" />
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-brand font-black text-xs text-slate-900">{pkg.title}</p>
+                            <p className="text-[10px] text-slate-500 font-medium">{pkg.duration || 'Custom'}</p>
+                          </div>
+                        </div>
+
+                        <span
+                          className={`size-6 rounded-md flex items-center justify-center font-black text-xs ${
+                            isSelected ? 'bg-[#121212] text-[#F4BF4B]' : 'border border-slate-300 text-slate-400'
+                          }`}
+                        >
+                          {isSelected ? '✓' : '+'}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Section 4: FEATURED DESTINATIONS */}
+          {activeTab === 'DESTINATIONS' && (
+            <div className="space-y-6">
+              <div>
+                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">FEATURED DESTINATIONS</h4>
+                <p className="text-xs text-slate-500 font-medium">Select destinations featured in the homepage discovery grid.</p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-72 overflow-y-auto border border-slate-200 rounded-xl p-3 bg-slate-50">
+                {destinations.map((dest) => {
+                  const currentIds = settings.featuredDestinations?.destinationIds || settings.featuredArchive || [];
+                  const isSelected = currentIds.includes(dest.id);
+                  return (
                     <div
-                      key={review.id}
+                      key={dest.id}
                       onClick={() => {
-                        toggleSelection('featuredReviewIds', review.id);
-                        setReviewSearchQuery('');
-                        setShowReviewDropdown(false);
+                        const next = isSelected
+                          ? currentIds.filter((id) => id !== dest.id)
+                          : [...currentIds, dest.id];
+                        handleFieldChange('featuredDestinations', 'destinationIds', next);
                       }}
-                      className="p-4 border-b border-[#121212]/5 hover:bg-[#F4BF4B]/10 cursor-pointer transition-colors"
+                      className={`p-3 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-between ${
+                        isSelected
+                          ? 'bg-white border-[#121212] shadow-sm'
+                          : 'bg-white border-slate-200 hover:border-slate-300'
+                      }`}
                     >
-                      <p className="font-bold text-xs uppercase truncate">{review.travelerName} <span className="text-[#9E1B1D] ml-1">★ {review.rating}</span></p>
-                      <p className="text-[#121212]/50 text-[11px] italic mt-1 line-clamp-1">"{review.content}"</p>
+                      <div className="flex items-center gap-3">
+                        <div className="size-10 rounded-md bg-slate-200 overflow-hidden shrink-0">
+                          {dest.heroImage && (
+                            <img src={dest.heroImage} alt={dest.name} className="w-full h-full object-cover" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-brand font-black text-xs text-slate-900">{dest.name}</p>
+                          <p className="text-[10px] text-slate-500 font-medium">{dest.country}</p>
+                        </div>
+                      </div>
+
+                      <span
+                        className={`size-6 rounded-md flex items-center justify-center font-black text-xs ${
+                          isSelected ? 'bg-[#121212] text-[#F4BF4B]' : 'border border-slate-300 text-slate-400'
+                        }`}
+                      >
+                        {isSelected ? '✓' : '+'}
+                      </span>
                     </div>
-                  ))}
-                {availableReviews.filter(review => !content.featuredReviewIds.includes(review.id) && review.travelerName.toLowerCase().includes(reviewSearchQuery)).length === 0 && (
-                  <div className="p-4 text-center text-[#121212]/40 text-xs">No reviews available</div>
-                )}
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Section 5: TRAVEL EXPERIENCES */}
+          {activeTab === 'EXPERIENCES' && (
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">CURATED TRAVEL EXPERIENCES</h4>
+                <p className="text-xs text-slate-500 font-medium">Manage curated experience categories presented on the homepage.</p>
+              </div>
+
+              <div className="space-y-3">
+                {(settings.experiences?.categories || []).map((cat, idx) => (
+                  <div key={idx} className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-brand font-black text-xs uppercase text-slate-900">Category {idx + 1}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = [...(settings.experiences?.categories || [])];
+                          next.splice(idx, 1);
+                          handleFieldChange('experiences', 'categories', next);
+                        }}
+                        className="text-rose-600 hover:text-rose-800 cursor-pointer"
+                        aria-label={`Remove experience category ${cat.title}`}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className={labelClass}>Category Title</label>
+                        <input
+                          type="text"
+                          value={cat.title}
+                          onChange={(e) => {
+                            const next = [...(settings.experiences?.categories || [])];
+                            next[idx] = { ...next[idx], title: e.target.value };
+                            handleFieldChange('experiences', 'categories', next);
+                          }}
+                          className={inputClass}
+                        />
+                      </div>
+
+                      <div>
+                        <label className={labelClass}>Description</label>
+                        <input
+                          type="text"
+                          value={cat.description}
+                          onChange={(e) => {
+                            const next = [...(settings.experiences?.categories || [])];
+                            next[idx] = { ...next[idx], description: e.target.value };
+                            handleFieldChange('experiences', 'categories', next);
+                          }}
+                          className={inputClass}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Section 6: CUSTOMER STORIES */}
+          {activeTab === 'STORIES' && (
+            <div className="space-y-6">
+              <div>
+                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">FEATURED CUSTOMER STORIES</h4>
+                <p className="text-xs text-slate-500 font-medium">Select published customer stories featured on the homepage.</p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-72 overflow-y-auto border border-slate-200 rounded-xl p-3 bg-slate-50">
+                {stories
+                  .filter((s) => s.status === 'PUBLISHED')
+                  .map((story) => {
+                    const currentIds = settings.customerStories?.storyIds || settings.featuredStoryIds || [];
+                    const isSelected = currentIds.includes(story.id);
+                    return (
+                      <div
+                        key={story.id}
+                        onClick={() => {
+                          const next = isSelected
+                            ? currentIds.filter((id) => id !== story.id)
+                            : [...currentIds, story.id];
+                          handleFieldChange('customerStories', 'storyIds', next);
+                        }}
+                        className={`p-3 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-between ${
+                          isSelected
+                            ? 'bg-white border-[#121212] shadow-sm'
+                            : 'bg-white border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="size-10 rounded-md bg-slate-200 overflow-hidden shrink-0">
+                            {story.coverImage && (
+                              <img src={story.coverImage} alt={story.title} className="w-full h-full object-cover" />
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-brand font-black text-xs text-slate-900">{story.title}</p>
+                            <p className="text-[10px] text-slate-500 font-medium">{story.customerName}</p>
+                          </div>
+                        </div>
+
+                        <span
+                          className={`size-6 rounded-md flex items-center justify-center font-black text-xs ${
+                            isSelected ? 'bg-[#121212] text-[#F4BF4B]' : 'border border-slate-300 text-slate-400'
+                          }`}
+                        >
+                          {isSelected ? '✓' : '+'}
+                        </span>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
+
+          {/* Section 7: WHY CHOOSE US */}
+          {activeTab === 'WHY_US' && (
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">WHY TRAVEL WITH US</h4>
+                <p className="text-xs text-slate-500 font-medium">Manage brand philosophy feature points on the homepage.</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className={labelClass}>Section Label</label>
+                  <input
+                    type="text"
+                    value={settings.whyUs?.sectionLabel || ''}
+                    onChange={(e) => handleFieldChange('whyUs', 'sectionLabel', e.target.value)}
+                    className={inputClass}
+                  />
+                </div>
+
+                <div>
+                  <label className={labelClass}>Heading</label>
+                  <input
+                    type="text"
+                    value={settings.whyUs?.heading || ''}
+                    onChange={(e) => handleFieldChange('whyUs', 'heading', e.target.value)}
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {(settings.whyUs?.features || []).map((feat, idx) => (
+                  <div key={idx} className="p-3 bg-slate-50 border border-slate-200 rounded-xl grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className={labelClass}>Feature {idx + 1} Title</label>
+                      <input
+                        type="text"
+                        value={feat.title}
+                        onChange={(e) => {
+                          const next = [...(settings.whyUs?.features || [])];
+                          next[idx] = { ...next[idx], title: e.target.value };
+                          handleFieldChange('whyUs', 'features', next);
+                        }}
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Feature {idx + 1} Description</label>
+                      <input
+                        type="text"
+                        value={feat.description}
+                        onChange={(e) => {
+                          const next = [...(settings.whyUs?.features || [])];
+                          next[idx] = { ...next[idx], description: e.target.value };
+                          handleFieldChange('whyUs', 'features', next);
+                        }}
+                        className={inputClass}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Section 8: PLANNING CTA */}
+          {activeTab === 'PLANNING_CTA' && (
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">FINAL PLANNING CTA SECTION</h4>
+                <p className="text-xs text-slate-500 font-medium">Manage the closing enquiry call-to-action on the homepage.</p>
+              </div>
+
+              <div>
+                <label className={labelClass}>Heading</label>
+                <input
+                  type="text"
+                  value={settings.planningCta?.heading || ''}
+                  onChange={(e) => handleFieldChange('planningCta', 'heading', e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+
+              <div>
+                <label className={labelClass}>Description Narrative</label>
+                <textarea
+                  value={settings.planningCta?.description || ''}
+                  onChange={(e) => handleFieldChange('planningCta', 'description', e.target.value)}
+                  rows={3}
+                  className={inputClass + ' resize-none'}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className={labelClass}>Primary CTA Button Label</label>
+                  <input
+                    type="text"
+                    value={settings.planningCta?.primaryBtnLabel || 'ENQUIRE NOW'}
+                    onChange={(e) => handleFieldChange('planningCta', 'primaryBtnLabel', e.target.value)}
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>Secondary CTA Button Label</label>
+                  <input
+                    type="text"
+                    value={settings.planningCta?.secondaryBtnLabel || 'EXPLORE JOURNEYS'}
+                    onChange={(e) => handleFieldChange('planningCta', 'secondaryBtnLabel', e.target.value)}
+                    className={inputClass}
+                  />
+                </div>
               </div>
             </div>
           )}
         </div>
+      </div>
 
-        {/* Active Sequence Section */}
-        {content.featuredReviewIds.length > 0 && (
-          <div className="mt-6 p-5 rounded-[14px] border-2 border-[#121212]/10 bg-[#FCFBF7]">
-            <h4 className="font-black text-[10px] uppercase tracking-widest mb-4 text-[#121212]/60">▪ Active Sequence</h4>
-            <div className="space-y-2">
-              {content.featuredReviewIds.map((id, index) => {
-                const review = availableReviews.find(r => r.id === id);
-                return (
-                  <div key={id} className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 bg-white rounded-[14px] p-4 border-2 border-[#121212]/10 hover:border-[#F4BF4B]/30 transition-colors">
-                    <div className="flex items-center gap-4 flex-1 min-w-0 w-full">
-                      <span className="font-black text-xs text-[#121212]/30 w-6 text-center flex-shrink-0">{index + 1}</span>
-                      <span className="font-black text-xs uppercase truncate text-[#121212]">{review?.travelerName}</span>
-                    </div>
-                    <div className="flex gap-2 shrink-0 w-full md:w-auto">
-                      <button
-                        onClick={() => moveItem('featuredReviewIds', index, 'up')}
-                        disabled={index === 0}
-                        className="flex-1 md:flex-none p-2 rounded-[10px] bg-white border-2 border-[#121212]/10 hover:bg-[#F4BF4B]/10 disabled:opacity-20 disabled:cursor-not-allowed font-black text-xs transition-colors"
-                        title="Move up"
-                      >
-                        ↑
-                      </button>
-                      <button
-                        onClick={() => moveItem('featuredReviewIds', index, 'down')}
-                        disabled={index === content.featuredReviewIds.length - 1}
-                        className="flex-1 md:flex-none p-2 rounded-[10px] bg-white border-2 border-[#121212]/10 hover:bg-[#F4BF4B]/10 disabled:opacity-20 disabled:cursor-not-allowed font-black text-xs transition-colors"
-                        title="Move down"
-                      >
-                        ↓
-                      </button>
-                      <button
-                        onClick={() => toggleSelection('featuredReviewIds', id)}
-                        className="flex-1 md:flex-none p-2 rounded-[10px] bg-[#121212] text-[#F4BF4B] hover:bg-[#9E1B1D] hover:text-white font-black text-xs transition-colors"
-                        title="Remove"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+      {/* Hero Hide Confirmation Modal */}
+      {heroHideConfirm && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="saas-card bg-white p-6 max-w-sm w-full border-2 border-slate-900 rounded-2xl shadow-xl space-y-4">
+            <div className="flex items-center gap-3 text-amber-600">
+              <AlertTriangle size={24} />
+              <h3 className="font-brand font-black text-lg uppercase text-slate-900">Hide Hero Banner?</h3>
+            </div>
+            <p className="text-xs font-medium text-slate-600">
+              Hiding the homepage hero section will remove the top banner from public view.
+            </p>
+            <div className="flex gap-2 justify-end pt-2">
+              <button
+                onClick={() => setHeroHideConfirm(false)}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs uppercase tracking-wider hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                KEEP HERO
+              </button>
+              <button
+                onClick={() => {
+                  handleFieldChange('hero', 'enabled', false);
+                  setHeroHideConfirm(false);
+                }}
+                className="px-4 py-2 rounded-xl bg-amber-600 text-white font-bold text-xs uppercase tracking-wider hover:bg-amber-700 transition-colors cursor-pointer"
+              >
+                HIDE HERO
+              </button>
             </div>
           </div>
-        )}
-      </section>
-
+        </div>
+      )}
     </div>
   );
 };

@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "../services/firebaseService";
 import { Package } from "../types/database";
+import { normalizeItinerary } from "../utils/itineraryNormalizer";
 
 export const useDestinations = () => {
   const [packages, setPackages] = useState<Package[]>([]);
@@ -18,18 +19,19 @@ export const useDestinations = () => {
   const [viewMode, setViewMode] = useState<"grid" | "map">("grid");
 
   useEffect(() => {
-    const fetchPackages = async () => {
-      try {
-        const querySnap = await getDocs(collection(db, "packages"));
-        const data = querySnap.docs.map(d => ({ id: d.id, ...d.data() } as Package));
+    const unsub = onSnapshot(
+      collection(db, "packages"),
+      (snapshot) => {
+        const data = snapshot.docs.map(d => normalizeItinerary({ id: d.id, ...d.data() } as Package));
         setPackages(data);
-      } catch (err) {
-        console.error("Error fetching destinations:", err);
-      } finally {
+        setLoading(false);
+      },
+      (err) => {
+        console.error("Error fetching packages in realtime:", err);
         setLoading(false);
       }
-    };
-    fetchPackages();
+    );
+    return () => unsub();
   }, []);
 
   const clearFilters = () => {

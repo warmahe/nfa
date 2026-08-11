@@ -42,7 +42,7 @@ export const InquirySidebar = ({ pkg }: { pkg: any }) => {
         to={`/contact?trip=${encodeURIComponent(pkg?.title || '')}`}
         className="w-full bg-[#121212] text-[#F4BF4B] py-5 font-black text-xs uppercase tracking-[0.3em] flex justify-center items-center gap-3 hover:bg-[#9E1B1D] hover:text-white transition-all shadow-[6px_6px_0px_0px_#F4BF4B] active:translate-x-1 active:translate-y-1 active:shadow-none mb-4"
       >
-        <Mail size={16} /> INQUIRE FOR DOSSIER
+        <Mail size={16} /> ENQUIRE NOW
       </Link>
 
       <a
@@ -51,7 +51,7 @@ export const InquirySidebar = ({ pkg }: { pkg: any }) => {
         rel="noopener noreferrer"
         className="w-full bg-white text-[#121212] border-2 border-[#121212] py-4 font-black text-[10px] uppercase tracking-[0.2em] flex justify-center items-center gap-2 hover:bg-[#F4BF4B] transition-colors shadow-[4px_4px_0px_0px_#121212]"
       >
-        <MessageSquare size={14} /> WhatsApp Intelligence Line
+        <MessageSquare size={14} /> WhatsApp Concierge
       </a>
 
       <div className="mt-8 flex items-start gap-3 opacity-50">

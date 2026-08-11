@@ -1,27 +1,42 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Plus, Search, Edit2, Trash2, ArrowLeft, Save, 
-  MapPin, Calendar, Clock, Star, Users, Info, 
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  Plus, Search, Edit2, Trash2, ArrowLeft, Save,
+  MapPin, Calendar, Clock, Star, Users, Info,
   Layers, CheckCircle, XCircle, HelpCircle, Image as ImageIcon,
-  ChevronRight, GripVertical, PlusCircle, Trash, X, Download,
-  GripHorizontal
+  ChevronRight, ChevronUp, ChevronDown, PlusCircle, Trash, X, Download,
+  Sparkles, Eye, Filter, Compass, AlertTriangle, FileText, Lock, Globe, DollarSign,
+  FileCheck, Shield, Award, Check
 } from 'lucide-react';
-import * as LucideIcons from 'lucide-react';
-import { 
-  collection, doc, getDocs, updateDoc, deleteDoc, 
-  Timestamp, addDoc, query, orderBy, onSnapshot
+import {
+  collection, doc, updateDoc, deleteDoc,
+  query, orderBy, onSnapshot, setDoc
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, getAllPackages, storage } from '../../services/firebaseService';
-import { Package, ItineraryCity, ItineraryDay, TripPricingDate, TripHighlight } from '../../types/database';
+import { db, storage } from '../../services/firebaseService';
+import {
+  Package, ItineraryCity, ItineraryDay, HotelInfo,
+  RichInclusionExclusion, TripHighlight, QuickInfoItem
+} from '../../types/database';
 import { ImageInput } from './ImageInput';
-import { initializeFirestoreDatabase } from '../../services/firebaseSeeder';
+import { useAdminDialog } from './AdminDialogContext';
+import { normalizeItinerary } from '../../utils/itineraryNormalizer';
 
-// Types for Internal UI state
-type EditorTab = 'OVERVIEW' | 'HIGHLIGHTS' | 'LOGISTICS' | 'ITINERARY' | 'PRICING' | 'INCLUSIONS' | 'MEDIA' | 'FAQS' | 'SLOTS' | 'PAYMENTS' | 'ADDONS';
+// Editor Tab Types
+type EditorTab =
+  | 'OVERVIEW'
+  | 'STOPS'
+  | 'ITINERARY'
+  | 'HOTELS'
+  | 'EXPERIENCES'
+  | 'INCLUSIONS'
+  | 'FAQS'
+  | 'PRICING'
+  | 'MEDIA'
+  | 'TRAVEL_INFO'
+  | 'PUBLISHING';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PDF UPLOAD INPUT COMPONENT
+// PDF UPLOAD COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 interface PDFUploadInputProps {
   onSave: (url: string) => void;
@@ -33,1665 +48,2365 @@ const PDFUploadInput: React.FC<PDFUploadInputProps> = ({ onSave, storagePath, pa
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validate file type
-    if (file.type !== 'application/pdf') {
-      setError('Please upload a PDF file only');
-      return;
-    }
-
-    // Validate file size (max 250MB)
-    if (file.size > 250 * 1024 * 1024) {
-      setError('File size must be less than 250MB');
-      return;
-    }
-
-    setError('');
-    setUploading(true);
-
-    try {
-      const timestamp = Date.now();
-      const filename = `${packageTitle.toLowerCase().replace(/\s+/g, '_')}_itinerary_${timestamp}.pdf`;
-      const fileRef = ref(storage, `${storagePath}/itinerary/${filename}`);
-
-      await uploadBytes(fileRef, file);
-      const downloadUrl = await getDownloadURL(fileRef);
-      onSave(downloadUrl);
-      setUploading(false);
-    } catch (err) {
-      console.error('PDF upload error:', err);
-      setError('Failed to upload PDF. Please try again.');
-      setUploading(false);
-    }
-  };
-
   return (
-    <div className="space-y-4">
-      <label className="block cursor-pointer">
-        <input
-          type="file"
-          accept=".pdf"
-          onChange={handleFileChange}
-          disabled={uploading}
-          className="hidden"
-          id="pdf-upload"
-        />
-        <div className="border-2 border-dashed border-[#121212]/20 p-8 text-center hover:bg-[#F4BF4B]/5 rounded-[14px] transition-colors cursor-pointer">
-          <Download size={32} className="mx-auto text-[#9E1B1D] mb-4" />
-          <p className="font-black text-[10px] uppercase tracking-widest text-[#121212] mb-2">
-            {uploading ? 'Uploading PDF...' : 'Click to Upload Itinerary PDF'}
-          </p>
-          <p className="text-[9px] text-gray-600">Maximum file size: 250MB</p>
-        </div>
-      </label>
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-[#9E1B1D] p-3 text-[9px] font-bold uppercase">
-          {error}
-        </div>
-      )}
+    <div className="space-y-3">
+      <input
+        type="file"
+        accept="application/pdf"
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+
+          setUploading(true);
+          setError('');
+
+          try {
+            const timestamp = Date.now();
+            const filename = `${packageTitle.toLowerCase().replace(/\s+/g, '_')}_itinerary_${timestamp}.pdf`;
+            const path = `${storagePath}/itinerary/${filename}`;
+            const storageRef = ref(storage, path);
+            await uploadBytes(storageRef, file);
+            const downloadURL = await getDownloadURL(storageRef);
+            onSave(downloadURL);
+          } catch (err: any) {
+            setError(err.message || 'Error uploading PDF');
+          } finally {
+            setUploading(false);
+          }
+        }}
+        className="block w-full text-xs font-semibold text-slate-700 cursor-pointer"
+        aria-label="Upload itinerary PDF file"
+      />
+      {uploading && <p className="text-xs font-bold text-amber-600 animate-pulse">Uploading Itinerary PDF…</p>}
+      {error && <p className="text-xs font-bold text-rose-600">{error}</p>}
     </div>
   );
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-
+// MAIN ADMIN JOURNEY MANAGER
+// ─────────────────────────────────────────────────────────────────────────────
 export const AdminPackagesManager = () => {
+  const { confirm, toast } = useAdminDialog();
   const [packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activePackage, setActivePackage] = useState<Package | null>(null);
-  const [activeTab, setActiveTab] = useState<EditorTab>('OVERVIEW');
   const [saving, setSaving] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
 
+  // Editor State
+  const [activePackage, setActivePackage] = useState<Package | null>(null);
+  const [showEditor, setShowEditor] = useState(false);
+  const [activeTab, setActiveTab] = useState<EditorTab>('OVERVIEW');
+  const [isDirty, setIsDirty] = useState(false);
+  const [originalSlug, setOriginalSlug] = useState('');
+
+  // Filters & Search
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'published' | 'unpublished'>('all');
+  const [styleFilter, setStyleFilter] = useState<string>('ALL');
+
+  // Modals & Confirmation States
+  const [discardConfirm, setDiscardConfirm] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleteStopConfirmIndex, setDeleteStopConfirmIndex] = useState<number | null>(null);
+  const [deleteDayConfirm, setDeleteDayConfirm] = useState<{ cIdx: number; dIdx: number; dayNumber: number } | null>(null);
+  const [notice, setNotice] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
+
+  // Temp Inputs for Lists
+  const [newHighlightText, setNewHighlightText] = useState('');
+  const [newInclusionText, setNewInclusionText] = useState('');
+  const [newExclusionText, setNewExclusionText] = useState('');
+  const [newFaqQuestion, setNewFaqQuestion] = useState('');
+  const [newFaqAnswer, setNewFaqAnswer] = useState('');
+
+  // Stop-level temp inputs map [stopIndex]: value
+  const [newStopHighlight, setNewStopHighlight] = useState<Record<number, string>>({});
+  const [newStopExperience, setNewStopExperience] = useState<Record<number, string>>({});
+
+  // Day-level temp inputs map [key]: value
+  const [newDayHighlight, setNewDayHighlight] = useState<Record<string, string>>({});
+  const [newDayExperience, setNewDayExperience] = useState<Record<string, string>>({});
+  const [newDayActivity, setNewDayActivity] = useState<Record<string, string>>({});
+  const [newDayAddon, setNewDayAddon] = useState<Record<string, string>>({});
+
+  // 1. Real-time Subscription to Packages Collection
   useEffect(() => {
     setLoading(true);
-    // Set up real-time listener for packages
     const q = query(collection(db, 'packages'), orderBy('title', 'asc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const pkgs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Package));
-      setPackages(pkgs);
-      setLoading(false);
-    }, (error) => {
-      console.error("Error listening to packages:", error);
-      setLoading(false);
-    });
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const pkgs = snapshot.docs.map((d) => normalizeItinerary({ id: d.id, ...d.data() } as Package));
+        setPackages(pkgs);
+        setLoading(false);
+      },
+      (error) => {
+        console.error('Error in realtime packages listener:', error);
+        setNotice({ type: 'error', text: 'Couldn\'t load journeys. Please try again.' });
+        setLoading(false);
+      }
+    );
 
     return () => unsubscribe();
   }, []);
 
-  const loadPackages = async () => {
-    setLoading(true);
-    try {
-      const data = await getAllPackages();
-      setPackages(data as Package[]);
-    } catch (error) {
-      console.error("Error loading packages:", error);
-    } finally {
-      setLoading(false);
+  const slugify = (text: string) => {
+    return text
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/[\s_-]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  };
+
+  const handleCreateNew = () => {
+    if (isDirty) {
+      setDiscardConfirm(true);
+      return;
+    }
+
+    const timestamp = Date.now();
+    const newPkg: Package = normalizeItinerary({
+      id: '',
+      title: 'New Luxury Journey',
+      slug: `new-journey-${timestamp}`,
+      status: 'draft',
+      difficulty: 'Moderate',
+      duration: '7 Days / 6 Nights',
+      destinations: [],
+      overview: '',
+      description: '',
+      editorialIntro: '',
+      travelStyle: ['Luxury', 'Adventure'],
+      bestFor: ['Couples', 'Families'],
+      bestTime: 'Year-round',
+      editorialHighlights: [],
+      itineraryCities: [
+        {
+          city: 'Lake Como',
+          country: 'Italy',
+          nights: 3,
+          description: 'Scenic lakeside luxury, historic villas, and private boat cruises.',
+          heroImage: 'https://images.unsplash.com/photo-1533105079780-92b9be482077?w=1600&q=80',
+          highlights: ['Private Boat Tour', 'Villa Balbianello Visit'],
+          experiences: ['Wine Tasting at Lake Villa'],
+          arrivalTransfer: { type: 'car', text: 'Private chauffeur transfer from Milan Malpensa Airport' },
+          hotel: { name: 'Grand Hotel Tremezzo', type: 'Luxury Palace Hotel', rating: 5 },
+          days: [
+            {
+              day: 1,
+              title: 'Arrival in Lake Como & Sunset Welcome Cruise',
+              description: 'Arrive at Lake Como. Private transfer to your luxury lakefront hotel.',
+              meals: ['Dinner'],
+              activities: ['Airport Chauffeur Transfer', 'Sunset Boat Cruise'],
+              highlights: ['Lakefront Suite Check-in'],
+              experiences: ['Welcome Dinner at Lake Terrace'],
+              hotel: { name: 'Grand Hotel Tremezzo', type: 'Luxury Palace Hotel' }
+            },
+            {
+              day: 2,
+              title: 'Historic Villas & Alpine Panorama',
+              description: 'Guided tour of Villa Balbianello and private boat excursion across mid-lake.',
+              meals: ['Breakfast', 'Lunch'],
+              activities: ['Villa Balbianello Tour', 'Private Boat Excursion'],
+              highlights: ['Villa Balbianello Gardens'],
+              experiences: ['Lakeside Gourmet Lunch']
+            }
+          ]
+        }
+      ],
+      inclusionsRich: [
+        { text: 'Luxury accommodation throughout' },
+        { text: 'All internal transfers and airport meet & greet' }
+      ],
+      exclusionsRich: [
+        { text: 'International flights' },
+        { text: 'Personal travel insurance' }
+      ],
+      packageFaqs: [
+        { question: 'What is the best time of year for this trip?', answer: 'This journey is crafted to be exceptional year-round.' }
+      ],
+      pricing: {
+        basePrice: 150000,
+        currency: 'INR',
+        dates: []
+      },
+      media: {
+        thumbnail: 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=1600&q=80',
+        gallery: []
+      }
+    });
+
+    setActivePackage(newPkg);
+    setOriginalSlug(newPkg.slug);
+    setShowEditor(true);
+    setIsDirty(false);
+    setActiveTab('OVERVIEW');
+  };
+
+  const handleEditPackage = (pkg: Package) => {
+    if (isDirty) {
+      setDiscardConfirm(true);
+      return;
+    }
+    const normalized = normalizeItinerary(pkg);
+    setActivePackage(normalized);
+    setOriginalSlug(normalized.slug || '');
+    setShowEditor(true);
+    setIsDirty(false);
+    setActiveTab('OVERVIEW');
+  };
+
+  const handleCloseEditor = () => {
+    if (isDirty) {
+      setDiscardConfirm(true);
+    } else {
+      setShowEditor(false);
+      setActivePackage(null);
+      setIsDirty(false);
     }
   };
 
-  const handleCreateNew = async () => {
-    const newPackage: Partial<Package> = {
-      title: 'New Adventure Trip',
-      slug: `new-trip-${Date.now()}`,
-      status: 'draft',
-      difficulty: 'Moderate',
-      duration: '5 Days / 4 Nights',
-      maxTravelers: 12,
-      pricing: {
-        basePrice: 0,
-        currency: 'INR',
-        seasonalPricing: [],
-        groupPricing: []
-      },
-      availability: { maxSlots: 12, bookings: 0 },
-      media: { thumbnail: '', gallery: [], videos: [] },
-      rating: { average: 5, totalReviews: 0, autoCalculated: 5 },
-      joiningPointCount: 0,
-      activitiesIncludedCount: 0,
-      activitiesOptionalCount: 0,
-      reviewsCount: 0,
-      faqsCount: 0
-    };
+  const handleFieldChange = (field: keyof Package, value: any) => {
+    if (!activePackage) return;
+    setActivePackage((prev) => {
+      if (!prev) return null;
+      const next = { ...prev, [field]: value };
+      if (field === 'title' && !prev.id) {
+        next.slug = slugify(value);
+      }
+      return next;
+    });
+    setIsDirty(true);
+  };
 
-    try {
-      const docRef = await addDoc(collection(db, 'packages'), {
-        ...newPackage,
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now()
-      });
-      loadPackages();
-      const created = { id: docRef.id, ...newPackage } as Package;
-      setActivePackage(created);
-    } catch (error) {
-      alert("Error creating package: " + error);
-    }
+  const handleNestedChange = (parent: keyof Package, child: string, value: any) => {
+    if (!activePackage) return;
+    setActivePackage((prev) => {
+      if (!prev) return null;
+      const currentParent = (prev[parent] as any) || {};
+      return {
+        ...prev,
+        [parent]: {
+          ...currentParent,
+          [child]: value
+        }
+      };
+    });
+    setIsDirty(true);
   };
 
   const handleSave = async () => {
     if (!activePackage) return;
-    if (!window.confirm("SAVE CHANGES: Are you sure you want to update the live trip data?")) return;
-    
-    setSaving(true);
+
+    if (!activePackage.title?.trim()) {
+      setNotice({ type: 'error', text: 'Please enter a journey name.' });
+      setActiveTab('OVERVIEW');
+      return;
+    }
+
+    if (!activePackage.slug?.trim()) {
+      setNotice({ type: 'error', text: 'Please add a URL slug.' });
+      setActiveTab('OVERVIEW');
+      return;
+    }
+
     try {
-      const { id, ...data } = activePackage;
-      await updateDoc(doc(db, 'packages', id), {
-        ...data,
-        updatedAt: Timestamp.now()
+      setSaving(true);
+      setNotice(null);
+
+      const cleanSlug = slugify(activePackage.slug);
+      const normalized = normalizeItinerary({
+        ...activePackage,
+        slug: cleanSlug,
+        title: activePackage.title.trim(),
+        updatedAt: new Date() as any,
       });
-      await loadPackages();
-      alert("Trip data updated successfully.");
-    } catch (error) {
-      alert("Error saving updates: " + error);
+
+      if (activePackage.id) {
+        const docRef = doc(db, 'packages', activePackage.id);
+        await updateDoc(docRef, normalized as any);
+        setNotice({ type: 'success', text: 'Journey saved.' });
+      } else {
+        const newId = `pkg_${cleanSlug}_${Date.now()}`;
+        const docRef = doc(db, 'packages', newId);
+        await setDoc(docRef, { ...normalized, id: newId, createdAt: new Date() });
+        setActivePackage((prev) => (prev ? { ...prev, id: newId } : null));
+        setNotice({ type: 'success', text: 'Journey saved.' });
+      }
+
+      setIsDirty(false);
+      setOriginalSlug(cleanSlug);
+      setTimeout(() => setNotice(null), 3000);
+    } catch (err) {
+      console.error('Error saving journey:', err);
+      setNotice({ type: 'error', text: 'Couldn\'t save journey. Please try again.' });
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("WARNING: This action cannot be undone. Are you sure you want to permanently delete this trip?")) return;
     try {
       await deleteDoc(doc(db, 'packages', id));
-      loadPackages();
-      alert("Trip deleted.");
-    } catch (error) {
-      alert("Error deleting trip: " + error);
+      setNotice({ type: 'success', text: 'Journey deleted.' });
+      setDeleteConfirmId(null);
+      if (activePackage?.id === id) {
+        setShowEditor(false);
+        setActivePackage(null);
+      }
+      setTimeout(() => setNotice(null), 3000);
+    } catch (err) {
+      console.error('Error deleting journey:', err);
+      setNotice({ type: 'error', text: 'Couldn\'t delete journey. Please try again.' });
     }
   };
 
-  const updateActivePackage = (updates: Partial<Package>) => {
-    if (!activePackage) return;
-    setActivePackage({ ...activePackage, ...updates });
-  };
+  // Filtered package list
+  const filteredPackages = useMemo(() => {
+    return packages.filter((pkg) => {
+      // Status filter
+      if (statusFilter === 'published' && pkg.status === 'draft') return false;
+      if (statusFilter === 'unpublished' && pkg.status !== 'draft') return false;
 
-  const filteredPackages = packages.filter(p => 
-    p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.destinations?.some(d => d.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+      // Style filter
+      if (styleFilter !== 'ALL' && !pkg.travelStyle?.includes(styleFilter)) return false;
 
-  // Helper to render Lucide icons by name
-  const IconPreview = ({ name, size = 16 }: { name: string, size?: number }) => {
-    const Icon = (LucideIcons as any)[name] || LucideIcons.Sparkles;
-    return <Icon size={size} />;
-  };
+      // Search query
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const matchTitle = pkg.title?.toLowerCase().includes(q);
+        const matchSlug = pkg.slug?.toLowerCase().includes(q);
+        const matchDest = pkg.destinations?.some((d) => d.toLowerCase().includes(q));
+        const matchCity = pkg.itineraryCities?.some((c) => c.city?.toLowerCase().includes(q));
+        return matchTitle || matchSlug || matchDest || matchCity;
+      }
 
-  if (loading) return <div className="p-12 text-center font-black uppercase text-[#121212]/40 tracking-widest text-sm animate-pulse">Loading Data...</div>;
+      return true;
+    });
+  }, [packages, statusFilter, styleFilter, searchQuery]);
 
-  // --- LIST VIEW ---
-  if (!activePackage) {
+  const stats = useMemo(() => {
+    const total = packages.length;
+    const published = packages.filter((p) => p.status !== 'draft').length;
+    const draft = total - published;
+    return { total, published, draft };
+  }, [packages]);
+
+  // Derived Journey Structure Summary
+  const journeySummary = useMemo(() => {
+    if (!activePackage) return null;
+    const cities = activePackage.itineraryCities || [];
+    const totalStops = cities.length;
+    const totalNights = cities.reduce((acc, c) => acc + (c.nights || 0), 0);
+
+    let totalDays = 0;
+    let hotelCount = 0;
+    cities.forEach((c) => {
+      totalDays += (c.days || []).length;
+      if (c.hotel?.name) hotelCount++;
+      (c.days || []).forEach((d) => {
+        if (d.hotel?.name) hotelCount++;
+      });
+    });
+
+    const routeStr = cities.map((c) => c.city || 'Stop').join(' → ');
+
+    return {
+      totalStops,
+      totalNights,
+      totalDays: totalDays || (totalNights ? totalNights + 1 : 1),
+      hotelCount,
+      routeStr,
+      cities,
+    };
+  }, [activePackage]);
+
+  // Duration Mismatch Warning Calculation
+  const durationMismatchNotice = useMemo(() => {
+    if (!activePackage || !journeySummary) return null;
+    const configuredDuration = (activePackage.duration || '').toLowerCase();
+    const nightsInConfig = parseInt((configuredDuration.match(/(\d+)\s*night/i) || [])[1] || '0', 10);
+    const daysInConfig = parseInt((configuredDuration.match(/(\d+)\s*day/i) || [])[1] || '0', 10);
+
+    if (nightsInConfig > 0 && nightsInConfig !== journeySummary.totalNights) {
+      return `Notice: Your overall trip length setting ('${activePackage.duration}') and configured journey stops (${journeySummary.totalNights} Nights / ${journeySummary.totalDays} Days) differ. Review your duration setting if needed.`;
+    }
+    return null;
+  }, [activePackage, journeySummary]);
+
+  const inputClass = 'saas-input w-full text-xs text-slate-900 font-sans focus:ring-2 focus:ring-[#121212] focus:border-transparent';
+  const labelClass = 'block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1';
+
+  if (loading && packages.length === 0) {
     return (
-      <div className="space-y-8">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-6">
-          <div>
-            <h2 className="font-brand font-black text-2xl uppercase tracking-tight text-[#121212]">Trip Inventory.</h2>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#121212]/50 mt-1 flex items-center gap-2">
-              <Layers size={14} className="text-[#9E1B1D]" /> Access and control all adventure parameters
-            </p>
-          </div>
-          <div className="flex gap-4">
-            <button 
-              onClick={async () => {
-                if (window.confirm("WARNING: This will purge all existing packages and seed mock data. Proceed?")) {
-                  setLoading(true);
-                  await initializeFirestoreDatabase();
-                  await loadPackages();
-                  alert("Database seeded successfully!");
-                  setLoading(false);
-                }
-              }}
-              className="hidden lg:flex items-center gap-2 px-5 py-3 rounded-[14px] border-2 border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 font-black text-[10px] uppercase tracking-widest transition-all"
-            >
-              ⚠ Seed Database
-            </button>
-            <button 
-              onClick={handleCreateNew}
-              className="w-full md:w-auto flex items-center justify-center gap-2 px-5 py-3 bg-[#121212] text-[#F4BF4B] font-black text-[11px] uppercase tracking-widest rounded-[18px] shadow-[0_12px_24px_rgba(18,18,18,0.12)] hover:bg-[#9E1B1D] hover:text-white transition-all group"
-            >
-              <Plus size={20} className="group-hover:rotate-90 transition-transform" /> Add New Trip
-            </button>
-          </div>
-        </div>
-
-        <div className="relative group">
-          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#121212]/30">
-            <Search size={20} />
-          </div>
-          <input 
-            type="text" 
-            placeholder="Search by title, destination, or sector..." 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-bold text-sm text-[#121212] transition-all"
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {filteredPackages.map(pkg => (
-            <div key={pkg.id} className="rounded-[18px] bg-white border-2 border-[#121212]/10 p-6 shadow-[0_12px_24px_rgba(18,18,18,0.06)] flex flex-col gap-5 hover:shadow-[0_16px_32px_rgba(18,18,18,0.1)] transition-all">
-              <div className="flex justify-between items-start">
-                <div className="space-y-3">
-                  <span className={`text-[9px] font-black uppercase px-3 py-1 rounded-full border-2 ${
-                    pkg.status === 'active' ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-500'
-                  }`}>
-                    System Status: {pkg.status}
-                  </span>
-                  <h3 className="font-brand font-black text-2xl uppercase leading-[0.9] mt-2 tracking-tighter">{pkg.title}</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {pkg.destinations?.map((d, idx) => (
-                      <span key={idx} className="bg-[#FCFBF7] rounded-full border border-[#121212]/10 px-3 py-1 text-[8px] font-bold uppercase tracking-widest text-[#121212]/40">
-                        {d}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <button 
-                    onClick={() => setActivePackage(pkg)}
-                    className="p-3 rounded-[12px] bg-white border-2 border-[#121212]/10 hover:bg-[#F4BF4B]/10 transition-all"
-                    title="Edit System Data"
-                  >
-                    <Edit2 size={20} />
-                  </button>
-                  <button 
-                    onClick={() => handleDelete(pkg.id)}
-                    className="p-3 rounded-[12px] bg-[#9E1B1D]/10 text-[#9E1B1D] border-2 border-[#9E1B1D]/20 hover:bg-[#9E1B1D] hover:text-white transition-all"
-                    title="Delete Trip"
-                  >
-                    <Trash2 size={20} />
-                  </button>
-                </div>
-              </div>
-              
-              <div className="flex flex-wrap gap-6 text-[10px] font-black uppercase tracking-widest text-[#121212]/40 mt-auto pt-5 border-t-2 border-[#121212]/10">
-                <span className="flex items-center gap-2"><Clock size={14} className="text-[#9E1B1D]" /> {pkg.duration}</span>
-                <span className="flex items-center gap-2"><Users size={14} className="text-[#9E1B1D]" /> {pkg.maxTravelers} Slots</span>
-              </div>
-            </div>
-          ))}
-        </div>
+      <div className="py-20 text-center space-y-3">
+        <Compass className="size-8 mx-auto text-slate-300 animate-pulse" />
+        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Loading Journeys…</p>
       </div>
     );
   }
 
-  // --- EDITOR VIEW ---
   return (
-    <div className="space-y-8">
-      {/* Editor Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-6">
-        <div className="flex items-center gap-6">
-          <button 
-            onClick={() => setActivePackage(null)}
-            className="p-3 rounded-[14px] border-2 border-[#121212]/10 bg-white hover:bg-[#F4BF4B]/10 transition-all"
-          >
-            <ArrowLeft size={24} />
+    <div className="space-y-6 text-left">
+      {/* Alert Notices */}
+      {notice && (
+        <div
+          className={`p-4 rounded-xl border-2 font-bold text-xs flex items-center justify-between ${
+            notice.type === 'error'
+              ? 'bg-rose-50 border-rose-200 text-rose-700'
+              : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {notice.type === 'error' ? <AlertTriangle size={16} /> : <Check size={16} className="text-emerald-600" />}
+            <span>{notice.text}</span>
+          </div>
+          <button onClick={() => setNotice(null)} className="hover:opacity-75 cursor-pointer" aria-label="Dismiss message">
+            <X size={14} />
           </button>
+        </div>
+      )}
+
+      {/* Duration Mismatch Warning Banner */}
+      {durationMismatchNotice && showEditor && (
+        <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 font-bold text-xs flex items-center gap-2">
+          <AlertTriangle size={16} className="shrink-0 text-amber-600" />
+          <span>{durationMismatchNotice}</span>
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80">
+        <div>
+          <h2 className="font-brand font-black text-2xl text-slate-900 uppercase tracking-tight">
+            Journey & Itinerary Workspace
+          </h2>
+          <p className="text-xs text-slate-500 font-medium mt-1">
+            Create, edit, and organize multi-stop travel itineraries, day-by-day plans, stays, and pricing.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleCreateNew}
+            className="flex items-center gap-2 px-5 py-2.5 bg-[#121212] text-[#F4BF4B] font-black text-xs uppercase tracking-widest rounded-xl hover:bg-slate-800 transition-all cursor-pointer shadow-sm"
+          >
+            <Plus size={16} /> CREATE JOURNEY
+          </button>
+        </div>
+      </div>
+
+      {/* Stats Overview */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="p-4 bg-white border border-slate-200/80 rounded-xl flex items-center gap-4">
+          <div className="size-10 bg-slate-100 rounded-lg flex items-center justify-center shrink-0">
+            <Compass size={20} className="text-slate-700" />
+          </div>
           <div>
-            <h2 className="font-brand font-black text-xl md:text-2xl uppercase tracking-tight text-[#121212]">
-              Config: {activePackage.title}
-            </h2>
-            <div className="flex items-center gap-3 mt-2">
-              <span className="font-mono text-[9px] font-black text-[#9E1B1D] bg-[#9E1B1D]/5 px-3 py-1 rounded-full tracking-widest">ID: {activePackage.id}</span>
-              <span className="font-mono text-[9px] font-bold text-[#121212]/40 uppercase tracking-widest">Slug: {activePackage.slug}</span>
-            </div>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Journeys</p>
+            <p className="font-black text-xl text-slate-900">{stats.total}</p>
           </div>
         </div>
-        <button 
-          onClick={handleSave}
-          disabled={saving}
-          className="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-[#121212] text-[#F4BF4B] font-black text-[11px] uppercase tracking-widest rounded-[18px] shadow-[0_12px_24px_rgba(18,18,18,0.12)] hover:bg-[#9E1B1D] hover:text-white transition-all group"
-        >
-          <Save size={22} className="group-hover:scale-110 transition-transform" /> 
-          {saving ? 'SAVING DATA...' : 'SAVE UPDATES'}
-        </button>
-      </div>
 
-      {/* Editor Tabs */}
-      <div className="flex flex-wrap gap-1 border-b-2 border-[#121212]/10 pb-2 overflow-x-auto">
-        {(['OVERVIEW', 'HIGHLIGHTS', 'LOGISTICS', 'ITINERARY', 'PRICING', 'INCLUSIONS', 'MEDIA', 'FAQS', 'SLOTS', 'PAYMENTS', 'ADDONS'] as EditorTab[]).map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-3 font-black text-[10px] uppercase tracking-widest transition-all border-b-2 rounded-t-[10px] ${
-              activeTab === tab 
-                ? "border-[#F4BF4B] text-[#121212] bg-[#F4BF4B]/10" 
-                : "border-transparent text-[#121212]/50 hover:text-[#121212] hover:bg-[#121212]/5"
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
-
-      {/* Tab Content */}
-      <div className="rounded-[18px] bg-white p-6 lg:p-8 border-2 border-[#121212]/10 shadow-[0_12px_24px_rgba(18,18,18,0.06)]">
-        
-        {/* OVERVIEW TAB */}
-        {activeTab === 'OVERVIEW' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-            <div className="space-y-8">
-              <div className="p-6 bg-[#FCFBF7] rounded-[14px] border-2 border-[#121212]/10 space-y-6">
-                <h4 className="text-[11px] font-black uppercase tracking-widest text-[#9E1B1D] border-b-2 border-[#121212]/10 pb-4">Core Logistics</h4>
-                <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-[#121212]/60 block mb-2">Trip Title</label>
-                  <input 
-                    type="text" 
-                    value={activePackage.title} 
-                    onChange={e => updateActivePackage({ title: e.target.value })}
-                    className="w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-black text-sm text-[#121212] transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-[#121212]/60 block mb-2">Trip Destinations (Comma separated)</label>
-                  <input 
-                    type="text" 
-                    value={activePackage.destinations?.join(', ') || ''} 
-                    onChange={e => updateActivePackage({ destinations: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
-                    className="w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-bold text-sm text-[#121212] transition-all"
-                    placeholder="e.g. ICELAND, NORWAY"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-6">
-                  <div>
-                    <label className="text-[10px] font-black uppercase tracking-widest text-[#121212]/60 block mb-2">System Status</label>
-                    <select 
-                      value={activePackage.status} 
-                      onChange={e => updateActivePackage({ status: e.target.value as any })}
-                      className="w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] font-black uppercase text-[10px] tracking-widest transition-all cursor-pointer"
-                    >
-                      <option value="draft">DRAFT / IN-PREP</option>
-                      <option value="active">LIVE / ACTIVE</option>
-                      <option value="archived">ARCHIVED / OFFLINE</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-black uppercase tracking-widest text-[#121212]/60 block mb-2">Intensity Level</label>
-                    <select 
-                      value={activePackage.difficulty} 
-                      onChange={e => updateActivePackage({ difficulty: e.target.value as any })}
-                      className="w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] font-black uppercase text-[10px] tracking-widest transition-all cursor-pointer"
-                    >
-                      <option value="Easy">EASY / LEVEL 01</option>
-                      <option value="Moderate">MODERATE / LEVEL 02</option>
-                      <option value="Challenging">CHALLENGING / LEVEL 03</option>
-                      <option value="Expert">EXPERT / LEVEL 04</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-6 bg-[#FCFBF7] rounded-[14px] border-2 border-[#121212]/10 space-y-6">
-                <h4 className="text-[11px] font-black uppercase tracking-widest text-[#9E1B1D] border-b-2 border-[#121212]/10 pb-4">The Narrative (About Section)</h4>
-                <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-[#121212]/60 block mb-2">Section Header (Question)</label>
-                  <input 
-                    type="text" 
-                    value={activePackage.aboutQuestion || ''} 
-                    onChange={e => updateActivePackage({ aboutQuestion: e.target.value })}
-                    className="w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-bold text-sm text-[#121212] transition-all"
-                    placeholder="e.g. Why This Trip? / The Objective?"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-[#121212]/60 block mb-2">Section Title</label>
-                  <input 
-                    type="text" 
-                    value={activePackage.aboutTitle || ''} 
-                    onChange={e => updateActivePackage({ aboutTitle: e.target.value })}
-                    className="w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-brand font-black text-lg uppercase tracking-tight text-[#121212] transition-all"
-                    placeholder="e.g. THE JOURNEY."
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-[#121212]/60 block mb-2">Mission Brief (Description)</label>
-                  <textarea 
-                    value={activePackage.description} 
-                    onChange={e => updateActivePackage({ description: e.target.value })}
-                    rows={6}
-                    className="w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-bold text-sm text-[#121212] transition-all leading-relaxed resize-none"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-8">
-              <div className="p-6 border-4 border-[#121212] bg-[#FCFBF7]">
-                 <ImageInput 
-                  label="Mission Documentation (About Image)"
-                  value={activePackage.aboutImage || ''}
-                  storagePath={`packages/${activePackage.slug}/about`}
-                  onSave={(url) => updateActivePackage({ aboutImage: url })}
-                  aspectClass="aspect-[4/5]"
-                />
-              </div>
-
-              <div className="p-6 bg-[#FCFBF7] rounded-[14px] border-2 border-[#121212]/10 space-y-6">
-                <h4 className="text-[11px] font-black uppercase tracking-widest text-[#9E1B1D] border-b-2 border-[#121212]/10 pb-4">Timeline & Capacity</h4>
-                <div className="grid grid-cols-2 gap-6">
-                  <div>
-                    <label className="text-[10px] font-black uppercase tracking-widest text-[#121212]/60 block mb-2">Duration</label>
-                    <input 
-                      type="text" 
-                      value={activePackage.duration} 
-                      onChange={e => updateActivePackage({ duration: e.target.value })}
-                      className="w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-black uppercase text-xs text-[#121212] transition-all"
-                      placeholder="e.g. 5 DAYS / 4 NIGHTS"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-black uppercase tracking-widest text-[#121212]/60 block mb-2">Unit Capacity</label>
-                    <input 
-                      type="number" 
-                      value={activePackage.maxTravelers} 
-                      onChange={e => updateActivePackage({ maxTravelers: parseInt(e.target.value) })}
-                      className="w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-black text-xl text-[#121212] transition-all"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
+        <div className="p-4 bg-white border border-slate-200/80 rounded-xl flex items-center gap-4">
+          <div className="size-10 bg-emerald-50 rounded-lg flex items-center justify-center shrink-0">
+            <Check size={20} className="text-emerald-600" />
           </div>
-        )}
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Published</p>
+            <p className="font-black text-xl text-emerald-700">{stats.published}</p>
+          </div>
+        </div>
 
-        {/* HIGHLIGHTS TAB */}
-        {activeTab === 'HIGHLIGHTS' && (
-          <div className="space-y-8 max-w-3xl mx-auto">
-            <div className="flex justify-between items-end border-b-4 border-[#121212] pb-6">
+        <div className="p-4 bg-white border border-slate-200/80 rounded-xl flex items-center gap-4">
+          <div className="size-10 bg-amber-50 rounded-lg flex items-center justify-center shrink-0">
+            <Lock size={20} className="text-amber-600" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Draft / Unpublished</p>
+            <p className="font-black text-xl text-amber-700">{stats.draft}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Editor Panel */}
+      {showEditor && activePackage && (
+        <div className="saas-card bg-white border-2 border-slate-900 rounded-2xl shadow-xl overflow-hidden space-y-0">
+          {/* Top Bar */}
+          <div className="p-5 bg-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <Compass size={22} className="text-[#F4BF4B]" />
               <div>
-                <h4 className="font-brand font-black text-3xl uppercase tracking-tighter text-[#121212]">Mission Highlights.</h4>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-2">Key defining moments of the expedition</p>
+                <h3 className="font-brand font-black text-lg uppercase tracking-tight text-white">
+                  {activePackage.id ? `Edit: ${activePackage.title}` : 'Create New Journey'}
+                </h3>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                  {activePackage.status !== 'draft' ? 'Published (Visible on website)' : 'Unpublished (Draft)'}
+                </p>
               </div>
-              <button 
-                onClick={() => {
-                  const h = [...(activePackage.highlights || [])];
-                  h.push({ text: '', icon: 'CheckCircle' });
-                  updateActivePackage({ highlights: h });
-                }}
-                className="bg-[#121212] text-[#F4BF4B] px-5 py-3 rounded-[14px] font-black text-[10px] uppercase tracking-widest shadow-[0_8px_16px_rgba(18,18,18,0.12)] hover:bg-[#9E1B1D] hover:text-white transition-all flex items-center gap-2"
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              {activePackage.slug && (
+                <a
+                  href={`/itinerary/${activePackage.slug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3.5 py-1.5 bg-white/10 text-white hover:bg-white/20 font-bold text-[10px] uppercase tracking-wider rounded-lg flex items-center gap-1.5 transition-colors"
+                >
+                  <Eye size={13} /> PREVIEW JOURNEY
+                </a>
+              )}
+
+              <button
+                onClick={handleCloseEditor}
+                className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                aria-label="Close editor"
+                title="Close"
               >
-                <Plus size={16} /> ADD HIGHLIGHT
+                <X size={18} />
               </button>
             </div>
-            
-            <div className="space-y-4">
-              {(activePackage.highlights || []).map((h, i) => (
-                <div key={i} className="flex gap-4 items-center bg-[#FCFBF7] p-5 rounded-[14px] border-2 border-[#121212]/10 group hover:bg-white transition-colors">
-                  <div className="cursor-move text-gray-300 group-hover:text-[#9E1B1D] transition-colors shrink-0">
-                    <GripVertical size={20} />
-                  </div>
-                  
-                  {/* Icon Selector / Preview */}
-                  <div className="relative group/icon shrink-0">
-                    <div className="size-14 bg-white rounded-[12px] border-2 border-[#121212]/10 flex items-center justify-center text-[#9E1B1D]">
-                      <IconPreview name={h.icon || 'Sparkles'} />
-                    </div>
-                    <select 
-                      value={h.icon || 'Sparkles'} 
-                      onChange={e => {
-                        const nh = [...(activePackage.highlights || [])];
-                        nh[i].icon = e.target.value;
-                        updateActivePackage({ highlights: nh });
-                      }}
-                      className="absolute inset-0 opacity-0 cursor-pointer"
-                    >
-                      {['CheckCircle', 'Star', 'MapPin', 'Target', 'Compass', 'Zap', 'Shield', 'Mountain', 'Camera', 'Flag', 'Award', 'Trophy', 'Activity', 'Sparkles', 'Anchor', 'Feather', 'Wind', 'Heart'].map(k => (
-                        <option key={k} value={k}>{k}</option>
-                      ))}
-                    </select>
+          </div>
+
+          {/* Journey Structure Summary Banner */}
+          {journeySummary && (
+            <div className="p-4 bg-[#FCFBF7] border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-3 text-xs font-bold text-slate-900">
+                <span className="px-2.5 py-1 bg-[#121212] text-[#F4BF4B] font-black text-[10px] uppercase tracking-widest rounded-md">
+                  {journeySummary.totalStops} STOPS
+                </span>
+                <span>
+                  {journeySummary.totalDays} DAYS / {journeySummary.totalNights} NIGHTS
+                </span>
+                <span>&bull;</span>
+                <span>{journeySummary.hotelCount} STAYS</span>
+              </div>
+
+              {journeySummary.routeStr && (
+                <div className="text-xs font-semibold text-slate-600 truncate max-w-xl">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-2">ROUTE:</span>
+                  <span className="text-slate-900 font-bold">{journeySummary.routeStr}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Editor Tabs Navigation */}
+          <div className="bg-slate-100 border-b border-slate-200 px-5 pt-3 overflow-x-auto flex items-center gap-2 no-scrollbar">
+            {[
+              { id: 'OVERVIEW', label: '1. Overview', icon: Globe },
+              { id: 'STOPS', label: '2. Journey Stops', icon: MapPin },
+              { id: 'ITINERARY', label: '3. Day-by-Day', icon: Calendar },
+              { id: 'HOTELS', label: '4. Accommodation', icon: Compass },
+              { id: 'EXPERIENCES', label: '5. Experiences', icon: Sparkles },
+              { id: 'INCLUSIONS', label: '6. Inclusions', icon: FileCheck },
+              { id: 'FAQS', label: '7. Questions', icon: HelpCircle },
+              { id: 'PRICING', label: '8. Pricing', icon: DollarSign },
+              { id: 'MEDIA', label: '9. Media & PDF', icon: ImageIcon },
+              { id: 'TRAVEL_INFO', label: '10. Travel Info', icon: Info },
+              { id: 'PUBLISHING', label: '11. Publishing & SEO', icon: Shield },
+            ].map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as EditorTab)}
+                  className={`px-4 py-2.5 font-black text-[11px] uppercase tracking-wider flex items-center gap-2 border-b-2 transition-colors cursor-pointer shrink-0 ${
+                    isActive
+                      ? 'border-[#121212] text-[#121212] bg-white rounded-t-lg'
+                      : 'border-transparent text-slate-500 hover:text-slate-900'
+                  }`}
+                  aria-label={`Switch to tab ${tab.label}`}
+                >
+                  <Icon size={14} />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Form Body */}
+          <div className="p-6 space-y-6">
+            {/* Tab 1: OVERVIEW */}
+            {activeTab === 'OVERVIEW' && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className={labelClass}>Journey Title *</label>
+                    <input
+                      type="text"
+                      value={activePackage.title || ''}
+                      onChange={(e) => handleFieldChange('title', e.target.value)}
+                      placeholder="e.g., Classical Italy & Amalfi Coast"
+                      className={inputClass}
+                      aria-label="Journey Title"
+                    />
                   </div>
 
-                  <input 
-                    type="text" 
-                    value={h.text} 
-                    onChange={e => {
-                      const nh = [...(activePackage.highlights || [])];
-                      nh[i].text = e.target.value;
-                      updateActivePackage({ highlights: nh });
-                    }}
-                    placeholder="Enter highlight description..."
-                    className="flex-1 bg-transparent border-none outline-none font-bold text-sm uppercase tracking-tight placeholder:text-gray-300"
+                  <div>
+                    <label className={labelClass}>URL Slug *</label>
+                    <input
+                      type="text"
+                      value={activePackage.slug || ''}
+                      onChange={(e) => handleFieldChange('slug', e.target.value)}
+                      placeholder="e.g., classical-italy-amalfi"
+                      className={inputClass}
+                      aria-label="URL Slug"
+                    />
+                    {activePackage.id && originalSlug && activePackage.slug !== originalSlug && (
+                      <p className="text-[10px] font-bold text-amber-600 mt-1 flex items-center gap-1">
+                        <AlertTriangle size={12} /> Changing the URL slug may break existing links to this journey.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className={labelClass}>Short Editorial Intro</label>
+                  <input
+                    type="text"
+                    value={activePackage.editorialIntro || ''}
+                    onChange={(e) => handleFieldChange('editorialIntro', e.target.value)}
+                    placeholder="Captivating one-line summary for cards and search..."
+                    className={inputClass}
+                    aria-label="Short Editorial Intro"
                   />
-                  
-                  <button 
+                </div>
+
+                <div>
+                  <label className={labelClass}>Journey Overview</label>
+                  <textarea
+                    value={activePackage.overview || ''}
+                    onChange={(e) => handleFieldChange('overview', e.target.value)}
+                    placeholder="Comprehensive overview of the journey experience..."
+                    rows={4}
+                    className={inputClass + ' resize-none'}
+                    aria-label="Journey Overview"
+                  />
+                </div>
+
+                <div>
+                  <label className={labelClass}>Full Description Narrative</label>
+                  <textarea
+                    value={activePackage.description || ''}
+                    onChange={(e) => handleFieldChange('description', e.target.value)}
+                    placeholder="Detailed narrative describing the trip..."
+                    rows={5}
+                    className={inputClass + ' resize-none'}
+                    aria-label="Full Description Narrative"
+                  />
+                </div>
+
+                {/* About Section Customization */}
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                  <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">EDITORIAL STORYTELLING SECTION</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className={labelClass}>About Header Title</label>
+                      <input
+                        type="text"
+                        value={activePackage.aboutTitle || ''}
+                        onChange={(e) => handleFieldChange('aboutTitle', e.target.value)}
+                        placeholder="e.g., The Essence of Italian Elegance"
+                        className={inputClass}
+                        aria-label="About Header Title"
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>About Question / Subtitle</label>
+                      <input
+                        type="text"
+                        value={activePackage.aboutQuestion || ''}
+                        onChange={(e) => handleFieldChange('aboutQuestion', e.target.value)}
+                        placeholder="e.g., Why choose this expedition?"
+                        className={inputClass}
+                        aria-label="About Question / Subtitle"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Multi-Select Tags */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className={labelClass}>Travel Style Tags</label>
+                    <p className="text-[10px] text-slate-500 font-medium mb-1.5">Select travel styles that apply.</p>
+                    <div className="flex flex-wrap gap-2">
+                      {['Luxury', 'Adventure', 'Family', 'Honeymoon', 'Wildlife', 'Culture', 'Culinary', 'Photography'].map((style) => {
+                        const isSelected = activePackage.travelStyle?.includes(style);
+                        return (
+                          <button
+                            key={style}
+                            type="button"
+                            onClick={() => {
+                              const current = activePackage.travelStyle || [];
+                              const next = isSelected ? current.filter((s) => s !== style) : [...current, style];
+                              handleFieldChange('travelStyle', next);
+                            }}
+                            className={`px-3 py-1 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
+                              isSelected
+                                ? 'bg-[#121212] text-[#F4BF4B] border-[#121212]'
+                                : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400'
+                            }`}
+                            aria-label={`Toggle travel style ${style}`}
+                          >
+                            {style}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className={labelClass}>Best For Tags</label>
+                    <p className="text-[10px] text-slate-500 font-medium mb-1.5">Select target traveller profiles.</p>
+                    <div className="flex flex-wrap gap-2">
+                      {['Couples', 'Families', 'Solo Travellers', 'Photography Lovers', 'Food Lovers', 'Nature Lovers'].map((target) => {
+                        const isSelected = activePackage.bestFor?.includes(target);
+                        return (
+                          <button
+                            key={target}
+                            type="button"
+                            onClick={() => {
+                              const current = activePackage.bestFor || [];
+                              const next = isSelected ? current.filter((t) => t !== target) : [...current, target];
+                              handleFieldChange('bestFor', next);
+                            }}
+                            className={`px-3 py-1 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
+                              isSelected
+                                ? 'bg-[#9E1B1D] text-white border-[#9E1B1D]'
+                                : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400'
+                            }`}
+                            aria-label={`Toggle target traveler ${target}`}
+                          >
+                            {target}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Tab 2: JOURNEY STOPS */}
+            {activeTab === 'STOPS' && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">JOURNEY STOPS & LOCATIONS</h4>
+                    <p className="text-xs text-slate-500 font-medium">Add, edit, and reorder multi-destination stops across the itinerary.</p>
+                  </div>
+
+                  <button
+                    type="button"
                     onClick={() => {
-                      if (window.confirm("Delete this highlight?")) {
-                        const nh = [...(activePackage.highlights || [])];
-                        nh.splice(i, 1);
-                        updateActivePackage({ highlights: nh });
-                      }
+                      const current = activePackage.itineraryCities || [];
+                      const newStop: ItineraryCity = {
+                        city: `Stop ${current.length + 1}`,
+                        country: '',
+                        nights: 2,
+                        order: current.length,
+                        days: []
+                      };
+                      handleFieldChange('itineraryCities', [...current, newStop]);
                     }}
-                    className="p-3 text-gray-300 hover:text-[#9E1B1D] transition-colors"
+                    className="px-4 py-2 bg-[#121212] text-[#F4BF4B] font-black text-xs uppercase tracking-wider rounded-lg flex items-center gap-1.5 hover:bg-slate-800 cursor-pointer"
+                    aria-label="Add journey stop"
                   >
-                    <Trash2 size={20} />
+                    <Plus size={14} /> ADD JOURNEY STOP
                   </button>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
 
-        {/* LOGISTICS TAB (Dynamic Quick Info Bar Control) */}
-        {activeTab === 'LOGISTICS' && (
-          <div className="space-y-12">
-            <div className="flex justify-between items-end border-b-4 border-[#121212] pb-6">
-              <div>
-                <h4 className="font-brand font-black text-3xl uppercase tracking-tighter text-[#121212]">Trip Logistics.</h4>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-2">Add or remove tactical info slots for the trip page</p>
-              </div>
-              <div className="flex gap-4">
-                <button 
-                  onClick={() => {
-                    const nq = [...(activePackage.quickInfo || [])];
-                    nq.push({ label: '', value: '', icon: 'Compass' });
-                    updateActivePackage({ quickInfo: nq });
-                  }}
-                  className="bg-[#121212] text-[#F4BF4B] px-5 py-3 rounded-[14px] font-black text-[10px] uppercase tracking-widest shadow-[0_8px_16px_rgba(18,18,18,0.12)] hover:bg-[#9E1B1D] hover:text-white transition-all flex items-center gap-2"
-                >
-                  <Plus size={16} /> ADD LOGISTIC SLOT
-                </button>
-                <button 
-                  onClick={() => {
-                    if (window.confirm("RESET TO TRIP DEFAULTS: This will wipe custom slots and use system defaults. Continue?")) {
-                      updateActivePackage({ quickInfo: [] });
-                    }
-                  }}
-                  className="text-[10px] font-black uppercase tracking-widest text-[#9E1B1D] border-2 border-[#9E1B1D] px-4 py-2 hover:bg-[#9E1B1D] hover:text-white transition-all"
-                >
-                  Reset to Defaults
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {(activePackage.quickInfo || []).map((info, idx) => {
-                return (
-                  <div key={idx} className="rounded-[14px] border-2 border-[#121212]/10 p-5 bg-[#FCFBF7] space-y-5 relative group">
-                    <span className="absolute -top-3 -right-3 size-8 bg-[#121212] text-[#F4BF4B] flex items-center justify-center font-black text-xs border-2 border-[#F4BF4B]">0{idx + 1}</span>
-                    
-                    <button 
-                      onClick={() => {
-                        const nq = [...(activePackage.quickInfo || [])];
-                        nq.splice(idx, 1);
-                        updateActivePackage({ quickInfo: nq });
-                      }}
-                      className="absolute -top-3 -left-3 size-8 bg-white rounded-full border-2 border-[#9E1B1D]/30 text-[#9E1B1D] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                      title="Remove Slot"
-                    >
-                      <Trash size={14} />
-                    </button>
-
-                    <div className="flex gap-6 items-start">
-                      <div className="relative group/icon shrink-0">
-                        <div className="size-16 bg-white rounded-[14px] border-2 border-[#121212]/10 flex items-center justify-center text-[#9E1B1D]">
-                          <IconPreview name={info.icon} size={24} />
-                        </div>
-                        <select 
-                          value={info.icon} 
-                          onChange={e => {
-                            const nq = [...(activePackage.quickInfo || [])];
-                            nq[idx].icon = e.target.value;
-                            updateActivePackage({ quickInfo: nq });
-                          }}
-                          className="absolute inset-0 opacity-0 cursor-pointer"
-                        >
-                          {['Clock', 'Calendar', 'Users', 'Zap', 'BedDouble', 'Compass', 'Map', 'Shield', 'Target', 'Activity', 'Award', 'Briefcase', 'Camera', 'Car', 'Coffee', 'Cpu', 'Database', 'Flag', 'Gift', 'Globe', 'Heart', 'Home', 'Image', 'Info', 'Key', 'Layers', 'LifeBuoy', 'Lock', 'Mail', 'MapPin', 'Mic', 'Moon', 'Mountain', 'Music', 'Navigation', 'Package', 'Phone', 'Plane', 'Play', 'Power', 'Printer', 'Radio', 'Save', 'Search', 'Send', 'Settings', 'Share', 'ShoppingBag', 'ShoppingCart', 'Smartphone', 'Speaker', 'Star', 'Sun', 'Tag', 'Terminal', 'ThumbsUp', 'Trash', 'Truck', 'Tv', 'Umbrella', 'User', 'Video', 'Volume2', 'Watch', 'Wifi', 'Wind', 'Zap'].map(k => (
-                            <option key={k} value={k}>{k}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="flex-1 space-y-4">
-                        <div>
-                          <label className="text-[8px] font-black uppercase text-gray-400 mb-1 block tracking-[0.2em]">Slot Label</label>
-                          <input 
-                            type="text" 
-                            value={info.label}
-                            onChange={e => {
-                              const nq = [...(activePackage.quickInfo || [])];
-                              nq[idx].label = e.target.value;
-                              updateActivePackage({ quickInfo: nq });
-                            }}
-                            placeholder="e.g. DURATION"
-                            className="w-full bg-transparent border-b-2 border-[#121212]/10 py-1 font-black text-xs uppercase tracking-widest focus:border-[#9E1B1D] outline-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[8px] font-black uppercase text-gray-400 mb-1 block tracking-[0.2em]">Display Value</label>
-                          <input 
-                            type="text" 
-                            value={info.value}
-                            onChange={e => {
-                              const nq = [...(activePackage.quickInfo || [])];
-                              nq[idx].value = e.target.value;
-                              updateActivePackage({ quickInfo: nq });
-                            }}
-                            placeholder="e.g. 5 DAYS / 4 NIGHTS"
-                            className="w-full bg-transparent border-b-2 border-[#121212]/10 py-1 font-bold text-sm uppercase focus:border-[#F4BF4B] outline-none"
-                          />
-                        </div>
-                      </div>
-                    </div>
+                {(!activePackage.itineraryCities || activePackage.itineraryCities.length === 0) ? (
+                  <div className="p-12 text-center border-2 border-dashed border-slate-200 rounded-xl text-slate-400 text-xs font-bold uppercase tracking-wider">
+                    No journey stops added yet.
                   </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+                ) : (
+                  <div className="space-y-6">
+                    {activePackage.itineraryCities.map((city, idx) => {
+                      const plannedDaysCount = (city.days || []).length;
+                      const hotelName = city.hotel?.name || '';
+                      const highlightsCount = (city.highlights || []).length;
+                      const experiencesCount = (city.experiences || []).length;
+                      const galleryCount = (city.gallery || []).length;
 
-        {/* ITINERARY TAB */}
-        {activeTab === 'ITINERARY' && (
-          <div className="space-y-12">
-            <div className="flex justify-between items-end border-b-4 border-[#121212] pb-6">
-              <div>
-                <h4 className="font-brand font-black text-3xl uppercase tracking-tighter">Operational Timeline.</h4>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-2">Vertical deployment schedule grouped by sector</p>
-              </div>
-              <button 
-                onClick={() => {
-                  const cities = [...(activePackage.itineraryCities || [])];
-                  cities.push({ 
-                    city: 'New Sector', 
-                    country: '',
-                    nights: 1, 
-                    days: [{ day: 1, title: 'Insertion', description: '', textAlign: 'left' }] 
-                  });
-                  updateActivePackage({ itineraryCities: cities });
-                }}
-                className="bg-[#121212] text-[#F4BF4B] px-6 py-3 rounded-[14px] font-black text-[10px] uppercase tracking-widest shadow-[0_8px_16px_rgba(18,18,18,0.12)] hover:bg-[#9E1B1D] hover:text-white transition-all flex items-center gap-3"
-              >
-                <PlusCircle size={18} /> ADD SECTOR
-              </button>
-            </div>
+                      return (
+                        <div key={idx} className="p-5 bg-slate-50 border-2 border-slate-200 rounded-xl space-y-4">
+                          {/* Stop Header & Summary Badges */}
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
+                            <div className="flex items-center gap-2.5">
+                              <span className="size-8 bg-[#121212] text-[#F4BF4B] font-black text-xs rounded-lg flex items-center justify-center shrink-0">
+                                {String(idx + 1).padStart(2, '0')}
+                              </span>
+                              <div>
+                                <h5 className="font-brand font-black text-base text-slate-900 uppercase">
+                                  {city.city || `Stop ${idx + 1}`}
+                                  {city.country && <span className="text-slate-500 font-bold text-xs ml-2">({city.country})</span>}
+                                </h5>
+                                <div className="flex flex-wrap items-center gap-2 mt-1">
+                                  <span className="px-2 py-0.5 bg-[#9E1B1D] text-white font-black text-[10px] uppercase rounded">
+                                    {city.nights || 1} NIGHT{city.nights === 1 ? '' : 'S'}
+                                  </span>
+                                  <span className="px-2 py-0.5 bg-slate-200 text-slate-800 font-bold text-[10px] rounded">
+                                    {plannedDaysCount} DAYS PLANNED
+                                  </span>
+                                  <span className="px-2 py-0.5 bg-slate-200 text-slate-800 font-bold text-[10px] rounded">
+                                    STAY: {hotelName || 'NO STAY ASSIGNED'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
 
-            <div className="space-y-16">
-              {(activePackage.itineraryCities || []).map((city, cIdx) => (
-                <div key={cIdx} className="rounded-[18px] border-2 border-[#121212]/10 bg-white p-6 shadow-[0_12px_24px_rgba(18,18,18,0.06)] relative">
-                  
-                  {/* Arrival Transfer Controls */}
-                  <div className="mb-10 p-4 border-2 border-dashed border-[#121212]/20 bg-[#FCFBF7]/50 flex flex-col md:flex-row gap-6 items-center">
-                    <div className="flex items-center gap-3 shrink-0">
-                      <select 
-                        value={city.arrivalTransfer?.type || 'flight'}
-                        onChange={e => {
-                          const nc = [...(activePackage.itineraryCities || [])];
-                          nc[cIdx].arrivalTransfer = { 
-                            type: e.target.value as any, 
-                            text: nc[cIdx].arrivalTransfer?.text || '' 
-                          };
-                          updateActivePackage({ itineraryCities: nc });
-                        }}
-                        className="p-2 rounded-[10px] border-2 border-[#121212]/10 font-black text-[9px] uppercase tracking-widest outline-none bg-white focus:border-[#F4BF4B] transition-all"
-                      >
-                        <option value="flight">FLIGHT</option>
-                        <option value="train">TRAIN</option>
-                        <option value="bus">BUS</option>
-                        <option value="ferry">FERRY</option>
-                        <option value="car">CAR</option>
-                      </select>
-                    </div>
-                    <input 
-                      type="text" 
-                      value={city.arrivalTransfer?.text || ''}
-                      onChange={e => {
-                        const nc = [...(activePackage.itineraryCities || [])];
-                        nc[cIdx].arrivalTransfer = { 
-                          type: nc[cIdx].arrivalTransfer?.type || 'flight', 
-                          text: e.target.value 
-                        };
-                        updateActivePackage({ itineraryCities: nc });
-                      }}
-                      placeholder="e.g. Fly in to Barcelona on Day 1"
-                      className="flex-1 bg-transparent border-b-2 border-[#121212]/10 p-2 font-bold text-sm outline-none focus:border-[#9E1B1D] transition-colors"
-                    />
-                    <button 
-                      onClick={() => {
-                        const nc = [...(activePackage.itineraryCities || [])];
-                        delete nc[cIdx].arrivalTransfer;
-                        updateActivePackage({ itineraryCities: nc });
-                      }}
-                      className="text-gray-300 hover:text-[#9E1B1D] p-2"
-                      title="Clear Transfer"
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-
-                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12 pb-6 border-b-2 border-[#121212]">
-                    <div className="flex items-center gap-6 flex-1">
-                      <div className="bg-[#121212] text-[#F4BF4B] p-3 rounded-[10px]">
-                        <MapPin size={24} />
-                      </div>
-                      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="text-[8px] font-black uppercase text-gray-400 mb-1 block">Sector Name</label>
-                          <input 
-                            type="text" 
-                            value={city.city} 
-                            onChange={e => {
-                              const nc = [...(activePackage.itineraryCities || [])];
-                              nc[cIdx].city = e.target.value;
-                              updateActivePackage({ itineraryCities: nc });
-                            }}
-                            className="font-brand font-black text-3xl uppercase border-none outline-none w-full bg-transparent p-0"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[8px] font-black uppercase text-gray-400 mb-1 block">Country</label>
-                          <input 
-                            type="text" 
-                            value={city.country || ''} 
-                            onChange={e => {
-                              const nc = [...(activePackage.itineraryCities || [])];
-                              nc[cIdx].country = e.target.value;
-                              updateActivePackage({ itineraryCities: nc });
-                            }}
-                            className="font-bold text-lg uppercase border-none outline-none w-full bg-transparent p-0"
-                            placeholder="e.g. SPAIN"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-6">
-                      <div className="text-right">
-                        <label className="text-[8px] font-black uppercase text-gray-400 mb-1 block tracking-widest">Duration</label>
-                        <div className="flex items-center gap-2">
-                          <input 
-                            type="number" 
-                            value={city.nights} 
-                            onChange={e => {
-                              const nc = [...(activePackage.itineraryCities || [])];
-                              nc[cIdx].nights = parseInt(e.target.value);
-                              updateActivePackage({ itineraryCities: nc });
-                            }}
-                            className="w-12 font-brand font-black text-2xl border-b-2 border-[#121212] outline-none text-center bg-transparent"
-                          />
-                          <span className="font-black text-xs uppercase tracking-widest">Nights</span>
-                        </div>
-                      </div>
-                      <button 
-                        onClick={() => {
-                          if (window.confirm("Delete this entire sector and all its days?")) {
-                            const nc = [...(activePackage.itineraryCities || [])];
-                            nc.splice(cIdx, 1);
-                            updateActivePackage({ itineraryCities: nc });
-                          }
-                        }}
-                        className="p-4 border-2 border-[#9E1B1D] text-[#9E1B1D] hover:bg-[#9E1B1D] hover:text-white transition-all"
-                      >
-                        <Trash size={20} />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-12">
-                    {city.days.map((day, dIdx) => (
-                      <div key={dIdx} className="pl-10 border-l-4 border-[#F4BF4B] space-y-6 relative">
-                        <div className="absolute left-[-14px] top-0 size-6 rounded-full bg-[#F4BF4B] border-4 border-white shadow-[0_0_0_2px_#121212]" />
-                        
-                        <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-                          <div className="flex-1 space-y-4 w-full">
-                            <div className="flex items-center gap-4">
-                              <span className="font-brand font-black text-3xl text-[#F4BF4B]">DAY {day.day}.</span>
-                              <input 
-                                type="text" 
-                                value={day.title} 
-                                onChange={e => {
-                                  const nc = [...(activePackage.itineraryCities || [])];
-                                  nc[cIdx].days[dIdx].title = e.target.value;
-                                  updateActivePackage({ itineraryCities: nc });
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const current = [...(activePackage.itineraryCities || [])];
+                                  if (idx > 0) {
+                                    const temp = current[idx];
+                                    current[idx] = current[idx - 1];
+                                    current[idx - 1] = temp;
+                                    handleFieldChange('itineraryCities', current);
+                                  }
                                 }}
-                                className="font-black text-xl uppercase tracking-tighter border-none outline-none flex-1 bg-transparent"
-                                placeholder="Day Objective"
-                              />
-                            </div>
-                            
-                            {/* Alignment Controls */}
-                            <div className="flex items-center gap-2 border-b-2 border-[#121212]/10 pb-2">
-                              <span className="text-[8px] font-black uppercase text-gray-300 tracking-widest mr-2">Alignment:</span>
-                              {(['left', 'center', 'right'] as const).map(align => (
-                                <button 
-                                  key={align}
-                                  onClick={() => {
-                                    const nc = [...(activePackage.itineraryCities || [])];
-                                    nc[cIdx].days[dIdx].textAlign = align;
-                                    updateActivePackage({ itineraryCities: nc });
-                                  }}
-                                  className={`text-[8px] font-black uppercase px-2 py-0.5 border transition-all ${
-                                    day.textAlign === align ? 'bg-[#121212] text-white border-[#121212]' : 'text-gray-400 border-[#121212]/10 hover:border-[#121212]'
-                                  }`}
-                                >
-                                  {align}
-                                </button>
-                              ))}
-                            </div>
+                                disabled={idx === 0}
+                                className="px-2.5 py-1 bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 font-bold text-[10px] uppercase rounded-md flex items-center gap-1 disabled:opacity-30 cursor-pointer"
+                                aria-label={`Move ${city.city || `Stop ${idx + 1}`} up`}
+                              >
+                                <ChevronUp size={14} /> UP
+                              </button>
 
-                            <textarea 
-                              value={day.description} 
-                              onChange={e => {
-                                const nc = [...(activePackage.itineraryCities || [])];
-                                nc[cIdx].days[dIdx].description = e.target.value;
-                                updateActivePackage({ itineraryCities: nc });
-                              }}
-                              className={`w-full px-4 py-4 rounded-[14px] bg-[#FCFBF7] border-2 border-[#121212]/10 outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 text-sm leading-relaxed min-h-[150px] font-bold transition-all ${
-                                day.textAlign === 'center' ? 'text-center' : day.textAlign === 'right' ? 'text-right' : 'text-left'
-                              }`}
-                              placeholder="Mission briefing details..."
-                            />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const current = [...(activePackage.itineraryCities || [])];
+                                  if (idx < current.length - 1) {
+                                    const temp = current[idx];
+                                    current[idx] = current[idx + 1];
+                                    current[idx + 1] = temp;
+                                    handleFieldChange('itineraryCities', current);
+                                  }
+                                }}
+                                disabled={idx === activePackage.itineraryCities!.length - 1}
+                                className="px-2.5 py-1 bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 font-bold text-[10px] uppercase rounded-md flex items-center gap-1 disabled:opacity-30 cursor-pointer"
+                                aria-label={`Move ${city.city || `Stop ${idx + 1}`} down`}
+                              >
+                                <ChevronDown size={14} /> DOWN
+                              </button>
 
-                            {/* Meals & Addons Controls */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                              <div className="p-4 rounded-[10px] border-2 border-[#121212]/5 bg-[#FCFBF7]">
-                                <label className="text-[8px] font-black uppercase tracking-[0.2em] text-[#9E1B1D] mb-3 block">Meals Included</label>
-                                <input 
-                                  type="text" 
-                                  value={day.meals?.join(', ') || ''}
-                                  onChange={e => {
-                                    const nc = [...(activePackage.itineraryCities || [])];
-                                    nc[cIdx].days[dIdx].meals = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
-                                    updateActivePackage({ itineraryCities: nc });
+                              <button
+                                type="button"
+                                onClick={() => setDeleteStopConfirmIndex(idx)}
+                                className="p-1.5 text-rose-600 hover:bg-rose-100 rounded-md cursor-pointer ml-1"
+                                aria-label={`Remove ${city.city || `Stop ${idx + 1}`} from journey`}
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* 6 Structured Stop Sections */}
+                          <div className="space-y-4 pt-1">
+                            {/* Section 1: DESTINATION STORY */}
+                            <div className="p-4 bg-white border border-slate-200 rounded-xl space-y-3">
+                              <h6 className="text-[11px] font-black uppercase tracking-wider text-slate-900">1. DESTINATION STORY</h6>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div>
+                                  <label className={labelClass}>Location / City *</label>
+                                  <input
+                                    type="text"
+                                    value={city.city || ''}
+                                    onChange={(e) => {
+                                      const current = [...(activePackage.itineraryCities || [])];
+                                      current[idx] = { ...current[idx], city: e.target.value };
+                                      handleFieldChange('itineraryCities', current);
+                                    }}
+                                    placeholder="e.g., Lake Como"
+                                    className={inputClass}
+                                    aria-label={`Stop ${idx + 1} City`}
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className={labelClass}>Country</label>
+                                  <input
+                                    type="text"
+                                    value={city.country || ''}
+                                    onChange={(e) => {
+                                      const current = [...(activePackage.itineraryCities || [])];
+                                      current[idx] = { ...current[idx], country: e.target.value };
+                                      handleFieldChange('itineraryCities', current);
+                                    }}
+                                    placeholder="e.g., Italy"
+                                    className={inputClass}
+                                    aria-label={`Stop ${idx + 1} Country`}
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className={labelClass}>Number of Nights</label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={city.nights || 1}
+                                    onChange={(e) => {
+                                      const val = parseInt(e.target.value, 10) || 0;
+                                      const current = [...(activePackage.itineraryCities || [])];
+                                      current[idx] = { ...current[idx], nights: val };
+                                      handleFieldChange('itineraryCities', current);
+                                    }}
+                                    className={inputClass}
+                                    aria-label={`Stop ${idx + 1} Nights`}
+                                  />
+                                </div>
+                              </div>
+
+                              <div>
+                                <label className={labelClass}>Stop Description</label>
+                                <textarea
+                                  value={city.description || ''}
+                                  onChange={(e) => {
+                                    const current = [...(activePackage.itineraryCities || [])];
+                                    current[idx] = { ...current[idx], description: e.target.value };
+                                    handleFieldChange('itineraryCities', current);
                                   }}
-                                  placeholder="e.g. Breakfast, Dinner"
-                                  className="w-full bg-transparent border-b border-[#121212]/10 p-1 font-bold text-xs outline-none"
+                                  placeholder="Editorial description of this journey stop..."
+                                  rows={2}
+                                  className={inputClass + ' resize-none'}
+                                  aria-label={`Stop ${idx + 1} Description`}
                                 />
                               </div>
-                              <div className="p-4 rounded-[10px] border-2 border-[#121212]/5 bg-[#FCFBF7]">
-                                <label className="text-[8px] font-black uppercase tracking-[0.2em] text-[#F4BF4B] mb-3 block">Optional Add-ons</label>
-                                <input 
-                                  type="text" 
-                                  value={day.addons?.join(', ') || ''}
-                                  onChange={e => {
-                                    const nc = [...(activePackage.itineraryCities || [])];
-                                    nc[cIdx].days[dIdx].addons = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
-                                    updateActivePackage({ itineraryCities: nc });
-                                  }}
-                                  placeholder="e.g. Sunset Boat Party +60"
-                                  className="w-full bg-transparent border-b border-[#121212]/10 p-1 font-bold text-xs outline-none"
+                            </div>
+
+                            {/* Section 2: STOP MEDIA */}
+                            <div className="p-4 bg-white border border-slate-200 rounded-xl space-y-3">
+                              <h6 className="text-[11px] font-black uppercase tracking-wider text-slate-900">2. STOP MEDIA</h6>
+                              <ImageInput
+                                label="STOP HERO PHOTO"
+                                value={city.heroImage || ''}
+                                onSave={(url) => {
+                                  const current = [...(activePackage.itineraryCities || [])];
+                                  current[idx] = { ...current[idx], heroImage: url };
+                                  handleFieldChange('itineraryCities', current);
+                                }}
+                                storagePath={`packages/${activePackage.id || 'new'}/stops`}
+                                aspectClass="aspect-21/9"
+                              />
+                            </div>
+
+                            {/* Section 3: STOP HIGHLIGHTS */}
+                            <div className="p-4 bg-white border border-slate-200 rounded-xl space-y-3">
+                              <h6 className="text-[11px] font-black uppercase tracking-wider text-slate-900">3. STOP HIGHLIGHTS</h6>
+                              <div className="flex gap-2">
+                                <input
+                                  type="text"
+                                  value={newStopHighlight[idx] || ''}
+                                  onChange={(e) => setNewStopHighlight((prev) => ({ ...prev, [idx]: e.target.value }))}
+                                  placeholder="Add stop highlight (e.g. Villa Balbianello visit)"
+                                  className={inputClass}
+                                  aria-label={`Add highlight for ${city.city}`}
                                 />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const val = (newStopHighlight[idx] || '').trim();
+                                    if (!val) return;
+                                    const current = [...(activePackage.itineraryCities || [])];
+                                    const hList = [...(current[idx].highlights || []), val];
+                                    current[idx] = { ...current[idx], highlights: hList };
+                                    handleFieldChange('itineraryCities', current);
+                                    setNewStopHighlight((prev) => ({ ...prev, [idx]: '' }));
+                                  }}
+                                  className="px-3.5 py-1.5 bg-[#121212] text-[#F4BF4B] font-bold text-xs uppercase rounded-lg cursor-pointer shrink-0"
+                                >
+                                  ADD
+                                </button>
+                              </div>
+
+                              <div className="flex flex-wrap gap-2">
+                                {(city.highlights || []).map((hl, hIdx) => (
+                                  <span key={hIdx} className="px-3 py-1 bg-slate-100 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 flex items-center gap-2">
+                                    {hl}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const current = [...(activePackage.itineraryCities || [])];
+                                        const hList = [...(current[idx].highlights || [])];
+                                        hList.splice(hIdx, 1);
+                                        current[idx] = { ...current[idx], highlights: hList };
+                                        handleFieldChange('itineraryCities', current);
+                                      }}
+                                      className="hover:text-rose-600 cursor-pointer"
+                                      aria-label={`Remove highlight ${hl}`}
+                                    >
+                                      <X size={12} />
+                                    </button>
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Section 4: CURATED EXPERIENCES */}
+                            <div className="p-4 bg-white border border-slate-200 rounded-xl space-y-3">
+                              <h6 className="text-[11px] font-black uppercase tracking-wider text-slate-900">4. CURATED EXPERIENCES</h6>
+                              <div className="flex gap-2">
+                                <input
+                                  type="text"
+                                  value={newStopExperience[idx] || ''}
+                                  onChange={(e) => setNewStopExperience((prev) => ({ ...prev, [idx]: e.target.value }))}
+                                  placeholder="Add curated experience (e.g. Private Wine Tasting at Lake Villa)"
+                                  className={inputClass}
+                                  aria-label={`Add experience for ${city.city}`}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const val = (newStopExperience[idx] || '').trim();
+                                    if (!val) return;
+                                    const current = [...(activePackage.itineraryCities || [])];
+                                    const eList = [...(current[idx].experiences || []), val];
+                                    current[idx] = { ...current[idx], experiences: eList };
+                                    handleFieldChange('itineraryCities', current);
+                                    setNewStopExperience((prev) => ({ ...prev, [idx]: '' }));
+                                  }}
+                                  className="px-3.5 py-1.5 bg-[#121212] text-[#F4BF4B] font-bold text-xs uppercase rounded-lg cursor-pointer shrink-0"
+                                >
+                                  ADD
+                                </button>
+                              </div>
+
+                              <div className="flex flex-wrap gap-2">
+                                {(city.experiences || []).map((exp, eIdx) => (
+                                  <span key={eIdx} className="px-3 py-1 bg-amber-50 border border-amber-200 rounded-lg text-xs font-bold text-amber-900 flex items-center gap-2">
+                                    <Sparkles size={12} className="text-amber-600" />
+                                    {exp}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const current = [...(activePackage.itineraryCities || [])];
+                                        const eList = [...(current[idx].experiences || [])];
+                                        eList.splice(eIdx, 1);
+                                        current[idx] = { ...current[idx], experiences: eList };
+                                        handleFieldChange('itineraryCities', current);
+                                      }}
+                                      className="hover:text-rose-600 cursor-pointer"
+                                      aria-label={`Remove experience ${exp}`}
+                                    >
+                                      <X size={12} />
+                                    </button>
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Section 5: ARRIVAL TRANSFER */}
+                            <div className="p-4 bg-white border border-slate-200 rounded-xl space-y-3">
+                              <h6 className="text-[11px] font-black uppercase tracking-wider text-slate-900">5. ARRIVAL TRANSFER</h6>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div>
+                                  <label className={labelClass}>Transfer Mode</label>
+                                  <select
+                                    value={city.arrivalTransfer?.type || 'car'}
+                                    onChange={(e) => {
+                                      const current = [...(activePackage.itineraryCities || [])];
+                                      current[idx] = {
+                                        ...current[idx],
+                                        arrivalTransfer: {
+                                          type: e.target.value as any,
+                                          text: current[idx].arrivalTransfer?.text || ''
+                                        }
+                                      };
+                                      handleFieldChange('itineraryCities', current);
+                                    }}
+                                    className={inputClass}
+                                    aria-label={`Arrival Transfer type for ${city.city}`}
+                                  >
+                                    <option value="flight">Flight</option>
+                                    <option value="car">Private Car / Chauffeur</option>
+                                    <option value="train">Train</option>
+                                    <option value="ferry">Ferry / Boat</option>
+                                    <option value="bus">Coach</option>
+                                  </select>
+                                </div>
+
+                                <div className="md:col-span-2">
+                                  <label className={labelClass}>Transfer Narrative</label>
+                                  <input
+                                    type="text"
+                                    value={city.arrivalTransfer?.text || ''}
+                                    onChange={(e) => {
+                                      const current = [...(activePackage.itineraryCities || [])];
+                                      current[idx] = {
+                                        ...current[idx],
+                                        arrivalTransfer: {
+                                          type: current[idx].arrivalTransfer?.type || 'car',
+                                          text: e.target.value
+                                        }
+                                      };
+                                      handleFieldChange('itineraryCities', current);
+                                    }}
+                                    placeholder="e.g. Private chauffeur transfer from Milan Malpensa Airport to Lake Como"
+                                    className={inputClass}
+                                    aria-label={`Arrival Transfer narrative for ${city.city}`}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Section 6: STAY FOR THIS STOP */}
+                            <div className="p-4 bg-white border border-slate-200 rounded-xl space-y-3">
+                              <h6 className="text-[11px] font-black uppercase tracking-wider text-[#9E1B1D]">6. STAY FOR THIS STOP</h6>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div>
+                                  <label className={labelClass}>Hotel / Lodge Name</label>
+                                  <input
+                                    type="text"
+                                    value={city.hotel?.name || ''}
+                                    onChange={(e) => {
+                                      const current = [...(activePackage.itineraryCities || [])];
+                                      current[idx] = {
+                                        ...current[idx],
+                                        hotel: { ...(current[idx].hotel || { name: '' }), name: e.target.value }
+                                      };
+                                      handleFieldChange('itineraryCities', current);
+                                    }}
+                                    placeholder="e.g. Grand Hotel Tremezzo"
+                                    className={inputClass}
+                                    aria-label={`Hotel name for ${city.city}`}
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className={labelClass}>Property Type</label>
+                                  <input
+                                    type="text"
+                                    value={city.hotel?.type || ''}
+                                    onChange={(e) => {
+                                      const current = [...(activePackage.itineraryCities || [])];
+                                      current[idx] = {
+                                        ...current[idx],
+                                        hotel: { ...(current[idx].hotel || { name: '' }), type: e.target.value }
+                                      };
+                                      handleFieldChange('itineraryCities', current);
+                                    }}
+                                    placeholder="e.g. Luxury Palace Hotel"
+                                    className={inputClass}
+                                    aria-label={`Hotel property type for ${city.city}`}
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className={labelClass}>Rating (Stars)</label>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    max="5"
+                                    value={city.hotel?.rating || 5}
+                                    onChange={(e) => {
+                                      const val = parseFloat(e.target.value) || 5;
+                                      const current = [...(activePackage.itineraryCities || [])];
+                                      current[idx] = {
+                                        ...current[idx],
+                                        hotel: { ...(current[idx].hotel || { name: '' }), rating: val }
+                                      };
+                                      handleFieldChange('itineraryCities', current);
+                                    }}
+                                    className={inputClass}
+                                    aria-label={`Hotel rating for ${city.city}`}
+                                  />
+                                </div>
                               </div>
                             </div>
                           </div>
-                          
-                          <button 
-                            onClick={() => {
-                              if (window.confirm("Delete this day?")) {
-                                const nc = [...(activePackage.itineraryCities || [])];
-                                nc[cIdx].days.splice(dIdx, 1);
-                                updateActivePackage({ itineraryCities: nc });
-                              }
-                            }}
-                            className="text-gray-300 hover:text-[#9E1B1D] p-2"
-                          >
-                            <Trash2 size={20} />
-                          </button>
                         </div>
-                      </div>
-                    ))}
-                    
-                    <button 
-                      onClick={() => {
-                        const nc = [...(activePackage.itineraryCities || [])];
-                        const lastDay = nc[cIdx].days[nc[cIdx].days.length - 1]?.day || 0;
-                        nc[cIdx].days.push({ 
-                          day: lastDay + 1, 
-                          title: 'New Objective', 
-                          description: '', 
-                          textAlign: 'left' 
-                        });
-                        updateActivePackage({ itineraryCities: nc });
-                      }}
-                      className="w-full py-6 border-2 border-dashed border-[#121212]/10 rounded-[14px] text-[11px] font-black uppercase tracking-[0.3em] text-gray-300 hover:bg-[#F4BF4B]/5 hover:border-[#F4BF4B] hover:text-[#121212] transition-all group flex items-center justify-center gap-4"
-                    >
-                      <Plus size={20} className="group-hover:rotate-180 transition-transform" />
-                      APPEND DAY TO {city.city.toUpperCase()}
-                    </button>
+                      );
+                    })}
                   </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+                )}
+              </div>
+            )}
 
-        {/* PRICING TAB */}
-        {activeTab === 'PRICING' && (
-          <div className="space-y-12">
-            <div className="max-w-xl">
+            {/* Tab 3: DAY-BY-DAY ITINERARY */}
+            {activeTab === 'ITINERARY' && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">DAY-BY-DAY ITINERARY PLANS</h4>
+                    <p className="text-xs text-slate-500 font-medium">Configure daily schedules, locations, transfers, meals, and activities organized by Journey Stop.</p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const cities = activePackage.itineraryCities || [];
+                      if (cities.length === 0) {
+                        setNotice({ type: 'error', text: 'Please add a Journey Stop before adding days.' });
+                        return;
+                      }
+
+                      // Find total existing days across cities for next logical day number
+                      let totalDays = 0;
+                      cities.forEach((c) => (totalDays += (c.days || []).length));
+                      const nextDayNum = totalDays + 1;
+
+                      const newDay: ItineraryDay = {
+                        day: nextDayNum,
+                        title: `Day ${nextDayNum}: Exploration & Discovery`,
+                        description: 'Detailed daily activities and experiences.',
+                        meals: ['Breakfast'],
+                        activities: [],
+                        location: cities[0].city || ''
+                      };
+
+                      const updatedCities = [...cities];
+                      updatedCities[0] = {
+                        ...updatedCities[0],
+                        days: [...(updatedCities[0].days || []), newDay]
+                      };
+                      handleFieldChange('itineraryCities', updatedCities);
+                    }}
+                    className="px-4 py-2 bg-[#121212] text-[#F4BF4B] font-black text-xs uppercase tracking-wider rounded-lg flex items-center gap-1.5 hover:bg-slate-800 cursor-pointer"
+                    aria-label="Add day plan"
+                  >
+                    <Plus size={14} /> ADD DAY PLAN
+                  </button>
+                </div>
+
+                {/* Render Days grouped by Journey Stop */}
+                {(activePackage.itineraryCities || []).map((city, cIdx) => (
+                  <div key={cIdx} className="space-y-4">
+                    <div className="p-3 bg-slate-900 text-white rounded-xl flex items-center justify-between">
+                      <span className="font-brand font-black text-sm uppercase text-[#F4BF4B]">
+                        JOURNEY STOP {String(cIdx + 1).padStart(2, '0')}: {city.city || `Stop ${cIdx + 1}`} ({city.nights} Night{city.nights === 1 ? '' : 's'})
+                      </span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        {(city.days || []).length} Planned Day(s)
+                      </span>
+                    </div>
+
+                    {(!city.days || city.days.length === 0) ? (
+                      <div className="p-6 text-center border border-dashed border-slate-200 rounded-xl text-slate-400 text-xs font-bold">
+                        No day plans assigned to {city.city} yet.
+                      </div>
+                    ) : (
+                      <div className="space-y-4 pl-2 sm:pl-4 border-l-2 border-slate-200">
+                        {city.days.map((day, dIdx) => {
+                          const dayKey = `${cIdx}_${dIdx}`;
+                          return (
+                            <div key={dIdx} className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-4">
+                              {/* Day Header & Actions */}
+                              <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="px-2.5 py-1 bg-[#9E1B1D] text-white font-black text-[10px] uppercase rounded-md">
+                                    DAY {day.day || dIdx + 1}
+                                  </span>
+                                  <span className="font-brand font-black text-sm text-slate-900">{day.title}</span>
+                                </div>
+
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const updatedCities = [...(activePackage.itineraryCities || [])];
+                                      const updatedDays = [...(updatedCities[cIdx].days || [])];
+                                      if (dIdx > 0) {
+                                        const temp = updatedDays[dIdx];
+                                        updatedDays[dIdx] = updatedDays[dIdx - 1];
+                                        updatedDays[dIdx - 1] = temp;
+                                        updatedCities[cIdx] = { ...updatedCities[cIdx], days: updatedDays };
+                                        handleFieldChange('itineraryCities', updatedCities);
+                                      }
+                                    }}
+                                    disabled={dIdx === 0}
+                                    className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-30 cursor-pointer"
+                                    aria-label={`Move Day ${day.day || dIdx + 1} up`}
+                                    title="Move Day Up"
+                                  >
+                                    <ChevronUp size={16} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const updatedCities = [...(activePackage.itineraryCities || [])];
+                                      const updatedDays = [...(updatedCities[cIdx].days || [])];
+                                      if (dIdx < updatedDays.length - 1) {
+                                        const temp = updatedDays[dIdx];
+                                        updatedDays[dIdx] = updatedDays[dIdx + 1];
+                                        updatedDays[dIdx + 1] = temp;
+                                        updatedCities[cIdx] = { ...updatedCities[cIdx], days: updatedDays };
+                                        handleFieldChange('itineraryCities', updatedCities);
+                                      }
+                                    }}
+                                    disabled={dIdx === city.days.length - 1}
+                                    className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-30 cursor-pointer"
+                                    aria-label={`Move Day ${day.day || dIdx + 1} down`}
+                                    title="Move Day Down"
+                                  >
+                                    <ChevronDown size={16} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setDeleteDayConfirm({ cIdx, dIdx, dayNumber: day.day || dIdx + 1 })}
+                                    className="p-1 text-rose-600 hover:text-rose-800 cursor-pointer ml-1"
+                                    aria-label={`Remove Day ${day.day || dIdx + 1} from journey`}
+                                    title="Remove Day"
+                                  >
+                                    <Trash2 size={15} />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* 9 Structured Day Sections */}
+                              {/* Section 1: DAY BASICS */}
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div>
+                                  <label className={labelClass}>Day Number</label>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={day.day || dIdx + 1}
+                                    onChange={(e) => {
+                                      const val = parseInt(e.target.value, 10) || dIdx + 1;
+                                      const updatedCities = [...(activePackage.itineraryCities || [])];
+                                      const updatedDays = [...(updatedCities[cIdx].days || [])];
+                                      updatedDays[dIdx] = { ...updatedDays[dIdx], day: val };
+                                      updatedCities[cIdx] = { ...updatedCities[cIdx], days: updatedDays };
+                                      handleFieldChange('itineraryCities', updatedCities);
+                                    }}
+                                    className={inputClass}
+                                    aria-label={`Day ${dIdx + 1} number`}
+                                  />
+                                </div>
+
+                                <div className="md:col-span-2">
+                                  <label className={labelClass}>Day Title *</label>
+                                  <input
+                                    type="text"
+                                    value={day.title || ''}
+                                    onChange={(e) => {
+                                      const updatedCities = [...(activePackage.itineraryCities || [])];
+                                      const updatedDays = [...(updatedCities[cIdx].days || [])];
+                                      updatedDays[dIdx] = { ...updatedDays[dIdx], title: e.target.value };
+                                      updatedCities[cIdx] = { ...updatedCities[cIdx], days: updatedDays };
+                                      handleFieldChange('itineraryCities', updatedCities);
+                                    }}
+                                    placeholder="e.g., Arrival in Bellagio & Private Boat Tour"
+                                    className={inputClass}
+                                    aria-label={`Day ${dIdx + 1} title`}
+                                  />
+                                </div>
+                              </div>
+
+                              <div>
+                                <label className={labelClass}>Day Description</label>
+                                <textarea
+                                  value={day.description || ''}
+                                  onChange={(e) => {
+                                    const updatedCities = [...(activePackage.itineraryCities || [])];
+                                    const updatedDays = [...(updatedCities[cIdx].days || [])];
+                                    updatedDays[dIdx] = { ...updatedDays[dIdx], description: e.target.value };
+                                    updatedCities[cIdx] = { ...updatedCities[cIdx], days: updatedDays };
+                                    handleFieldChange('itineraryCities', updatedCities);
+                                  }}
+                                  placeholder="Detailed narrative for today's activities..."
+                                  rows={3}
+                                  className={inputClass + ' resize-none'}
+                                  aria-label={`Day ${dIdx + 1} description`}
+                                />
+                              </div>
+
+                              {/* Section 2: ARRIVAL / TRANSFER */}
+                              <div>
+                                <label className={labelClass}>Transfer Narrative</label>
+                                <input
+                                  type="text"
+                                  value={day.transfer || ''}
+                                  onChange={(e) => {
+                                    const updatedCities = [...(activePackage.itineraryCities || [])];
+                                    const updatedDays = [...(updatedCities[cIdx].days || [])];
+                                    updatedDays[dIdx] = { ...updatedDays[dIdx], transfer: e.target.value };
+                                    updatedCities[cIdx] = { ...updatedCities[cIdx], days: updatedDays };
+                                    handleFieldChange('itineraryCities', updatedCities);
+                                  }}
+                                  placeholder="e.g. Private chauffeur transfer to Villa Serbelloni"
+                                  className={inputClass}
+                                  aria-label={`Day ${dIdx + 1} transfer`}
+                                />
+                              </div>
+
+                              {/* Section 3: TODAY'S HIGHLIGHTS */}
+                              <div>
+                                <label className={labelClass}>Today's Highlights</label>
+                                <div className="flex gap-2 mb-2">
+                                  <input
+                                    type="text"
+                                    value={newDayHighlight[dayKey] || ''}
+                                    onChange={(e) => setNewDayHighlight((prev) => ({ ...prev, [dayKey]: e.target.value }))}
+                                    placeholder="Add day highlight (e.g. Villa Gardens Tour)"
+                                    className={inputClass}
+                                    aria-label={`Add highlight for Day ${day.day || dIdx + 1}`}
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const val = (newDayHighlight[dayKey] || '').trim();
+                                      if (!val) return;
+                                      const updatedCities = [...(activePackage.itineraryCities || [])];
+                                      const updatedDays = [...(updatedCities[cIdx].days || [])];
+                                      const hList = [...(updatedDays[dIdx].highlights || []), val];
+                                      updatedDays[dIdx] = { ...updatedDays[dIdx], highlights: hList };
+                                      updatedCities[cIdx] = { ...updatedCities[cIdx], days: updatedDays };
+                                      handleFieldChange('itineraryCities', updatedCities);
+                                      setNewDayHighlight((prev) => ({ ...prev, [dayKey]: '' }));
+                                    }}
+                                    className="px-3.5 py-1 bg-slate-900 text-[#F4BF4B] font-bold text-xs uppercase rounded-lg cursor-pointer shrink-0"
+                                  >
+                                    ADD
+                                  </button>
+                                </div>
+
+                                <div className="flex flex-wrap gap-2">
+                                  {(day.highlights || []).map((dh, dhIdx) => (
+                                    <span key={dhIdx} className="px-2.5 py-1 bg-white border border-slate-200 rounded-md text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                      {dh}
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const updatedCities = [...(activePackage.itineraryCities || [])];
+                                          const updatedDays = [...(updatedCities[cIdx].days || [])];
+                                          const hList = [...(updatedDays[dIdx].highlights || [])];
+                                          hList.splice(dhIdx, 1);
+                                          updatedDays[dIdx] = { ...updatedDays[dIdx], highlights: hList };
+                                          updatedCities[cIdx] = { ...updatedCities[cIdx], days: updatedDays };
+                                          handleFieldChange('itineraryCities', updatedCities);
+                                        }}
+                                        className="hover:text-rose-600 cursor-pointer"
+                                        aria-label={`Remove day highlight ${dh}`}
+                                      >
+                                        <X size={12} />
+                                      </button>
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* Section 6: MEALS */}
+                              <div>
+                                <label className={labelClass}>Included Meals</label>
+                                <div className="flex gap-4">
+                                  {['Breakfast', 'Lunch', 'Dinner'].map((meal) => {
+                                    const meals = day.meals || [];
+                                    const isChecked = meals.includes(meal);
+                                    return (
+                                      <label key={meal} className="flex items-center gap-1.5 text-xs font-bold text-slate-700 cursor-pointer">
+                                        <input
+                                          type="checkbox"
+                                          checked={isChecked}
+                                          onChange={() => {
+                                            const nextMeals = isChecked ? meals.filter((m) => m !== meal) : [...meals, meal];
+                                            const updatedCities = [...(activePackage.itineraryCities || [])];
+                                            const updatedDays = [...(updatedCities[cIdx].days || [])];
+                                            updatedDays[dIdx] = { ...updatedDays[dIdx], meals: nextMeals };
+                                            updatedCities[cIdx] = { ...updatedCities[cIdx], days: updatedDays };
+                                            handleFieldChange('itineraryCities', updatedCities);
+                                          }}
+                                          className="rounded border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer"
+                                          aria-label={`Include ${meal} on Day ${day.day || dIdx + 1}`}
+                                        />
+                                        <span>{meal}</span>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+
+                              {/* Section 8: STAY FOR THIS DAY */}
+                              <div className="p-3 bg-white border border-slate-200 rounded-lg space-y-2">
+                                <label className={labelClass}>STAY FOR THIS DAY</label>
+                                <input
+                                  type="text"
+                                  value={day.hotel?.name || ''}
+                                  onChange={(e) => {
+                                    const updatedCities = [...(activePackage.itineraryCities || [])];
+                                    const updatedDays = [...(updatedCities[cIdx].days || [])];
+                                    updatedDays[dIdx] = {
+                                      ...updatedDays[dIdx],
+                                      hotel: { ...(updatedDays[dIdx].hotel || { name: '' }), name: e.target.value }
+                                    };
+                                    updatedCities[cIdx] = { ...updatedCities[cIdx], days: updatedDays };
+                                    handleFieldChange('itineraryCities', updatedCities);
+                                  }}
+                                  placeholder="e.g. Grand Hotel Tremezzo (or leave empty if same as stop accommodation)"
+                                  className={inputClass}
+                                  aria-label={`Hotel for Day ${day.day || dIdx + 1}`}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Tab 4: ACCOMMODATION */}
+            {activeTab === 'HOTELS' && (
               <div className="space-y-6">
                 <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 block mb-3">Base Price & Currency</label>
-                  <div className="flex gap-4">
-                    <input 
-                      type="number" 
-                      value={activePackage.pricing.basePrice} 
-                      onChange={e => updateActivePackage({ pricing: { ...activePackage.pricing, basePrice: parseInt(e.target.value) } })}
-                      className="flex-1 px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-black text-xl text-[#121212] transition-all"
-                    />
-                    <select 
-                      value={activePackage.pricing.currency} 
-                      onChange={e => updateActivePackage({ pricing: { ...activePackage.pricing, currency: e.target.value } })}
-                      className="px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 font-black bg-white focus:outline-none focus:border-[#F4BF4B] transition-all cursor-pointer"
-                    >
-                      <option value="INR">INR</option>
-                      <option value="USD">USD</option>
-                      <option value="EUR">EUR</option>
-                    </select>
-                  </div>
+                  <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">ACCOMMODATION & LUXURY STAYS</h4>
+                  <p className="text-xs text-slate-500 font-medium mb-4">Manage hotel details, ratings, amenities, and hotel photo galleries.</p>
                 </div>
-              </div>
-            </div>
 
-            <div className="space-y-6">
-              <div className="flex justify-between items-center border-b-2 border-[#121212] pb-4">
-                <h4 className="font-black text-xs uppercase tracking-widest">Departure Windows & Specific Pricing</h4>
-                <button 
-                  onClick={() => {
-                    const dates = [...(activePackage.pricingDates || [])];
-                    dates.push({ date_range: 'New Dates', price: activePackage.pricing.basePrice, status: 'available' });
-                    updateActivePackage({ pricingDates: dates });
-                  }}
-                  className="bg-[#121212] text-[#F4BF4B] px-4 py-2 font-black text-[10px] uppercase tracking-widest"
-                >
-                  + Add Date Card
-                </button>
-              </div>
+                {(activePackage.itineraryCities || []).map((city, cIdx) => {
+                  const hotel = city.hotel || { name: '', type: 'Luxury Lodge', rating: 5, amenities: [], images: [] };
+                  return (
+                    <div key={cIdx} className="p-5 bg-slate-50 border border-slate-200 rounded-xl space-y-4">
+                      <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                        <span className="font-brand font-black text-sm uppercase text-slate-900">
+                          {city.city} — Sector Accommodation
+                        </span>
+                      </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {(activePackage.pricingDates || []).map((date, i) => (
-                  <div key={i} className="rounded-[14px] border-2 border-[#121212]/10 p-5 bg-white space-y-4">
-                    <div className="flex justify-between">
-                      <span className="text-[9px] font-black uppercase tracking-tighter bg-gray-100 px-2 py-1">Slot #{i+1}</span>
-                      <button 
-                        onClick={() => {
-                          const dates = [...(activePackage.pricingDates || [])];
-                          dates.splice(i, 1);
-                          updateActivePackage({ pricingDates: dates });
-                        }}
-                        className="text-[#9E1B1D]"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                    <div>
-                      <label className="text-[9px] font-black uppercase text-gray-400">Date Range</label>
-                      <input 
-                        type="text" 
-                        value={date.date_range} 
-                        onChange={e => {
-                          const nd = [...(activePackage.pricingDates || [])];
-                          nd[i].date_range = e.target.value;
-                          updateActivePackage({ pricingDates: nd });
-                        }}
-                        className="w-full p-2 border-b-2 border-[#121212] outline-none font-bold text-sm"
-                        placeholder="e.g. Oct 15 - Oct 22"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div>
+                          <label className={labelClass}>Hotel / Lodge Name</label>
+                          <input
+                            type="text"
+                            value={hotel.name || ''}
+                            onChange={(e) => {
+                              const updatedCities = [...(activePackage.itineraryCities || [])];
+                              updatedCities[cIdx] = {
+                                ...updatedCities[cIdx],
+                                hotel: { ...hotel, name: e.target.value }
+                              };
+                              handleFieldChange('itineraryCities', updatedCities);
+                            }}
+                            placeholder="e.g. Grand Hotel Tremezzo"
+                            className={inputClass}
+                            aria-label={`Hotel name for ${city.city}`}
+                          />
+                        </div>
+
+                        <div>
+                          <label className={labelClass}>Property Type</label>
+                          <input
+                            type="text"
+                            value={hotel.type || ''}
+                            onChange={(e) => {
+                              const updatedCities = [...(activePackage.itineraryCities || [])];
+                              updatedCities[cIdx] = {
+                                ...updatedCities[cIdx],
+                                hotel: { ...hotel, type: e.target.value }
+                              };
+                              handleFieldChange('itineraryCities', updatedCities);
+                            }}
+                            placeholder="e.g. Luxury Palace Hotel"
+                            className={inputClass}
+                            aria-label={`Property type for ${city.city}`}
+                          />
+                        </div>
+
+                        <div>
+                          <label className={labelClass}>Rating (Stars)</label>
+                          <input
+                            type="number"
+                            min="1"
+                            max="5"
+                            value={hotel.rating || 5}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value) || 5;
+                              const updatedCities = [...(activePackage.itineraryCities || [])];
+                              updatedCities[cIdx] = {
+                                ...updatedCities[cIdx],
+                                hotel: { ...hotel, rating: val }
+                              };
+                              handleFieldChange('itineraryCities', updatedCities);
+                            }}
+                            className={inputClass}
+                            aria-label={`Star rating for ${city.city}`}
+                          />
+                        </div>
+                      </div>
+
                       <div>
-                        <label className="text-[9px] font-black uppercase text-gray-400">Price</label>
-                        <input 
-                          type="number" 
-                          value={date.price} 
-                          onChange={e => {
-                            const nd = [...(activePackage.pricingDates || [])];
-                            nd[i].price = parseInt(e.target.value);
-                            updateActivePackage({ pricingDates: nd });
+                        <label className={labelClass}>Hotel Description</label>
+                        <textarea
+                          value={hotel.description || ''}
+                          onChange={(e) => {
+                            const updatedCities = [...(activePackage.itineraryCities || [])];
+                            updatedCities[cIdx] = {
+                              ...updatedCities[cIdx],
+                              hotel: { ...hotel, description: e.target.value }
+                            };
+                            handleFieldChange('itineraryCities', updatedCities);
                           }}
-                          className="w-full p-2 border-b-2 border-[#121212] outline-none font-black"
+                          placeholder="Editorial description of the property..."
+                          rows={2}
+                          className={inputClass + ' resize-none'}
+                          aria-label={`Hotel description for ${city.city}`}
                         />
                       </div>
-                      <div>
-                        <label className="text-[9px] font-black uppercase text-gray-400">Status</label>
-                        <select 
-                          value={date.status} 
-                          onChange={e => {
-                            const nd = [...(activePackage.pricingDates || [])];
-                            nd[i].status = e.target.value as any;
-                            updateActivePackage({ pricingDates: nd });
-                          }}
-                          className="w-full p-2 border-b-2 border-[#121212] outline-none font-black text-[10px] uppercase"
-                        >
-                          <option value="available">Available</option>
-                          <option value="limited">Limited</option>
-                          <option value="sold_out">Sold Out</option>
-                          <option value="coming_soon">Coming Soon</option>
-                        </select>
-                      </div>
-                    </div>
-                    <input 
-                      type="text" 
-                      value={date.notes || ''} 
-                      onChange={e => {
-                        const nd = [...(activePackage.pricingDates || [])];
-                        nd[i].notes = e.target.value;
-                        updateActivePackage({ pricingDates: nd });
-                      }}
-                      className="w-full p-2 bg-red-50 text-[10px] font-bold text-[#9E1B1D] outline-none"
-                      placeholder="Special notes (e.g. Only 2 seats left)"
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
 
-        {/* INCLUSIONS TAB (Redesigned) */}
-        {activeTab === 'INCLUSIONS' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-            {/* Inclusions */}
-            <div className="space-y-6">
-              <div className="flex justify-between items-end border-b-4 border-green-600 pb-4">
-                <div>
-                  <h4 className="font-brand font-black text-2xl uppercase tracking-tighter text-green-600">Included.</h4>
-                  <p className="text-[8px] font-bold uppercase tracking-widest text-gray-400 mt-1">Operational support and assets</p>
-                </div>
-                <button 
-                  onClick={() => {
-                    const inc = [...(activePackage.inclusionsRich || [])];
-                    inc.push({ text: '', category: 'General', icon: 'Check' });
-                    updateActivePackage({ inclusionsRich: inc });
-                  }}
-                  className="bg-emerald-600 text-white px-4 py-2 rounded-[10px] font-black text-[9px] uppercase tracking-widest hover:bg-[#121212] transition-all"
-                >
-                  + Add Item
-                </button>
-              </div>
-              <div className="space-y-3">
-                {(activePackage.inclusionsRich || []).map((item, idx) => (
-                  <div key={idx} className="bg-white rounded-[14px] border-2 border-[#121212]/10 p-4 flex gap-4 items-start">
-                    <div className="relative group/icon shrink-0 mt-1">
-                      <div className="size-10 bg-green-50 border border-green-200 flex items-center justify-center text-green-600">
-                        <IconPreview name={item.icon || 'Check'} size={20} />
-                      </div>
-                      <select 
-                        value={item.icon || 'Check'} 
-                        onChange={e => {
-                          const n = [...(activePackage.inclusionsRich || [])];
-                          n[idx].icon = e.target.value;
-                          updateActivePackage({ inclusionsRich: n });
+                      {/* Primary Hotel Image */}
+                      <ImageInput
+                        label="PRIMARY HOTEL PHOTO"
+                        value={hotel.image || ''}
+                        onSave={(url) => {
+                          const updatedCities = [...(activePackage.itineraryCities || [])];
+                          updatedCities[cIdx] = {
+                            ...updatedCities[cIdx],
+                            hotel: { ...hotel, image: url }
+                          };
+                          handleFieldChange('itineraryCities', updatedCities);
                         }}
-                        className="absolute inset-0 opacity-0 cursor-pointer"
-                      >
-                        {['Check', 'Home', 'Truck', 'Utensils', 'Shield', 'User', 'Camera', 'Map', 'Coffee', 'Star', 'Gift'].map(k => (
-                          <option key={k} value={k}>{k}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="flex-1 space-y-2">
-                      <select 
-                        value={item.category || 'General'}
-                        onChange={e => {
-                          const n = [...(activePackage.inclusionsRich || [])];
-                          n[idx].category = e.target.value;
-                          updateActivePackage({ inclusionsRich: n });
-                        }}
-                        className="text-[8px] font-black uppercase tracking-widest text-green-600 bg-green-50 px-2 py-0.5 outline-none"
-                      >
-                        <option value="Accommodation">Accommodation</option>
-                        <option value="Transport">Transport</option>
-                        <option value="Meals">Meals</option>
-                        <option value="Guides">Guides</option>
-                        <option value="General">General</option>
-                      </select>
-                      <input 
-                        type="text" 
-                        value={item.text}
-                        onChange={e => {
-                          const n = [...(activePackage.inclusionsRich || [])];
-                          n[idx].text = e.target.value;
-                          updateActivePackage({ inclusionsRich: n });
-                        }}
-                        placeholder="Inclusion detail..."
-                        className="w-full border-none outline-none font-bold text-xs uppercase"
+                        storagePath={`packages/${activePackage.id || 'new'}/hotels`}
+                        aspectClass="aspect-16/9"
                       />
                     </div>
-                    <button 
-                      onClick={() => {
-                        const n = [...(activePackage.inclusionsRich || [])];
-                        n.splice(idx, 1);
-                        updateActivePackage({ inclusionsRich: n });
-                      }}
-                      className="text-gray-300 hover:text-[#9E1B1D] p-1"
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
-            </div>
+            )}
 
-            {/* Exclusions */}
-            <div className="space-y-6">
-              <div className="flex justify-between items-end border-b-4 border-[#9E1B1D] pb-4">
+            {/* Tab 5: EXPERIENCES */}
+            {activeTab === 'EXPERIENCES' && (
+              <div className="space-y-4">
                 <div>
-                  <h4 className="font-brand font-black text-2xl uppercase tracking-tighter text-[#9E1B1D]">Excluded.</h4>
-                  <p className="text-[8px] font-bold uppercase tracking-widest text-gray-400 mt-1">External liabilities and costs</p>
-                </div>
-                <button 
-                  onClick={() => {
-                    const exc = [...(activePackage.exclusionsRich || [])];
-                    exc.push({ text: '', category: 'General', icon: 'X' });
-                    updateActivePackage({ exclusionsRich: exc });
-                  }}
-                  className="bg-[#9E1B1D] text-white px-4 py-2 rounded-[10px] font-black text-[9px] uppercase tracking-widest hover:bg-[#121212] transition-all"
-                >
-                  + Add Item
-                </button>
-              </div>
-              <div className="space-y-3">
-                {(activePackage.exclusionsRich || []).map((item, idx) => (
-                  <div key={idx} className="bg-white rounded-[14px] border-2 border-[#121212]/10 p-4 flex gap-4 items-start">
-                    <div className="relative group/icon shrink-0 mt-1">
-                      <div className="size-10 bg-red-50 border border-red-200 flex items-center justify-center text-[#9E1B1D]">
-                        <IconPreview name={item.icon || 'X'} size={20} />
-                      </div>
-                      <select 
-                        value={item.icon || 'X'} 
-                        onChange={e => {
-                          const n = [...(activePackage.exclusionsRich || [])];
-                          n[idx].icon = e.target.value;
-                          updateActivePackage({ exclusionsRich: n });
-                        }}
-                        className="absolute inset-0 opacity-0 cursor-pointer"
-                      >
-                        {['X', 'DollarSign', 'CreditCard', 'ShieldOff', 'WifiOff', 'PlaneLanding'].map(k => (
-                          <option key={k} value={k}>{k}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="flex-1 space-y-2">
-                       <select 
-                        value={item.category || 'General'}
-                        onChange={e => {
-                          const n = [...(activePackage.exclusionsRich || [])];
-                          n[idx].category = e.target.value;
-                          updateActivePackage({ exclusionsRich: n });
-                        }}
-                        className="text-[8px] font-black uppercase tracking-widest text-[#9E1B1D] bg-red-50 px-2 py-0.5 outline-none"
-                      >
-                        <option value="Flights">Flights</option>
-                        <option value="Insurance">Insurance</option>
-                        <option value="Personal">Personal</option>
-                        <option value="General">General</option>
-                      </select>
-                      <input 
-                        type="text" 
-                        value={item.text}
-                        onChange={e => {
-                          const n = [...(activePackage.exclusionsRich || [])];
-                          n[idx].text = e.target.value;
-                          updateActivePackage({ exclusionsRich: n });
-                        }}
-                        placeholder="Exclusion detail..."
-                        className="w-full border-none outline-none font-bold text-xs uppercase"
-                      />
-                    </div>
-                    <button 
-                      onClick={() => {
-                        const n = [...(activePackage.exclusionsRich || [])];
-                        n.splice(idx, 1);
-                        updateActivePackage({ exclusionsRich: n });
-                      }}
-                      className="text-gray-300 hover:text-[#9E1B1D] p-1"
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
+                  <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">JOURNEY HIGHLIGHTS</h4>
+                  <p className="text-xs text-slate-500 font-medium mb-3">Highlights showcased across the overall journey card and hero.</p>
 
-        {/* MEDIA TAB */}
-        {activeTab === 'MEDIA' && (
-          <div className="space-y-12">
-            <div className="max-w-xl">
-              <ImageInput 
-                label="Primary Thumbnail (Hero)"
-                value={activePackage.media.thumbnail}
-                storagePath={`packages/${activePackage.slug}/hero`}
-                onSave={(url) => updateActivePackage({ media: { ...activePackage.media, thumbnail: url } })}
-                aspectClass="aspect-video"
-              />
-            </div>
-
-            <div className="space-y-6">
-              <div className="flex justify-between items-center border-b-2 border-[#121212] pb-4">
-                <h4 className="font-black text-xs uppercase tracking-widest">Gallery Assets</h4>
-                <button 
-                  onClick={() => {
-                    const gal = [...(activePackage.media.gallery || [])];
-                    gal.push('');
-                    updateActivePackage({ media: { ...activePackage.media, gallery: gal } });
-                  }}
-                  className="bg-[#121212] text-[#F4BF4B] px-4 py-2 font-black text-[10px] uppercase tracking-widest"
-                >
-                  + Add Image Slot
-                </button>
-              </div>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
-                {(activePackage.media.gallery || []).map((img, i) => (
-                  <div key={i} className="space-y-2">
-                    <ImageInput 
-                      label={`Gallery Image #${i+1}`}
-                      value={img}
-                      storagePath={`packages/${activePackage.slug}/gallery_${i}`}
-                      onSave={(url) => {
-                        const gal = [...(activePackage.media.gallery || [])];
-                        gal[i] = url;
-                        updateActivePackage({ media: { ...activePackage.media, gallery: gal } });
-                      }}
-                      aspectClass="aspect-square"
+                  <div className="flex gap-2 mb-4">
+                    <input
+                      type="text"
+                      value={newHighlightText}
+                      onChange={(e) => setNewHighlightText(e.target.value)}
+                      placeholder="e.g., Private Sunset Boat Cruise on Lake Como"
+                      className={inputClass}
+                      aria-label="Add overall journey highlight"
                     />
-                    <button 
-                      onClick={() => {
-                        const gal = [...(activePackage.media.gallery || [])];
-                        gal.splice(i, 1);
-                        updateActivePackage({ media: { ...activePackage.media, gallery: gal } });
-                      }}
-                      className="w-full py-2 bg-red-50 text-[#9E1B1D] font-black text-[9px] uppercase tracking-widest hover:bg-red-100 transition-colors"
-                    >
-                      Delete Slot
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* PDF ITINERARY UPLOAD SECTION */}
-            <div className="space-y-6 border-t-4 border-[#121212] pt-12">
-              <div>
-                <h4 className="font-black text-xs uppercase tracking-widest mb-4 flex items-center gap-2">
-                  <ImageIcon size={16} /> Itinerary PDF Download
-                </h4>
-                <p className="text-[10px] text-gray-600 mb-4">Upload a PDF for users to download on the itinerary page</p>
-              </div>
-              
-              <div className="border-4 border-dashed border-[#121212] bg-[#FCFBF7] p-8 relative">
-                {activePackage.itineraryPDF ? (
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-3 bg-green-50 border-2 border-green-200 p-4 rounded-none">
-                      <CheckCircle size={20} className="text-green-600" />
-                      <div className="flex-1">
-                        <p className="font-black text-[10px] uppercase tracking-widest text-green-700">PDF Uploaded</p>
-                        <p className="text-[9px] text-green-600 mt-1 break-all">{activePackage.itineraryPDF.split('/').pop()}</p>
-                      </div>
-                    </div>
-                    <a
-                      href={activePackage.itineraryPDF}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 bg-[#121212] text-[#F4BF4B] px-6 py-2 font-black text-[9px] uppercase tracking-widest hover:bg-[#9E1B1D] transition-colors"
-                    >
-                      <Download size={14} /> Preview PDF
-                    </a>
                     <button
-                      onClick={() => updateActivePackage({ itineraryPDF: undefined })}
-                      className="block w-full py-2 bg-red-50 text-[#9E1B1D] font-black text-[9px] uppercase tracking-widest hover:bg-red-100 transition-colors"
+                      type="button"
+                      onClick={() => {
+                        if (!newHighlightText.trim()) return;
+                        const current = activePackage.editorialHighlights || [];
+                        handleFieldChange('editorialHighlights', [...current, newHighlightText.trim()]);
+                        setNewHighlightText('');
+                      }}
+                      className="px-4 py-2 bg-[#121212] text-[#F4BF4B] font-black text-xs uppercase tracking-wider rounded-lg shrink-0 hover:bg-slate-800 cursor-pointer"
+                      aria-label="Add overall highlight button"
                     >
-                      Remove PDF
+                      ADD HIGHLIGHT
                     </button>
                   </div>
-                ) : (
-                  <PDFUploadInput
-                    onSave={(url) => updateActivePackage({ itineraryPDF: url })}
-                    storagePath={`packages/${activePackage.slug}`}
-                    packageTitle={activePackage.title}
-                  />
-                )}
+
+                  <div className="space-y-2">
+                    {(activePackage.editorialHighlights || []).map((hl, idx) => (
+                      <div key={idx} className="p-3 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <Sparkles size={14} className="text-[#F4BF4B]" />
+                          <span className="text-xs font-bold text-slate-900">{hl}</span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const current = [...(activePackage.editorialHighlights || [])];
+                            current.splice(idx, 1);
+                            handleFieldChange('editorialHighlights', current);
+                          }}
+                          className="p-1 text-rose-600 hover:text-rose-800 cursor-pointer"
+                          aria-label={`Remove journey highlight ${hl}`}
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        )}
+            )}
 
-        {/* FAQS TAB (Simplified sub-collection proxy) */}
-        {activeTab === 'FAQS' && (
-          <div className="p-12 text-center border-4 border-dashed border-[#121212]/10 bg-white">
-            <HelpCircle size={48} className="mx-auto text-gray-200 mb-4" />
-            <h4 className="font-brand font-black text-2xl uppercase text-[#121212]">Global Package FAQs</h4>
-            <p className="font-bold text-xs uppercase tracking-widest text-gray-500 mt-2 max-w-md mx-auto">
-              FAQs are currently managed via the database seeder. 
-              Interactive FAQ management for individual packages is coming in the next administrative update.
-            </p>
-          </div>
-        )}
+            {/* Tab 6: INCLUSIONS */}
+            {activeTab === 'INCLUSIONS' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Inclusions */}
+                <div className="space-y-4">
+                  <h4 className="text-xs font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-2">
+                    <CheckCircle size={16} /> WHAT'S INCLUDED
+                  </h4>
 
-        {/* SLOTS TAB */}
-        {activeTab === 'SLOTS' && (
-          <div className="space-y-12 max-w-2xl">
-            <div className="border-4 border-[#121212] p-8 bg-white">
-              <h3 className="font-black text-lg uppercase tracking-widest mb-8">Slot Management</h3>
-              
-              <div className="space-y-8">
-                <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 block mb-3">Maximum Slots Available</label>
-                  <input 
-                    type="number" 
-                    value={activePackage.maxSlots || 12} 
-                    onChange={e => updateActivePackage({ maxSlots: parseInt(e.target.value) || 12 })}
-                    className="w-full max-w-xs px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-black text-xl text-[#121212] transition-all"
-                    placeholder="12"
-                  />
-                  <p className="text-[9px] text-gray-500 mt-2">Total number of seats available for this expedition</p>
+                  <div className="flex gap-2 mb-2">
+                    <input
+                      type="text"
+                      value={newInclusionText}
+                      onChange={(e) => setNewInclusionText(e.target.value)}
+                      placeholder="e.g., Luxury private vehicle transfers"
+                      className={inputClass}
+                      aria-label="Add item to included list"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!newInclusionText.trim()) return;
+                        const current = activePackage.inclusionsRich || [];
+                        handleFieldChange('inclusionsRich', [...current, { text: newInclusionText.trim() }]);
+                        setNewInclusionText('');
+                      }}
+                      className="px-4 py-2 bg-emerald-700 text-white font-black text-xs uppercase tracking-wider rounded-lg shrink-0 cursor-pointer"
+                      aria-label="Add inclusion button"
+                    >
+                      ADD
+                    </button>
+                  </div>
+
+                  <div className="space-y-2">
+                    {(activePackage.inclusionsRich || []).map((inc, idx) => (
+                      <div key={idx} className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center justify-between">
+                        <span className="text-xs font-bold text-emerald-900">{inc.text}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const current = [...(activePackage.inclusionsRich || [])];
+                            current.splice(idx, 1);
+                            handleFieldChange('inclusionsRich', current);
+                          }}
+                          className="text-emerald-700 hover:text-rose-600 cursor-pointer"
+                          aria-label={`Remove inclusion ${inc.text}`}
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
-                <div className="bg-[#FCFBF7] border-2 border-[#F4BF4B] p-6 rounded">
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-[10px] font-black uppercase tracking-widest">Booked Slots (Auto-calculated)</span>
-                    <span className="font-black text-2xl text-[#9E1B1D]">{activePackage.bookedSlots || 0}</span>
+                {/* Exclusions */}
+                <div className="space-y-4">
+                  <h4 className="text-xs font-bold text-rose-800 uppercase tracking-wider flex items-center gap-2">
+                    <XCircle size={16} /> WHAT'S NOT INCLUDED
+                  </h4>
+
+                  <div className="flex gap-2 mb-2">
+                    <input
+                      type="text"
+                      value={newExclusionText}
+                      onChange={(e) => setNewExclusionText(e.target.value)}
+                      placeholder="e.g., International flights & visa fees"
+                      className={inputClass}
+                      aria-label="Add item to excluded list"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!newExclusionText.trim()) return;
+                        const current = activePackage.exclusionsRich || [];
+                        handleFieldChange('exclusionsRich', [...current, { text: newExclusionText.trim() }]);
+                        setNewExclusionText('');
+                      }}
+                      className="px-4 py-2 bg-rose-700 text-white font-black text-xs uppercase tracking-wider rounded-lg shrink-0 cursor-pointer"
+                      aria-label="Add exclusion button"
+                    >
+                      ADD
+                    </button>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase tracking-widest">Available Slots</span>
-                    <span className="font-black text-2xl text-green-600">{(activePackage.maxSlots || 12) - (activePackage.bookedSlots || 0)}</span>
+
+                  <div className="space-y-2">
+                    {(activePackage.exclusionsRich || []).map((exc, idx) => (
+                      <div key={idx} className="p-3 bg-rose-50 border border-rose-200 rounded-lg flex items-center justify-between">
+                        <span className="text-xs font-bold text-rose-900">{exc.text}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const current = [...(activePackage.exclusionsRich || [])];
+                            current.splice(idx, 1);
+                            handleFieldChange('exclusionsRich', current);
+                          }}
+                          className="text-rose-700 hover:text-rose-900 cursor-pointer"
+                          aria-label={`Remove exclusion ${exc.text}`}
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                  <div className="mt-4 w-full bg-gray-200 h-3 rounded overflow-hidden">
-                    <div 
-                      className="h-full bg-[#9E1B1D] transition-all" 
-                      style={{ width: `${((activePackage.bookedSlots || 0) / (activePackage.maxSlots || 12)) * 100}%` }}
+                </div>
+              </div>
+            )}
+
+            {/* Tab 7: FAQS */}
+            {activeTab === 'FAQS' && (
+              <div className="space-y-4">
+                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">TRAVELLER QUESTIONS & FAQS</h4>
+
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                  <input
+                    type="text"
+                    value={newFaqQuestion}
+                    onChange={(e) => setNewFaqQuestion(e.target.value)}
+                    placeholder="Question (e.g., Is visa support included?)"
+                    className={inputClass}
+                    aria-label="New FAQ Question"
+                  />
+                  <textarea
+                    value={newFaqAnswer}
+                    onChange={(e) => setNewFaqAnswer(e.target.value)}
+                    placeholder="Answer details..."
+                    rows={2}
+                    className={inputClass + ' resize-none'}
+                    aria-label="New FAQ Answer"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!newFaqQuestion.trim() || !newFaqAnswer.trim()) return;
+                      const current = activePackage.packageFaqs || [];
+                      handleFieldChange('packageFaqs', [
+                        ...current,
+                        { question: newFaqQuestion.trim(), answer: newFaqAnswer.trim() }
+                      ]);
+                      setNewFaqQuestion('');
+                      setNewFaqAnswer('');
+                    }}
+                    className="px-4 py-2 bg-[#121212] text-[#F4BF4B] font-black text-xs uppercase tracking-wider rounded-lg hover:bg-slate-800 cursor-pointer"
+                    aria-label="Add FAQ button"
+                  >
+                    ADD QUESTION & ANSWER
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {(activePackage.packageFaqs || []).map((faq, idx) => (
+                    <div key={idx} className="p-4 bg-white border border-slate-200 rounded-xl space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-xs text-slate-900">{faq.question}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const current = [...(activePackage.packageFaqs || [])];
+                            current.splice(idx, 1);
+                            handleFieldChange('packageFaqs', current);
+                          }}
+                          className="text-rose-600 hover:text-rose-800 cursor-pointer"
+                          aria-label={`Remove FAQ question ${faq.question}`}
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                      <p className="text-xs text-slate-600 font-medium">{faq.answer}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Tab 8: PRICING */}
+            {activeTab === 'PRICING' && (
+              <div className="space-y-4">
+                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">PRICING & COMMERCIALS</h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className={labelClass}>Starting Base Price *</label>
+                    <input
+                      type="number"
+                      value={activePackage.pricing?.basePrice || 0}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value) || 0;
+                        handleNestedChange('pricing', 'basePrice', val);
+                      }}
+                      className={inputClass}
+                      aria-label="Starting Base Price"
+                    />
+                  </div>
+
+                  <div>
+                    <label className={labelClass}>Currency</label>
+                    <input
+                      type="text"
+                      value={activePackage.pricing?.currency || 'INR'}
+                      onChange={(e) => handleNestedChange('pricing', 'currency', e.target.value)}
+                      placeholder="e.g., INR / USD"
+                      className={inputClass}
+                      aria-label="Pricing Currency"
+                    />
+                  </div>
+
+                  <div>
+                    <label className={labelClass}>Discount Price (Optional)</label>
+                    <input
+                      type="number"
+                      value={activePackage.pricing?.discountedPrice || 0}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value) || 0;
+                        handleNestedChange('pricing', 'discountedPrice', val);
+                      }}
+                      className={inputClass}
+                      aria-label="Discounted Price"
                     />
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-        )}
+            )}
 
-        {/* PAYMENTS TAB */}
-        {activeTab === 'PAYMENTS' && (
-          <div className="space-y-12 max-w-2xl">
-            <div className="border-4 border-[#121212] p-8 bg-white">
-              <h3 className="font-black text-lg uppercase tracking-widest mb-8">Advance Payment Configuration</h3>
-              
-              <div className="space-y-8">
-                <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 block mb-4">Payment Type</label>
-                  <div className="space-y-4">
-                    <label className="flex items-center gap-3 cursor-pointer hover:bg-[#FCFBF7] p-3 rounded transition-colors">
-                      <input 
-                        type="checkbox" 
-                        checked={!!activePackage.advancePaymentFixed}
-                        onChange={e => updateActivePackage({ 
-                          advancePaymentFixed: e.target.checked ? 5000 : undefined 
-                        })}
-                        className="w-5 h-5 rounded accent-[#121212]"
-                      />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Fixed Advance Amount</span>
-                    </label>
-                    {activePackage.advancePaymentFixed && (
-                      <input 
-                        type="number" 
-                        value={activePackage.advancePaymentFixed} 
-                        onChange={e => updateActivePackage({ advancePaymentFixed: parseInt(e.target.value) || 5000 })}
-                        className="ml-6 w-full max-w-xs px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-black text-[#121212] transition-all"
-                        placeholder="5000"
-                      />
-                    )}
-                  </div>
-
-                  <div className="space-y-4 mt-6">
-                    <label className="flex items-center gap-3 cursor-pointer hover:bg-[#FCFBF7] p-3 rounded transition-colors">
-                      <input 
-                        type="checkbox" 
-                        checked={!!activePackage.advancePaymentPercentage}
-                        onChange={e => updateActivePackage({ 
-                          advancePaymentPercentage: e.target.checked ? 30 : undefined 
-                        })}
-                        className="w-5 h-5 rounded accent-[#121212]"
-                      />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Percentage of Total Price</span>
-                    </label>
-                    {activePackage.advancePaymentPercentage && (
-                      <input 
-                        type="number" 
-                        value={activePackage.advancePaymentPercentage} 
-                        onChange={e => updateActivePackage({ advancePaymentPercentage: parseInt(e.target.value) || 30 })}
-                        className="ml-6 w-full max-w-xs px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-black text-[#121212] transition-all"
-                        placeholder="30"
-                        min="0"
-                        max="100"
-                      />
-                    )}
-                  </div>
+            {/* Tab 9: MEDIA & ITINERARY PDF */}
+            {activeTab === 'MEDIA' && (
+              <div className="space-y-6">
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                  <ImageInput
+                    label="JOURNEY COVER PHOTO (THUMBNAIL)"
+                    value={activePackage.media?.thumbnail || ''}
+                    onSave={(url) => handleNestedChange('media', 'thumbnail', url)}
+                    storagePath={`packages/${activePackage.id || 'new'}`}
+                    aspectClass="aspect-21/9"
+                  />
                 </div>
 
-                {(activePackage.advancePaymentFixed || activePackage.advancePaymentPercentage) && (
-                  <div className="bg-blue-50 border-2 border-blue-400 p-6 rounded">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-900">Preview:</p>
-                    <p className="text-[9px] text-blue-800 mt-2">
-                      {activePackage.advancePaymentFixed && `Fixed advance: ${activePackage.advancePaymentFixed} INR`}
-                      {activePackage.advancePaymentFixed && activePackage.advancePaymentPercentage && ' OR '}
-                      {activePackage.advancePaymentPercentage && `${activePackage.advancePaymentPercentage}% of total price`}
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                  <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">OFFICIAL ITINERARY PDF DOCUMENT</h4>
+                  <p className="text-xs text-slate-500 font-medium">Upload or replace the official downloadable itinerary PDF.</p>
+
+                  <PDFUploadInput
+                    packageTitle={activePackage.title || 'journey'}
+                    storagePath="packages"
+                    onSave={(url) => handleFieldChange('itineraryPDF', url)}
+                  />
+
+                  {activePackage.itineraryPDF && (
+                    <div className="p-3 bg-white border border-slate-200 rounded-lg flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <FileText size={16} className="text-[#9E1B1D]" />
+                        <span className="text-xs font-bold text-slate-900">Itinerary PDF Uploaded</span>
+                      </div>
+
+                      <a
+                        href={activePackage.itineraryPDF}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1 bg-[#121212] text-[#F4BF4B] font-bold text-[10px] uppercase rounded-md flex items-center gap-1"
+                      >
+                        <Download size={12} /> DOWNLOAD / VIEW PDF
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Tab 10: TRAVEL INFO */}
+            {activeTab === 'TRAVEL_INFO' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className={labelClass}>Trip Duration</label>
+                  <input
+                    type="text"
+                    value={activePackage.duration || ''}
+                    onChange={(e) => handleFieldChange('duration', e.target.value)}
+                    placeholder="e.g., 7 Days / 6 Nights"
+                    className={inputClass}
+                    aria-label="Trip Duration"
+                  />
+                </div>
+
+                <div>
+                  <label className={labelClass}>Difficulty Level</label>
+                  <select
+                    value={activePackage.difficulty || 'Moderate'}
+                    onChange={(e) => handleFieldChange('difficulty', e.target.value as any)}
+                    className={inputClass}
+                    aria-label="Difficulty Level"
+                  >
+                    <option value="Easy">Easy</option>
+                    <option value="Moderate">Moderate</option>
+                    <option value="Challenging">Challenging</option>
+                    <option value="Expert">Expert</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className={labelClass}>Max Travellers</label>
+                  <input
+                    type="number"
+                    value={activePackage.maxTravelers || 12}
+                    onChange={(e) => handleFieldChange('maxTravelers', parseInt(e.target.value, 10) || 12)}
+                    className={inputClass}
+                    aria-label="Max Travellers"
+                  />
+                </div>
+
+                <div>
+                  <label className={labelClass}>Best Season / Months</label>
+                  <input
+                    type="text"
+                    value={activePackage.bestTime || ''}
+                    onChange={(e) => handleFieldChange('bestTime', e.target.value)}
+                    placeholder="e.g., May - October"
+                    className={inputClass}
+                    aria-label="Best Season"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Tab 11: PUBLISHING & SEO */}
+            {activeTab === 'PUBLISHING' && (
+              <div className="space-y-4">
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold text-slate-900 uppercase tracking-wider">Publishing Status</p>
+                    <p className="text-xs text-slate-500 font-medium mt-0.5">
+                      {activePackage.status !== 'draft'
+                        ? 'Published — Visible to website visitors.'
+                        : 'Unpublished (Draft) — Hidden from public journey listings.'}
                     </p>
                   </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
 
-        {/* ADD-ONS TAB */}
-        {activeTab === 'ADDONS' && (
-          <div className="space-y-12">
-            <div className="border-4 border-[#121212] p-8 bg-white">
-              <div className="flex justify-between items-center mb-8">
-                <h3 className="font-black text-lg uppercase tracking-widest">Predefined Add-ons</h3>
-                <button 
-                  onClick={() => {
-                    const addons = [...(activePackage.predefinedAddons || [])];
-                    addons.push({ 
-                      id: Date.now().toString(), 
-                      name: 'New Add-on', 
-                      description: '', 
-                      price: 0, 
-                      optional: true 
-                    });
-                    updateActivePackage({ predefinedAddons: addons });
-                  }}
-                  className="bg-[#121212] text-[#F4BF4B] px-4 py-2 rounded-[10px] font-black text-[10px] uppercase tracking-widest hover:bg-[#9E1B1D] hover:text-white transition-all"
-                >
-                  + Add Option
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {(activePackage.predefinedAddons || []).map((addon, idx) => (
-                  <div key={addon.id} className="rounded-[14px] border-2 border-[#121212]/10 p-5 bg-white space-y-4">
-                    <div className="flex justify-between items-start">
-                      <span className="text-[9px] font-black uppercase tracking-tighter bg-gray-100 px-2 py-1">Add-on #{idx+1}</span>
-                      <button 
-                        onClick={() => {
-                          const addons = [...(activePackage.predefinedAddons || [])];
-                          addons.splice(idx, 1);
-                          updateActivePackage({ predefinedAddons: addons });
-                        }}
-                        className="text-[#9E1B1D] hover:bg-red-50 p-1 rounded"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-
-                    <div>
-                      <label className="text-[9px] font-black uppercase text-gray-400">Add-on Name</label>
-                      <input 
-                        type="text" 
-                        value={addon.name} 
-                        onChange={e => {
-                          const addons = [...(activePackage.predefinedAddons || [])];
-                          addons[idx].name = e.target.value;
-                          updateActivePackage({ predefinedAddons: addons });
-                        }}
-                        className="w-full p-2 border-b-2 border-[#121212] outline-none font-bold text-sm"
-                        placeholder="e.g. Professional Photography"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-[9px] font-black uppercase text-gray-400">Description</label>
-                      <input 
-                        type="text" 
-                        value={addon.description || ''} 
-                        onChange={e => {
-                          const addons = [...(activePackage.predefinedAddons || [])];
-                          addons[idx].description = e.target.value;
-                          updateActivePackage({ predefinedAddons: addons });
-                        }}
-                        className="w-full p-2 border-b-2 border-[#121212] outline-none font-bold text-sm"
-                        placeholder="Brief description"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-[9px] font-black uppercase text-gray-400">Price ({activePackage.pricing?.currency || 'INR'})</label>
-                        <input 
-                          type="number" 
-                          value={addon.price} 
-                          onChange={e => {
-                            const addons = [...(activePackage.predefinedAddons || [])];
-                            addons[idx].price = parseInt(e.target.value) || 0;
-                            updateActivePackage({ predefinedAddons: addons });
-                          }}
-                          className="w-full p-2 border-b-2 border-[#121212] outline-none font-black"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[9px] font-black uppercase text-gray-400">Optional</label>
-                        <label className="flex items-center gap-2 mt-2 cursor-pointer">
-                          <input 
-                            type="checkbox" 
-                            checked={addon.optional}
-                            onChange={e => {
-                              const addons = [...(activePackage.predefinedAddons || [])];
-                              addons[idx].optional = e.target.checked;
-                              updateActivePackage({ predefinedAddons: addons });
-                            }}
-                            className="w-5 h-5 rounded accent-[#121212]"
-                          />
-                          <span className="text-[8px] font-bold">Optional</span>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* INSURANCE OPTIONS */}
-            <div className="border-4 border-[#121212] p-8 bg-white mt-12">
-              <div className="flex justify-between items-center mb-8">
-                <div>
-                  <h3 className="font-black text-lg uppercase tracking-widest">Insurance Options</h3>
-                  <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-1">Configure insurance plans for travelers to choose from.</p>
+                  <button
+                    type="button"
+                    onClick={() => handleFieldChange('status', activePackage.status === 'draft' ? 'active' : 'draft')}
+                    className={`px-4 py-2 font-black text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
+                      activePackage.status !== 'draft'
+                        ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                        : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                    }`}
+                    aria-label="Toggle publishing status"
+                  >
+                    {activePackage.status !== 'draft' ? 'PUBLISHED' : 'UNPUBLISHED (DRAFT)'}
+                  </button>
                 </div>
-                <button 
-                  onClick={() => {
-                    const options = [...(activePackage.insuranceOptions || [])];
-                    options.push({ 
-                      id: Date.now().toString(), 
-                      name: 'New Insurance Plan', 
-                      description: '', 
-                      pricePerPerson: 0, 
-                      active: true 
-                    });
-                    updateActivePackage({ insuranceOptions: options });
-                  }}
-                  className="bg-[#121212] text-[#F4BF4B] px-4 py-2 rounded-[10px] font-black text-[10px] uppercase tracking-widest hover:bg-[#9E1B1D] hover:text-white transition-all"
-                >
-                  + Add Insurance
-                </button>
               </div>
+            )}
+          </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {(activePackage.insuranceOptions || []).map((ins, idx) => (
-                  <div key={ins.id} className="rounded-[14px] border-2 border-[#121212]/10 p-5 bg-[#FCFBF7] space-y-4">
-                    <div className="flex justify-between items-start">
-                      <span className="text-[9px] font-black uppercase tracking-tighter bg-[#F4BF4B] px-2 py-1 border border-[#121212]">Insurance #{idx+1}</span>
-                      <button 
-                        onClick={() => {
-                          const options = [...(activePackage.insuranceOptions || [])];
-                          options.splice(idx, 1);
-                          updateActivePackage({ insuranceOptions: options });
-                        }}
-                        className="text-[#9E1B1D] hover:bg-red-50 p-1 rounded"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
+          {/* Form Footer Action Bar */}
+          <div className="p-5 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+            <div className="text-xs font-bold text-slate-500">
+              {isDirty ? (
+                <span className="text-amber-600 flex items-center gap-1">
+                  <AlertTriangle size={14} /> Unsaved changes in journey form
+                </span>
+              ) : (
+                <span className="text-emerald-700 flex items-center gap-1">
+                  <Check size={14} /> Up to date
+                </span>
+              )}
+            </div>
 
-                    <div>
-                      <label className="text-[9px] font-black uppercase text-gray-400">Plan Name</label>
-                      <input 
-                        type="text" 
-                        value={ins.name} 
-                        onChange={e => {
-                          const options = [...(activePackage.insuranceOptions || [])];
-                          options[idx].name = e.target.value;
-                          updateActivePackage({ insuranceOptions: options });
-                        }}
-                        className="w-full p-2 border-b-2 border-[#121212] outline-none font-bold text-sm bg-transparent"
-                        placeholder="e.g. Basic Medical Cover"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-[9px] font-black uppercase text-gray-400">Description</label>
-                      <input 
-                        type="text" 
-                        value={ins.description || ''} 
-                        onChange={e => {
-                          const options = [...(activePackage.insuranceOptions || [])];
-                          options[idx].description = e.target.value;
-                          updateActivePackage({ insuranceOptions: options });
-                        }}
-                        className="w-full p-2 border-b-2 border-[#121212] outline-none font-bold text-sm bg-transparent"
-                        placeholder="Brief description"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-[9px] font-black uppercase text-gray-400">Price Per Person ({activePackage.pricing?.currency || 'INR'})</label>
-                        <input 
-                          type="number" 
-                          value={ins.pricePerPerson} 
-                          onChange={e => {
-                            const options = [...(activePackage.insuranceOptions || [])];
-                            options[idx].pricePerPerson = parseInt(e.target.value) || 0;
-                            updateActivePackage({ insuranceOptions: options });
-                          }}
-                          className="w-full p-2 border-b-2 border-[#121212] outline-none font-black bg-transparent"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[9px] font-black uppercase text-gray-400">Status</label>
-                        <label className="flex items-center gap-2 mt-2 cursor-pointer">
-                          <input 
-                            type="checkbox" 
-                            checked={ins.active}
-                            onChange={e => {
-                              const options = [...(activePackage.insuranceOptions || [])];
-                              options[idx].active = e.target.checked;
-                              updateActivePackage({ insuranceOptions: options });
-                            }}
-                            className="w-5 h-5 rounded accent-[#121212]"
-                          />
-                          <span className="text-[8px] font-bold">{ins.active ? 'Active' : 'Inactive'}</span>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleCloseEditor}
+                className="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-700 font-bold text-xs uppercase tracking-wider hover:bg-slate-100 transition-colors cursor-pointer"
+                aria-label="Cancel journey editing"
+              >
+                CANCEL
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving}
+                className="px-6 py-2.5 rounded-xl bg-[#121212] text-[#F4BF4B] font-black text-xs uppercase tracking-widest hover:bg-slate-800 disabled:opacity-50 flex items-center gap-2 transition-all cursor-pointer shadow-sm"
+                aria-label="Save journey changes"
+              >
+                <Save size={15} />
+                {saving ? 'SAVING…' : 'SAVE JOURNEY'}
+              </button>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
+      {/* Journeys List View */}
+      <div className="saas-card bg-white border border-slate-200/80 rounded-2xl overflow-hidden space-y-4 p-5">
+        {/* List Search & Filter Bar */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="relative w-full sm:w-80">
+            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by journey, destination, stop..."
+              className="saas-input pl-10 w-full text-xs text-slate-900"
+              aria-label="Search journeys"
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer" aria-label="Clear search">
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <Filter size={14} className="text-slate-400" />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as any)}
+              className="saas-input text-xs text-slate-900 font-bold"
+              aria-label="Filter journeys by status"
+            >
+              <option value="all">All Statuses ({stats.total})</option>
+              <option value="published">Published Only ({stats.published})</option>
+              <option value="unpublished">Unpublished Only ({stats.draft})</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Packages Table */}
+        <div className="overflow-x-auto border border-slate-200 rounded-xl">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold text-[11px] uppercase tracking-wider">
+              <tr>
+                <th className="px-4 py-3.5">Journey</th>
+                <th className="px-4 py-3.5">Route / Stops</th>
+                <th className="px-4 py-3.5">Duration</th>
+                <th className="px-4 py-3.5">Starting Price</th>
+                <th className="px-4 py-3.5 text-center">Visibility</th>
+                <th className="px-4 py-3.5 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filteredPackages.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-5 py-12 text-center text-xs text-slate-400 font-bold uppercase tracking-wider space-y-2">
+                    <Compass size={32} className="mx-auto text-slate-300" />
+                    <p>No journeys found matching your criteria.</p>
+                  </td>
+                </tr>
+              ) : (
+                filteredPackages.map((pkg) => {
+                  const isPublished = pkg.status !== 'draft';
+                  const stopsStr = (pkg.itineraryCities || []).map((c) => c.city).join(' → ');
+                  return (
+                    <tr key={pkg.id} className="hover:bg-slate-50/80 transition-colors">
+                      {/* Name & Photo */}
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-3">
+                          <div className="size-11 rounded-lg bg-slate-900 overflow-hidden shrink-0 border border-slate-200">
+                            {pkg.media?.thumbnail ? (
+                              <img src={pkg.media.thumbnail} alt={pkg.title} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-slate-500">
+                                <Compass size={18} />
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-brand font-black text-sm text-slate-900">{pkg.title}</p>
+                            <p className="text-[10px] font-mono text-slate-400 mt-0.5">/itinerary/{pkg.slug}</p>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Route / Stops */}
+                      <td className="px-4 py-3.5 font-semibold text-slate-700 max-w-xs truncate">
+                        {stopsStr || 'Direct Journey'}
+                      </td>
+
+                      {/* Duration */}
+                      <td className="px-4 py-3.5 font-medium text-slate-600">
+                        {pkg.duration || 'Flexible'}
+                      </td>
+
+                      {/* Starting Price */}
+                      <td className="px-4 py-3.5 font-bold text-slate-900">
+                        {pkg.pricing?.currency || 'INR'} {pkg.pricing?.basePrice ? pkg.pricing.basePrice.toLocaleString('en-IN') : 'Enquiry'}
+                      </td>
+
+                      {/* Visibility Status */}
+                      <td className="px-4 py-3.5 text-center">
+                        <span
+                          className={`px-3 py-1 font-black text-[10px] uppercase tracking-wider rounded-md ${
+                            isPublished ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'
+                          }`}
+                        >
+                          {isPublished ? 'Published' : 'Unpublished'}
+                        </span>
+                      </td>
+
+                      {/* Actions */}
+                      <td className="px-4 py-3.5 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <a
+                            href={`/itinerary/${pkg.slug}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-[#121212] hover:text-[#F4BF4B] transition-colors cursor-pointer"
+                            aria-label={`Preview journey ${pkg.title} in new tab`}
+                            title="Preview journey in new tab"
+                          >
+                            <Eye size={14} />
+                          </a>
+
+                          <button
+                            onClick={() => handleEditPackage(pkg)}
+                            className="p-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-900 hover:text-white transition-colors cursor-pointer"
+                            aria-label={`Edit journey ${pkg.title}`}
+                            title="Edit Journey"
+                          >
+                            <Edit2 size={14} />
+                          </button>
+
+                          <button
+                            onClick={() => setDeleteConfirmId(pkg.id)}
+                            className="p-2 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white transition-colors cursor-pointer"
+                            aria-label={`Delete journey ${pkg.title}`}
+                            title="Delete Journey"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
+
+      {/* Stop Removal Confirmation Modal */}
+      {deleteStopConfirmIndex !== null && activePackage && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="saas-card bg-white p-6 max-w-sm w-full border-2 border-slate-900 rounded-2xl shadow-xl space-y-4">
+            <div className="flex items-center gap-3 text-rose-600">
+              <AlertTriangle size={24} />
+              <h3 className="font-brand font-black text-lg uppercase text-slate-900">
+                Remove {activePackage.itineraryCities?.[deleteStopConfirmIndex]?.city || 'Journey Stop'}?
+              </h3>
+            </div>
+            <p className="text-xs font-medium text-slate-600">
+              This will remove this journey stop and its associated itinerary content from this journey.
+            </p>
+            <div className="flex gap-2 justify-end pt-2">
+              <button
+                onClick={() => setDeleteStopConfirmIndex(null)}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs uppercase tracking-wider hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                KEEP STOP
+              </button>
+              <button
+                onClick={() => {
+                  const current = [...(activePackage.itineraryCities || [])];
+                  current.splice(deleteStopConfirmIndex, 1);
+                  handleFieldChange('itineraryCities', current);
+                  setDeleteStopConfirmIndex(null);
+                }}
+                className="px-4 py-2 rounded-xl bg-rose-600 text-white font-bold text-xs uppercase tracking-wider hover:bg-rose-700 transition-colors cursor-pointer"
+              >
+                REMOVE STOP
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Day Removal Confirmation Modal */}
+      {deleteDayConfirm !== null && activePackage && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="saas-card bg-white p-6 max-w-sm w-full border-2 border-slate-900 rounded-2xl shadow-xl space-y-4">
+            <div className="flex items-center gap-3 text-rose-600">
+              <AlertTriangle size={24} />
+              <h3 className="font-brand font-black text-lg uppercase text-slate-900">
+                Remove Day {deleteDayConfirm.dayNumber}?
+              </h3>
+            </div>
+            <p className="text-xs font-medium text-slate-600">
+              Remove Day {deleteDayConfirm.dayNumber} from this journey? Day numbering will be updated safely.
+            </p>
+            <div className="flex gap-2 justify-end pt-2">
+              <button
+                onClick={() => setDeleteDayConfirm(null)}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs uppercase tracking-wider hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                KEEP DAY
+              </button>
+              <button
+                onClick={() => {
+                  const { cIdx, dIdx } = deleteDayConfirm;
+                  const updatedCities = [...(activePackage.itineraryCities || [])];
+                  const updatedDays = [...(updatedCities[cIdx].days || [])];
+                  updatedDays.splice(dIdx, 1);
+                  updatedCities[cIdx] = { ...updatedCities[cIdx], days: updatedDays };
+                  handleFieldChange('itineraryCities', updatedCities);
+                  setDeleteDayConfirm(null);
+                }}
+                className="px-4 py-2 rounded-xl bg-rose-600 text-white font-bold text-xs uppercase tracking-wider hover:bg-rose-700 transition-colors cursor-pointer"
+              >
+                REMOVE DAY
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Journey Delete Confirmation Modal */}
+      {deleteConfirmId && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="saas-card bg-white p-6 max-w-sm w-full border-2 border-slate-900 rounded-2xl shadow-xl space-y-4">
+            <div className="flex items-center gap-3 text-rose-600">
+              <AlertTriangle size={24} />
+              <h3 className="font-brand font-black text-lg uppercase text-slate-900">Delete Journey?</h3>
+            </div>
+            <p className="text-xs font-medium text-slate-600">
+              Are you sure you want to delete this journey? Public links and itinerary pages will no longer be available.
+            </p>
+            <div className="flex gap-2 justify-end pt-2">
+              <button
+                onClick={() => setDeleteConfirmId(null)}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs uppercase tracking-wider hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                CANCEL
+              </button>
+              <button
+                onClick={() => handleDelete(deleteConfirmId)}
+                className="px-4 py-2 rounded-xl bg-rose-600 text-white font-bold text-xs uppercase tracking-wider hover:bg-rose-700 transition-colors cursor-pointer"
+              >
+                DELETE
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Discard Changes Warning Modal */}
+      {discardConfirm && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="saas-card bg-white p-6 max-w-sm w-full border-2 border-slate-900 rounded-2xl shadow-xl space-y-4">
+            <div className="flex items-center gap-3 text-amber-600">
+              <AlertTriangle size={24} />
+              <h3 className="font-brand font-black text-lg uppercase text-slate-900">Unsaved Changes</h3>
+            </div>
+            <p className="text-xs font-medium text-slate-600">
+              You have unsaved changes in this journey form. Leave without saving?
+            </p>
+            <div className="flex gap-2 justify-end pt-2">
+              <button
+                onClick={() => setDiscardConfirm(false)}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs uppercase tracking-wider hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                KEEP EDITING
+              </button>
+              <button
+                onClick={() => {
+                  setDiscardConfirm(false);
+                  setIsDirty(false);
+                  setShowEditor(false);
+                  setActivePackage(null);
+                }}
+                className="px-4 py-2 rounded-xl bg-amber-600 text-white font-bold text-xs uppercase tracking-wider hover:bg-amber-700 transition-colors cursor-pointer"
+              >
+                DISCARD CHANGES
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

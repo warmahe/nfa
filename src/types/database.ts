@@ -132,6 +132,19 @@ export interface PackageAvailability {
   bookings: number; // AUTO: total bookings for this package
 }
 
+export interface HotelInfo {
+  id?: string;
+  name: string;
+  location?: string;
+  rating?: number;
+  image?: string;
+  images?: string[];      // Gallery readiness for B5
+  description?: string;
+  amenities?: string[];    // e.g. ['Wi-Fi', 'Pool', 'Breakfast', 'Spa']
+  type?: string;         // e.g. 'Luxury Lodge', 'Boutique Camp'
+  websiteUrl?: string;
+}
+
 export interface ItineraryDay {
   day: number;
   title: string;
@@ -143,6 +156,14 @@ export interface ItineraryDay {
   textAlign?: 'left' | 'center' | 'right'; // New: alignment control
   isDay1Arrival?: boolean; // New: Special flag for Day 1
   arrivalText?: string;    // New: "Fly in to..." text
+  hotel?: HotelInfo;       // Accommodation details
+  images?: string[];       // Day-specific gallery images
+  order?: number;          // Sort index
+  // E1 Editorial Day Fields
+  location?: string;
+  transfer?: string;
+  experiences?: string[];
+  highlights?: string[];
 }
 
 export interface ItineraryCity {
@@ -154,6 +175,14 @@ export interface ItineraryCity {
     type: 'flight' | 'train' | 'bus' | 'ferry' | 'car';
     text: string;         // e.g. "Transfer by flight on day 4"
   };
+  hotel?: HotelInfo;       // Sector-wide accommodation details
+  order?: number;          // Sort index
+  // E1 Editorial Journey Stop Fields
+  description?: string;
+  heroImage?: string;
+  gallery?: string[];
+  highlights?: string[];
+  experiences?: string[];
 }
 
 export interface TripHighlight {
@@ -181,11 +210,72 @@ export interface QuickInfoItem {
   icon: string;
 }
 
+export interface HomepageHeroConfig {
+  enabled?: boolean;
+  title?: string;
+  subtitle?: string;
+  description?: string;
+  primaryBtnLabel?: string;
+  primaryBtnAction?: string;
+  secondaryBtnLabel?: string;
+  secondaryBtnAction?: string;
+  heroImage?: string;
+  heroVideo?: string;
+}
+
+export interface HomepageIntroConfig {
+  enabled?: boolean;
+  sectionLabel?: string;
+  heading?: string;
+  description?: string;
+  image?: string;
+  ctaLabel?: string;
+  ctaAction?: string;
+}
+
+export interface HomepageSectionConfig {
+  enabled?: boolean;
+  sectionLabel?: string;
+  heading?: string;
+  description?: string;
+}
+
+export interface HomepageExperienceCategory {
+  title: string;
+  description: string;
+  image?: string;
+  link?: string;
+}
+
+export interface HomepageWhyUsFeature {
+  title: string;
+  description: string;
+  icon?: string;
+}
+
 export interface HomepageSettings {
   heroImage: string;
   featuredDropZones: string[];
   featuredArchive: string[];
   featuredReviewIds: string[];
+  featuredStoryIds?: string[];
+
+  // E18 Structured Sections
+  hero?: HomepageHeroConfig;
+  introduction?: HomepageIntroConfig;
+  featuredJourneys?: HomepageSectionConfig & { journeyIds?: string[] };
+  featuredDestinations?: HomepageSectionConfig & { destinationIds?: string[] };
+  experiences?: HomepageSectionConfig & { categories?: HomepageExperienceCategory[] };
+  customerStories?: HomepageSectionConfig & { storyIds?: string[] };
+  whyUs?: HomepageSectionConfig & { features?: HomepageWhyUsFeature[] };
+  planningCta?: {
+    enabled?: boolean;
+    heading?: string;
+    description?: string;
+    primaryBtnLabel?: string;
+    secondaryBtnLabel?: string;
+  };
+
   updatedAt?: Timestamp;
 }
 
@@ -207,13 +297,223 @@ export interface Package extends BaseDocument {
   itineraryCities?: ItineraryCity[];
   inclusionsRich?: RichInclusionExclusion[];
   exclusionsRich?: RichInclusionExclusion[];
+  packageFaqs?: { question: string; answer: string; category?: string; order?: number }[];
   pricing: PackagePricing;
   media: PackageMedia;
+  itineraryPDF?: string;
+  // E1 Editorial Package Fields
+  editorialIntro?: string;
+  travelStyle?: string[];
+  bestFor?: string[];
+  bestTime?: string;
+  editorialHighlights?: string[];
 }
 
 // ============================================================================
-// ADD-ONS & ENHANCEMENTS COLLECTION
+// ENQUIRIES COLLECTION
 // ============================================================================
+
+export interface EnquiryDocument {
+  id?: string;
+  enquiryId: string; // Customer facing reference e.g. "NFA-89201"
+  customerId?: string; // Customer profile reference e.g. "NFA-C-10492" or userId
+  itineraryId?: string;
+  itineraryTitle?: string;
+  itinerarySlug?: string;
+  destination?: string;
+  duration?: string;
+  pricing?: {
+    basePrice?: number;
+    currency?: string;
+  };
+
+  traveller: {
+    name: string;
+    email: string;
+    phone: string;
+    address?: string;
+    userId?: string;
+  };
+
+  trip: {
+    travelDate: string; // ISO YYYY-MM-DD or formatted date
+    numberOfDays: number | string;
+    adults: number;
+    children: number;
+    childAges: number[];
+    totalTravellers: number;
+  };
+
+  preferences: {
+    budget?: number | string;
+    budgetCurrency?: string;
+    preferences?: string;
+    specialRequests?: string;
+    travelStyle?: string[];
+    accommodationStyle?: string;
+    interests?: string[];
+    dietary?: string;
+    accessibility?: string;
+    specialOccasion?: string;
+  };
+
+  status: 'NEW' | 'CONTACTED' | 'IN_DISCUSSION' | 'CUSTOMIZATION' | 'PROPOSAL_SENT' | 'READY_TO_BOOK' | 'CONVERTED' | 'CLOSED';
+  source: 'ITINERARY' | 'CONTACT_PAGE' | 'DIRECT';
+  entryPoint?: 'HERO' | 'STICKY_CARD' | 'MOBILE_STICKY' | 'CONTACT_PAGE' | 'DIRECT';
+  sourceUrl?: string;
+
+  marketingConsent?: boolean;
+  emailStatus?: 'unsubscribed' | 'subscribed';
+
+  // ── Lead Management Workspace Fields (C2 & E11) ──
+  assignedTo?: string;
+  assignedToName?: string;
+  followUpAt?: Timestamp | string;
+  nextAction?: string;
+  lastContactedAt?: Timestamp | string;
+  lastContactedBy?: string;
+  lastContactedChannel?: 'WHATSAPP' | 'EMAIL' | 'PHONE';
+  statusChangedAt?: Timestamp;
+  statusChangedBy?: string;
+
+  // E11 Sales Qualification & Pipeline Fields
+  priority?: 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
+  travelFlexibility?: 'FIXED_DATES' | 'FLEXIBLE_DATES' | 'VERY_FLEXIBLE';
+  preferredTravelDateFrom?: string;
+  preferredTravelDateTo?: string;
+  estimatedBookingValue?: number;
+  estimatedBookingCurrency?: string;
+  travellerIntent?: 'EXPLORING' | 'SHORTLISTING' | 'READY_TO_PLAN' | 'READY_TO_BOOK';
+  proposalStatus?: 'NOT_PREPARED' | 'PREPARING' | 'READY' | 'SENT';
+  proposalSentAt?: Timestamp;
+  proposalSentBy?: string;
+  proposalReference?: string;
+  closedReason?: string;
+  closedReasonDetails?: string;
+  closedAt?: Timestamp;
+  closedBy?: string;
+
+  // Linked Booking Reference (E6/E11)
+  bookingId?: string;
+
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+export interface InternalNote {
+  id?: string;
+  enquiryId: string;
+  text: string;
+  authorId: string;
+  authorName: string;
+  createdAt: Timestamp;
+}
+
+export interface EnquiryActivity {
+  id?: string;
+  enquiryId: string;
+  type:
+    | 'ENQUIRY_RECEIVED'
+    | 'STATUS_CHANGED'
+    | 'NOTE_ADDED'
+    | 'FOLLOW_UP_SET'
+    | 'FOLLOW_UP_CLEARED'
+    | 'ASSIGNED'
+    | 'CONTACTED'
+    | 'WHATSAPP_OPENED'
+    | 'EMAIL_OPENED'
+    | 'PHONE_INITIATED'
+    | 'TRIP_INFORMATION_UPDATED'
+    | 'OPERATIONAL_STATUS_CHANGED'
+    | 'CHECKLIST_UPDATED'
+    | 'TRAVELLER_BRIEFED'
+    | 'LEAD_PRIORITY_CHANGED'
+    | 'LEAD_QUALIFIED'
+    | 'PROPOSAL_STATUS_CHANGED'
+    | 'LEAD_CLOSED'
+    | 'LEAD_REOPENED'
+    | 'BOOKING_CREATED'
+    | 'DOCUMENT_UPLOADED'
+    | 'DOCUMENT_UPDATED'
+    | 'DOCUMENT_REMOVED'
+    | 'DOCUMENT_VISIBILITY_CHANGED';
+  actorId: string;
+  actorName: string;
+  metadata?: {
+    from?: string;
+    to?: string;
+    noteSnippet?: string;
+    followUpAt?: string;
+    channel?: string;
+    assignedToName?: string;
+    nextAction?: string;
+  };
+  createdAt: Timestamp;
+}
+
+// ============================================================================
+// CUSTOMERS COLLECTION (C3)
+// ============================================================================
+
+export interface CustomerPreferences {
+  travelStyle?: string;
+  preferredDestinations?: string[];
+  preferredAccommodation?: string[];
+  dietaryPreferences?: string[];
+  interests?: string[];
+  notes?: string;
+}
+
+export interface CustomerDocument {
+  id?: string;
+  customerId: string; // Document ID (userId if authenticated, or auto ID)
+  customerReference: string; // Human friendly reference e.g. "NFA-C-10492"
+  userId?: string; // Firebase Auth UID if authenticated
+
+  name: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  country?: string;
+
+  preferences?: CustomerPreferences;
+
+  totalEnquiries: number;
+  totalConvertedEnquiries: number;
+  lastEnquiryAt?: Timestamp | string;
+
+  marketingConsent?: boolean;
+  emailStatus?: 'unsubscribed' | 'subscribed';
+
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+export interface EnquiryFormData {
+  name: string;
+  email: string;
+  phone: string;
+  address?: string;
+  travelDate: string;
+  travelFlexibility?: 'FIXED_DATES' | 'FLEXIBLE_DATES' | 'VERY_FLEXIBLE';
+  preferredTravelDateFrom?: string;
+  preferredTravelDateTo?: string;
+  numberOfDays: number | string;
+  adults: number;
+  children: number;
+  childAges: number[];
+  budget?: string;
+  budgetCurrency?: string;
+  preferences?: string;
+  travelStyle?: string[];
+  accommodationStyle?: string;
+  interests?: string[];
+  dietary?: string;
+  accessibility?: string;
+  specialOccasion?: string;
+  specialRequests?: string;
+  marketingConsent?: boolean;
+}
 
 export interface AddOn extends BaseDocument {
   // Basic info
@@ -233,6 +533,33 @@ export interface AddOn extends BaseDocument {
   // Admin
   createdBy: string;
   updatedBy: string;
+}
+
+// ============================================================================
+// BOOKING DOCUMENTS (E12)
+// ============================================================================
+
+export type BookingDocumentCategory =
+  | 'ITINERARY'
+  | 'BOOKING_CONFIRMATION'
+  | 'TRAVEL_VOUCHER'
+  | 'ADDITIONAL';
+
+export interface BookingDocument {
+  id: string;
+  category: BookingDocumentCategory;
+  title: string;
+  description?: string;
+  fileName: string;
+  fileUrl: string;
+  storagePath?: string;
+  fileType?: string;
+  fileSize?: number;
+  uploadedAt?: Timestamp;
+  uploadedBy?: string;
+  visibleToTraveller: boolean;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
 }
 
 // ============================================================================
@@ -298,24 +625,38 @@ export interface PaymentInfo {
 }
 
 export interface Booking extends BaseDocument {
-  // References
-  packageId: string;
-  userId: string; // Firebase Auth UID
+  // References & E6 Relationships
+  bookingReference?: string; // Human readable e.g. "NFA-B-48291"
+  customerId?: string; // Links to customers/{userId}
+  enquiryId?: string; // Links to Enquiries/{enquiryId}
+  packageId?: string;
+  userId?: string; // Firebase Auth UID
+
+  itineraryId?: string;
+  itineraryTitle?: string;
+  itinerarySlug?: string;
+  destination?: string;
+  travelDate?: string;
+  duration?: string;
+  agreedPrice?: number;
+
+  // E6 Status Lifecycle
+  status?: 'DRAFT' | 'PENDING_CONFIRMATION' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
 
   // Selections
   selectedJoiningPointId?: string;
-  selectedActivityIds: string[]; // Array of optional activity IDs
+  selectedActivityIds?: string[]; // Array of optional activity IDs
 
   // Travelers
-  travelers: Traveler[];
-  numberOfTravelers: number;
-  primaryTraveler: PrimaryTraveler;
+  travelers?: Traveler[];
+  numberOfTravelers?: number;
+  primaryTraveler?: PrimaryTraveler;
 
   // Pricing
-  pricing: BookingPricing;
+  pricing?: BookingPricing;
 
   // Payment
-  payment: PaymentInfo;
+  payment?: PaymentInfo;
 
   // Booking Type
   bookingType?: 'meeting' | 'reserve' | 'book'; // meeting=consultation, reserve=partial pay, book=full pay
@@ -332,9 +673,43 @@ export interface Booking extends BaseDocument {
   voucherSent: boolean;
   voucherSentAt?: Timestamp;
 
-  // Special Notes
+  // E8 Traveller-Safe Trip Information
   specialRequests?: string;
   internalNotes?: string;
+  travellerNotes?: string; // Shared with customer on My Trip
+  tripInstructions?: string; // Special trip instructions shared with customer
+  travelPreferences?: {
+    accommodation?: string;
+    dietary?: string;
+    accessibility?: string;
+    interests?: string;
+  };
+
+  // E10 Admin Trip Operations (Admin Internal Only)
+  operationalStatus?:
+    | 'NOT_STARTED'
+    | 'IN_PREPARATION'
+    | 'READY'
+    | 'TRAVELLER_BRIEFED'
+    | 'TRIP_IN_PROGRESS'
+    | 'TRIP_COMPLETED';
+
+  operationalChecklist?: {
+    travellerDetailsVerified?: boolean;
+    travelDatesVerified?: boolean;
+    itineraryReviewed?: boolean;
+    accommodationReviewed?: boolean;
+    specialRequirementsReviewed?: boolean;
+    travellerInstructionsPrepared?: boolean;
+    documentsReady?: boolean;
+    travellerBriefed?: boolean;
+    finalConfirmationCompleted?: boolean;
+  };
+
+  accommodationReadiness?: 'NOT_REVIEWED' | 'REVIEWED' | 'READY';
+
+  // E12 Booking Travel Documents (Admin-managed, customer-safe)
+  documents?: BookingDocument[];
 
   // Check-in date
   checkinDate: Timestamp;
@@ -473,6 +848,22 @@ export interface Destination extends BaseDocument {
   gallery?: string[];
   slug: string;
   active: boolean;
+  // E4 Editorial Destination Fields
+  shortDescription?: string;
+  whyVisit?: string;
+  locations?: string[];
+  experiences?: string[];
+  accommodation?: string;
+  highlights?: string[];
+  bestTimeToVisit?: string;
+  timezone?: string;
+  currency?: string;
+  languageSpoken?: string[];
+  visaRequirements?: string;
+  bestDaysDuration?: string;
+  distanceFromAirport?: string;
+  rainfall?: number;
+  averageTemperature?: DestinationClimate;
 }
 
 // ============================================================================
@@ -762,3 +1153,68 @@ export enum BlogStatus {
   Published = 'published',
   Archived = 'archived',
 }
+
+// ============================================================================
+// CUSTOMER STORIES / TRAVELLER JOURNEYS (E13)
+// ============================================================================
+
+export type CustomerStoryDisplayMode = 'FULL_NAME' | 'FIRST_NAME' | 'ANONYMOUS';
+
+export type CustomerStoryStatus = 'DRAFT' | 'PUBLISHED';
+
+export interface CustomerStory {
+  id: string;
+
+  title: string;
+  slug: string;
+
+  excerpt?: string;
+  storyContent: string;
+
+  coverImage?: string;
+  gallery?: string[];
+
+  // Customer & Privacy Controls
+  customerName?: string;
+  customerDisplayMode: CustomerStoryDisplayMode;
+  customerLocation?: string;
+  customerPhoto?: string;
+  customerReference?: string;
+  customerId?: string;
+
+  // Linked References
+  destination?: string;
+  destinationSlug?: string;
+  destinationId?: string;
+  bookingId?: string;
+  itineraryId?: string;
+  itinerarySlug?: string;
+  itineraryTitle?: string;
+  tripTitle?: string;
+
+  // Metadata & Content
+  travelDate?: string;
+  tripDuration?: string;
+  duration?: string;
+  travellerCount?: number;
+  travelStyle?: string[];
+  customerQuote?: string;
+  quote?: string;
+  story?: string;
+  shortTitle?: string;
+  highlights?: string[];
+  experiences?: string[];
+  authorLabel?: string;
+
+  // Publishing Controls
+  status: CustomerStoryStatus;
+  featured?: boolean;
+  displayOrder?: number;
+
+  publishedAt?: Timestamp;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
+  createdBy?: string;
+  updatedBy?: string;
+}
+

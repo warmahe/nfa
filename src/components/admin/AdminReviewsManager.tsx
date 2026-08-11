@@ -3,8 +3,10 @@ import { Save, Plus, Trash2, Upload, Edit2, Star, X } from 'lucide-react';
 import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore';
 import { db, uploadImage, deleteImage } from '../../services/firebaseService';
 import { Review } from '../../types/database';
+import { useAdminDialog } from './AdminDialogContext';
 
 export const AdminReviewsManager = () => {
+  const { confirm, toast } = useAdminDialog();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -35,17 +37,21 @@ export const AdminReviewsManager = () => {
   };
 
   const handleSave = async () => {
-    if (!formData.travelerName || !formData.content) return alert("All fields required");
+    if (!formData.travelerName || !formData.content) return toast("All fields required", "error");
     setSaving(true);
     try {
       if (editingId) {
         await updateDoc(doc(db, 'global_reviews', editingId), { ...formData, updatedAt: Timestamp.now() });
+        toast("Field log entry updated successfully.", "success");
       } else {
         await addDoc(collection(db, 'global_reviews'), { ...formData, createdAt: Timestamp.now(), updatedAt: Timestamp.now() });
+        toast("New field log entry created.", "success");
       }
       setShowForm(false);
       setPreviewUrl('');
       loadReviews();
+    } catch (e: any) {
+      toast("Error saving field log: " + e.message, "error");
     } finally { setSaving(false); }
   };
 
@@ -53,7 +59,7 @@ export const AdminReviewsManager = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 1024 * 1024) return alert("File too large. Max 1MB.");
+    if (file.size > 1024 * 1024) return toast("File too large. Max 1MB allowed.", "error");
 
     try {
       // 1. Delete old avatar if exists
@@ -63,96 +69,138 @@ export const AdminReviewsManager = () => {
       const url = await uploadImage(file, 'avatars');
       setFormData(prev => ({ ...prev, avatar: url }));
       setPreviewUrl(url);
-    } catch (error) { alert("Upload failed"); }
+      toast("Avatar uploaded successfully.", "success");
+    } catch (error) { toast("Upload failed", "error"); }
   };
 
   const handleDelete = async (id: string, avatarUrl: string) => {
-    if (!window.confirm("Delete this log?")) return;
-    if (avatarUrl) await deleteImage(avatarUrl);
-    await deleteDoc(doc(db, 'global_reviews', id));
-    loadReviews();
+    confirm({
+      title: "Delete Review Log",
+      message: "Are you sure you want to delete this traveler field log?",
+      type: "danger",
+      confirmText: "Delete Entry",
+      onConfirm: async () => {
+        if (avatarUrl) await deleteImage(avatarUrl);
+        await deleteDoc(doc(db, 'global_reviews', id));
+        loadReviews();
+        toast("Field log deleted successfully.", "success");
+      }
+    });
   };
 
-  const inputClass = "w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-bold text-sm text-[#121212] transition-all";
+  const inputClass = "saas-input w-full text-xs text-slate-900 font-sans";
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-3 border-b border-slate-100">
         <div>
-          <h2 className="font-brand font-black text-2xl uppercase tracking-tight text-[#121212]">Field Logs</h2>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[#121212]/50 mt-1">Manage authenticated traveler reviews</p>
+          <h2 className="font-sans font-bold text-lg text-slate-900 tracking-tight">Reviews</h2>
+          <p className="text-xs text-slate-500 mt-0.5">Manage authenticated traveler reviews and feedback</p>
         </div>
-        <button onClick={() => { setShowForm(true); setEditingId(null); }} className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-3 bg-[#121212] text-[#F4BF4B] font-black text-[11px] uppercase tracking-widest rounded-[18px] shadow-[0_12px_24px_rgba(18,18,18,0.12)] hover:bg-[#9E1B1D] hover:text-white transition-all">
+        <button 
+          onClick={() => { setShowForm(true); setEditingId(null); }} 
+          className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2 bg-[#121212] text-[#F4BF4B] font-semibold text-xs rounded-lg hover:bg-slate-800 transition-colors shadow-xs cursor-pointer"
+        >
           <Plus size={16} /> New Entry
         </button>
       </div>
 
       {showForm && (
-        <div className="rounded-[18px] bg-white border-2 border-[#121212]/10 shadow-[0_12px_24px_rgba(18,18,18,0.06)] p-6 lg:p-8 space-y-6">
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                 <input type="text" placeholder="Traveler Name" value={formData.travelerName} onChange={e => setFormData({...formData, travelerName: e.target.value})} className={inputClass} />
-                 <input type="text" placeholder="Role (e.g. Verified Explorer)" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} className={inputClass} />
-                 <select value={formData.rating} onChange={e => setFormData({...formData, rating: parseInt(e.target.value)})} className={inputClass + " cursor-pointer"}>
-                    {[5,4,3,2,1].map(n => <option key={n} value={n}>{n} Stars</option>)}
-                 </select>
+        <div className="saas-card bg-white border-slate-200/80 p-5 space-y-5">
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-3">
+                 <div>
+                   <label className="block text-xs font-semibold text-slate-700 mb-1">Traveler Name</label>
+                   <input type="text" placeholder="Traveler Name" value={formData.travelerName} onChange={e => setFormData({...formData, travelerName: e.target.value})} className={inputClass} />
+                 </div>
+                 <div>
+                   <label className="block text-xs font-semibold text-slate-700 mb-1">Role / Badge</label>
+                   <input type="text" placeholder="Role (e.g. Verified Explorer)" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} className={inputClass} />
+                 </div>
+                 <div>
+                   <label className="block text-xs font-semibold text-slate-700 mb-1">Rating</label>
+                   <select value={formData.rating} onChange={e => setFormData({...formData, rating: parseInt(e.target.value)})} className={inputClass + " cursor-pointer"}>
+                      {[5,4,3,2,1].map(n => <option key={n} value={n}>{n} Stars</option>)}
+                   </select>
+                 </div>
               </div>
-              <div className="space-y-4">
-                 <textarea placeholder="Your Review" rows={4} value={formData.content} onChange={e => setFormData({...formData, content: e.target.value})} className={inputClass + " resize-none"} />
-                 <div className="flex items-center gap-4">
-                    <div className="size-20 rounded-[14px] border-2 border-[#121212]/10 flex items-center justify-center bg-[#FCFBF7] overflow-hidden shrink-0">
-                       {previewUrl || formData.avatar ? <img src={previewUrl || formData.avatar} className="w-full h-full object-cover" /> : <span className="text-[9px] uppercase font-black tracking-widest text-[#121212]/30 text-center px-1">NO<br/>IMG</span>}
+              <div className="space-y-3">
+                 <div>
+                   <label className="block text-xs font-semibold text-slate-700 mb-1">Review Content</label>
+                   <textarea placeholder="Write review content here..." rows={4} value={formData.content} onChange={e => setFormData({...formData, content: e.target.value})} className={inputClass + " resize-none"} />
+                 </div>
+                 <div className="flex items-center gap-3 pt-1">
+                    <div className="w-14 h-14 rounded-lg border border-slate-200 flex items-center justify-center bg-slate-50 overflow-hidden shrink-0">
+                       {previewUrl || formData.avatar ? <img src={previewUrl || formData.avatar} className="w-full h-full object-cover" /> : <span className="text-[10px] text-slate-400 text-center font-medium">No Img</span>}
                     </div>
-                    <label className="flex-1 rounded-[14px] border-2 border-[#121212]/10 bg-white hover:bg-[#F4BF4B]/10 p-4 text-center cursor-pointer font-black text-[10px] uppercase tracking-widest transition-colors">
-                       <Upload size={16} className="mx-auto mb-2"/> Upload Avatar
+                    <label className="flex-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 p-3 text-center cursor-pointer font-semibold text-xs text-slate-700 transition-colors flex items-center justify-center gap-2">
+                       <Upload size={14} className="text-slate-500" /> Upload Avatar
                        <input type="file" className="hidden" accept="image/*" onChange={handleAvatarUpload} />
                     </label>
                  </div>
               </div>
            </div>
-           <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t-2 border-[#121212]/10">
-              <button onClick={handleSave} disabled={saving} className="flex-1 flex items-center justify-center gap-2 rounded-[14px] bg-[#121212] text-[#F4BF4B] py-3 font-black text-[11px] uppercase tracking-widest hover:bg-[#9E1B1D] hover:text-white transition-colors disabled:opacity-50">
-                 {saving ? 'SAVING...' : <><Save size={16}/> Save Entry</>}
+           <div className="flex items-center gap-2 pt-3 border-t border-slate-100">
+              <button onClick={handleSave} disabled={saving} className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-[#121212] text-[#F4BF4B] py-2 font-semibold text-xs hover:bg-slate-800 transition-colors disabled:opacity-50 cursor-pointer">
+                 {saving ? 'Saving...' : <><Save size={15}/> Save Entry</>}
               </button>
-              <button onClick={() => setShowForm(false)} className="flex-1 flex items-center justify-center gap-2 rounded-[14px] border-2 border-[#121212]/10 text-[#121212] py-3 font-black text-[11px] uppercase tracking-widest hover:bg-[#121212]/5 transition-colors">
-                 <X size={16}/> Cancel
+              <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 font-semibold text-xs hover:bg-slate-50 transition-colors cursor-pointer">
+                 Cancel
               </button>
            </div>
         </div>
       )}
 
-      <div className="space-y-4">
+      {/* Reviews Cards List */}
+      <div className="space-y-3">
         {reviews.map(r => (
-          <div key={r.id} className="rounded-[18px] bg-white border-2 border-[#121212]/10 shadow-[0_12px_24px_rgba(18,18,18,0.06)] p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-5 hover:shadow-[0_16px_32px_rgba(18,18,18,0.1)] transition-all">
-             <div className="flex items-center gap-4">
-               <img src={r.avatar} className="size-14 rounded-full border-2 border-[#121212]/10 object-cover shrink-0" />
-               <div>
-                 <h4 className="font-black text-sm uppercase tracking-tight text-[#121212]">{r.travelerName}</h4>
-                 <div className="flex items-center gap-2 mt-1">
-                   <p className="text-[10px] font-black uppercase tracking-widest text-[#9E1B1D]">{r.role}</p>
-                   <span className="text-[#121212]/20">|</span>
-                   <div className="flex text-[#F4BF4B]">
+          <div key={r.id} className="saas-card bg-white p-4.5 border-slate-200/80 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-slate-300 transition-all">
+             <div className="flex items-center gap-3.5 min-w-0">
+               {r.avatar ? (
+                 <img src={r.avatar} className="w-11 h-11 rounded-full border border-slate-200 object-cover shrink-0" />
+               ) : (
+                 <div className="w-11 h-11 rounded-full bg-[#121212] text-[#F4BF4B] font-bold text-sm flex items-center justify-center shrink-0">
+                   {r.travelerName?.[0] || 'N'}
+                 </div>
+               )}
+               <div className="min-w-0">
+                 <h4 className="font-sans font-bold text-sm text-slate-900 truncate">{r.travelerName}</h4>
+                 <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                   <span className="text-[10px] font-semibold uppercase tracking-wider text-[#9E1B1D] bg-rose-50 px-2 py-0.2 rounded border border-rose-100">{r.role}</span>
+                   <span className="text-slate-300">|</span>
+                   <div className="flex text-amber-400">
                      {[...Array(r.rating)].map((_, i) => <Star key={i} size={12} fill="currentColor" />)}
                    </div>
                  </div>
                </div>
              </div>
-             <p className="flex-1 px-0 md:px-6 text-xs font-bold text-[#121212]/50 italic line-clamp-2">"{r.content}"</p>
-             <div className="flex gap-2 w-full md:w-auto shrink-0 border-t-2 border-[#121212]/10 md:border-none pt-4 md:pt-0">
-               <button onClick={() => { setEditingId(r.id); setFormData(r); setShowForm(true); }} className="flex-1 md:flex-none p-3 rounded-[12px] bg-white border-2 border-[#121212]/10 text-[#121212] hover:bg-[#F4BF4B]/10 transition-colors" title="Edit">
-                 <Edit2 size={16} className="mx-auto" />
+
+             <p className="flex-1 px-0 md:px-4 text-xs font-normal text-slate-600 italic line-clamp-2">"{r.content}"</p>
+
+             <div className="flex items-center gap-2 w-full md:w-auto shrink-0 border-t border-slate-100 md:border-none pt-3 md:pt-0">
+               <button 
+                 onClick={() => { setEditingId(r.id); setFormData(r); setShowForm(true); }} 
+                 className="p-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer" 
+                 title="Edit Review"
+               >
+                 <Edit2 size={15} />
                </button>
-               <button onClick={() => handleDelete(r.id, r.avatar || '')} className="flex-1 md:flex-none p-3 rounded-[12px] bg-[#121212] text-[#F4BF4B] hover:bg-[#9E1B1D] hover:text-white transition-colors" title="Delete">
-                 <Trash2 size={16} className="mx-auto" />
+               <button 
+                 onClick={() => handleDelete(r.id, r.avatar || '')} 
+                 className="p-2 rounded-lg bg-rose-50 border border-rose-100 text-rose-600 hover:bg-rose-100 transition-colors cursor-pointer" 
+                 title="Delete Review"
+               >
+                 <Trash2 size={15} />
                </button>
              </div>
           </div>
         ))}
         {reviews.length === 0 && !loading && (
-          <div className="text-center py-12 rounded-[18px] border-2 border-dashed border-[#121212]/10 bg-white">
-            <Star className="mx-auto mb-3 text-[#121212]/20" size={32} />
-            <p className="font-black text-sm uppercase tracking-widest text-[#121212]/60">No logs found</p>
-            <p className="font-bold text-[10px] uppercase tracking-widest text-[#121212]/40 mt-1">Add your first authenticated review</p>
+          <div className="text-center py-12 saas-card bg-slate-50/50 border-dashed border-slate-200">
+            <Star className="mx-auto mb-2.5 text-slate-300" size={28} />
+            <p className="font-semibold text-xs text-slate-600">No logs found</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">Add your first authenticated traveler review</p>
           </div>
         )}
       </div>

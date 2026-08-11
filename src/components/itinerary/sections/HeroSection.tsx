@@ -1,34 +1,59 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { Star, Flame, ArrowRight } from 'lucide-react';
+import React, { useState } from 'react';
+import { Flame, ArrowRight, Download } from 'lucide-react';
 import { Package } from '../../../types/database';
+import { useEnquiry } from '../../../context/EnquiryContext';
 
 interface HeroSectionProps {
   pkg: Package;
 }
 
 export const HeroSection: React.FC<HeroSectionProps> = ({ pkg }) => {
-  const heroImage = pkg?.media?.thumbnail || 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=1600&q=80';
+  const { openEnquiry } = useEnquiry();
+  const fallbackHero = 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=1600&q=80';
+  const [imgSrc, setImgSrc] = useState(pkg?.media?.thumbnail || fallbackHero);
+
   const price = pkg?.pricing?.basePrice || 0;
   const currency = pkg?.pricing?.currency || 'INR';
+
+  const scrollToDownload = () => {
+    const el = document.getElementById('download');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const handleEnquireClick = () => {
+    openEnquiry({
+      pkg,
+      itineraryTitle: pkg?.title,
+      itineraryId: pkg?.id,
+      itinerarySlug: pkg?.slug,
+      destination: pkg?.destinations?.[0],
+      duration: pkg?.duration,
+      price: pkg?.pricing?.basePrice,
+      source: 'ITINERARY',
+      entryPoint: 'HERO',
+    });
+  };
 
   return (
     <section
       id="hero"
-      className="relative w-full h-[100svh] min-h-[600px] max-h-[960px] overflow-hidden bg-[#121212]"
+      className="relative w-full h-[100svh] min-h-[620px] max-h-[960px] overflow-hidden bg-[#121212]"
       aria-label="Trip hero"
     >
       {/* Background Image */}
       <div className="absolute inset-0 z-0">
         <img
-          src={heroImage}
+          src={imgSrc}
           alt={pkg?.title || 'Trip'}
+          onError={() => setImgSrc(fallbackHero)}
           className="w-full h-full object-cover object-center scale-105 transition-transform duration-[8s] ease-out will-change-transform"
           style={{ animation: 'heroZoom 8s ease-out forwards' }}
         />
         {/* Multi-layer gradient for depth */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#121212] via-[#121212]/30 to-[#121212]/50" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#121212]/60 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#121212] via-[#121212]/40 to-[#121212]/50" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#121212]/70 via-transparent to-transparent" />
       </div>
 
       {/* Limited Seats Badge */}
@@ -44,44 +69,60 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ pkg }) => {
       <div className="relative z-10 h-full flex flex-col justify-end px-6 md:px-16 pb-16 md:pb-20 max-w-[1440px] mx-auto w-full">
 
         <div className="flex flex-wrap gap-3 mb-6">
-          {pkg?.destinations?.map((dest, i) => (
-            <span
-              key={i}
-              className="bg-white/10 backdrop-blur-sm text-white border border-white/20 px-4 py-1.5 font-black text-[10px] uppercase tracking-[0.3em]"
-            >
-              📍 {dest}
+          {pkg?.destinations && pkg.destinations.length > 0 ? (
+            pkg.destinations.map((dest, i) => (
+              <span
+                key={i}
+                className="bg-white/10 backdrop-blur-sm text-white border border-white/20 px-4 py-1.5 font-black text-[10px] uppercase tracking-[0.3em]"
+              >
+                📍 {dest}
+              </span>
+            ))
+          ) : (
+            <span className="bg-white/10 backdrop-blur-sm text-white border border-white/20 px-4 py-1.5 font-black text-[10px] uppercase tracking-[0.3em]">
+              📍 Destination
             </span>
-          ))}
+          )}
         </div>
 
         {/* Title */}
-        <h1 className="font-brand font-black text-[clamp(3rem,10vw,8rem)] text-white leading-[0.85] uppercase tracking-tighter mb-6 drop-shadow-2xl max-w-5xl">
+        <h1 className="font-brand font-black text-[clamp(3rem,9vw,7.5rem)] text-white leading-[0.85] uppercase tracking-tighter mb-6 drop-shadow-2xl max-w-5xl">
           {pkg?.title || 'Untitled Journey'}
         </h1>
 
         {/* Subtitle & Price Row */}
-        <div className="flex flex-col sm:flex-row sm:items-end gap-6 sm:gap-10 border-t border-white/20 pt-8">
-          <div className="flex-1">
-            <p className="font-sans text-white/70 text-sm uppercase tracking-widest font-bold max-w-md">
-              {pkg?.overview || pkg?.description?.substring(0, 120) + '…'}
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 sm:gap-10 border-t border-white/20 pt-8">
+          <div className="flex-1 max-w-xl">
+            <p className="font-sans text-white/80 text-sm uppercase tracking-widest font-bold leading-relaxed">
+              {pkg?.overview || pkg?.description?.substring(0, 140) || 'An extraordinary journey crafted for curious travelers.'}
             </p>
           </div>
 
-          {/* Price + CTA */}
-          <div className="flex items-center gap-6 shrink-0">
-            <div className="text-right">
-              <span className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1">Starting From</span>
-              <span className="font-display font-black text-4xl md:text-5xl text-[#F4BF4B] leading-none tracking-tighter">
-                {price.toLocaleString()}
-              </span>
-              <span className="text-white/60 font-black text-sm ml-2">{currency}</span>
-            </div>
-            <Link
-              to={`/contact?trip=${encodeURIComponent(pkg?.title || '')}`}
-              className="bg-[#F4BF4B] text-[#121212] px-8 py-5 font-black text-[11px] uppercase tracking-[0.3em] flex items-center gap-3 hover:bg-white transition-all shadow-[6px_6px_0px_0px_rgba(244,191,75,0.4)] active:translate-x-1 active:translate-y-1 active:shadow-none border-2 border-[#121212] group"
+          {/* Price + Dual CTAs */}
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-4 shrink-0">
+            {price > 0 && (
+              <div className="text-left sm:text-right mr-2">
+                <span className="block text-[10px] font-black uppercase tracking-widest text-white/40 mb-1">Starting From</span>
+                <span className="font-display font-black text-3xl md:text-5xl text-[#F4BF4B] leading-none tracking-tighter">
+                  {price.toLocaleString()}
+                </span>
+                <span className="text-white/60 font-black text-xs ml-1.5">{currency}</span>
+              </div>
+            )}
+            
+            <button
+              onClick={handleEnquireClick}
+              className="bg-[#F4BF4B] text-[#121212] px-6 py-4 md:px-8 md:py-5 font-black text-[11px] uppercase tracking-[0.25em] flex items-center gap-2.5 hover:bg-white transition-all shadow-[6px_6px_0px_0px_rgba(244,191,75,0.4)] active:translate-x-1 active:translate-y-1 active:shadow-none border-2 border-[#121212] group cursor-pointer"
             >
-              Inquire Now <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-            </Link>
+              Enquire Now <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+            </button>
+
+            <button
+              onClick={scrollToDownload}
+              className="bg-white/10 backdrop-blur-md text-white border-2 border-white/30 px-6 py-4 md:px-8 md:py-5 font-black text-[11px] uppercase tracking-[0.25em] flex items-center gap-2.5 hover:bg-white hover:text-[#121212] hover:border-white transition-all active:scale-95"
+            >
+              <Download size={16} /> Download Itinerary
+            </button>
           </div>
         </div>
       </div>

@@ -154,16 +154,30 @@ export const AdminSettingsManager: React.FC = () => {
       setSaving(true);
       setError('');
       const docId = (contactInfo as any)?.id || 'contact-info';
-      await updateDocument('settings', docId, {
+      
+      // Save with merge: true so it creates document if it does not exist yet
+      await setDocument('settings', docId, {
         ...contactInfo,
         id: docId,
         pageType: 'contact-info',
         updatedAt: new Date(),
-      });
-      setSuccess('Contact information saved!');
+      }, true);
+
+      // Also save to secondary document and localStorage for instant client fallback
+      if (contactInfo?.whatsapp) {
+        const cleanWhatsapp = contactInfo.whatsapp.replace(/\D/g, '');
+        localStorage.setItem('nfa_admin_whatsapp', contactInfo.whatsapp);
+        await setDocument('settings', 'whatsapp', {
+          number: contactInfo.whatsapp,
+          cleanNumber: cleanWhatsapp,
+          updatedAt: new Date(),
+        }, true).catch(() => {});
+      }
+
+      setSuccess('Contact & WhatsApp Dispatch settings saved successfully!');
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      setError('Failed to save: ' + (err as Error).message);
+      setError('Failed to save settings: ' + (err as Error).message);
     } finally {
       setSaving(false);
     }
@@ -221,41 +235,17 @@ export const AdminSettingsManager: React.FC = () => {
     }
   };
 
-  const saveRazorpaySettings = async () => {
-    if (!razorpaySettings?.keyId || !razorpaySettings?.keySecret || !razorpaySettings?.webhookUrl) {
-      setError('Razorpay Key ID, Secret, and Webhook URL are required');
-      return;
-    }
 
-    try {
-      setSaving(true);
-      setError('');
-      const docId = (razorpaySettings as any)?.id || 'razorpay-settings';
-      await updateDocument('payment-settings', docId, {
-        ...razorpaySettings,
-        id: docId,
-        lastConfiguredAt: new Date(),
-        configuredBy: 'admin',
-        updatedAt: new Date(),
-      });
-      setSuccess('Razorpay settings saved successfully!');
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err) {
-      setError('Failed to save Razorpay settings: ' + (err as Error).message);
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const syncSettings = async () => {
     try {
       setSyncing(true);
       setError('');
       await loadSettings();
-      setSuccess('Settings synced successfully!');
+      setSuccess('Settings updated successfully!');
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      setError('Failed to sync settings: ' + (err as Error).message);
+      setError('Couldn\'t save settings. Please try again.');
     } finally {
       setSyncing(false);
     }
@@ -311,33 +301,36 @@ export const AdminSettingsManager: React.FC = () => {
   };
 
   if (loading) {
-    return <div className="text-center py-12 font-black text-sm uppercase tracking-widest text-[#121212]/40">Loading settings...</div>;
+    return <div className="text-center py-12 font-medium text-xs text-slate-400 uppercase tracking-wider">Loading settings...</div>;
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-3xl font-bold text-gray-900">⚙️ Settings & Pages</h2>
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-3 border-b border-slate-100">
+        <div>
+          <h2 className="font-sans font-bold text-lg text-slate-900 tracking-tight">System Settings & Pages</h2>
+          <p className="text-xs text-slate-500 mt-0.5">Configure organization contacts, office locations, and static page content</p>
+        </div>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <button
             onClick={syncSettings}
             disabled={syncing}
-            className="flex items-center gap-2 px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white hover:bg-[#F4BF4B]/10 font-black text-[11px] uppercase tracking-widest text-[#121212] transition-all disabled:opacity-50"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 font-semibold text-xs text-slate-700 transition-colors cursor-pointer disabled:opacity-50"
           >
-            <RefreshCw size={18} className={syncing ? 'animate-spin' : ''} />
-            {syncing ? 'Syncing...' : 'Sync from Backend'}
+            <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
+            {syncing ? 'Saving...' : 'Refresh Settings'}
           </button>
           <button
             onClick={() => setEditMode(!editMode)}
-            className={`flex items-center gap-2 px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 font-black text-[11px] uppercase tracking-widest transition-all ${
+            className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg border font-semibold text-xs transition-colors cursor-pointer ${
               editMode
-                ? 'bg-[#F4BF4B]/20 text-[#121212] hover:bg-[#F4BF4B]/30'
-                : 'bg-[#121212]/5 text-[#121212] hover:bg-[#121212]/10'
+                ? 'bg-amber-500/15 border-amber-400 text-slate-900'
+                : 'bg-slate-900 border-slate-900 text-white hover:bg-slate-800'
             }`}
           >
-            <Edit2 size={18} />
-            {editMode ? 'Viewing' : 'Edit'}
+            <Edit2 size={14} />
+            {editMode ? 'View Mode' : 'Edit Mode'}
           </button>
         </div>
       </div>
@@ -364,44 +357,44 @@ export const AdminSettingsManager: React.FC = () => {
       )}
 
       {/* Tab Navigation */}
-      <div className="rounded-[18px] bg-white border-2 border-[#121212]/10 shadow-[0_12px_24px_rgba(18,18,18,0.06)]">
-        <div className="flex gap-0 border-b-2 border-[#121212]/10 overflow-x-auto">
+      <div className="saas-card bg-white border-slate-200/80 overflow-hidden">
+        <div className="flex gap-1.5 p-3 border-b border-slate-100 bg-slate-50/50 overflow-x-auto">
           <button
             onClick={() => setActiveTab('contact')}
-            className={`flex-1 px-4 py-4 font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap ${
+            className={`px-3.5 py-2 font-semibold text-xs rounded-md transition-all whitespace-nowrap cursor-pointer ${
               activeTab === 'contact'
-                ? 'text-[#121212] border-b-2 border-[#F4BF4B] bg-[#F4BF4B]/10'
-                : 'text-[#121212]/50 hover:text-[#121212] hover:bg-[#121212]/5'
+                ? 'bg-slate-900 text-amber-400 font-bold shadow-xs'
+                : 'text-slate-600 hover:bg-slate-200/60'
             }`}
           >
             📞 Contact Information
           </button>
           <button
             onClick={() => setActiveTab('address')}
-            className={`flex-1 px-4 py-4 font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap ${
+            className={`px-3.5 py-2 font-semibold text-xs rounded-md transition-all whitespace-nowrap cursor-pointer ${
               activeTab === 'address'
-                ? 'text-[#121212] border-b-2 border-[#F4BF4B] bg-[#F4BF4B]/10'
-                : 'text-[#121212]/50 hover:text-[#121212] hover:bg-[#121212]/5'
+                ? 'bg-slate-900 text-amber-400 font-bold shadow-xs'
+                : 'text-slate-600 hover:bg-slate-200/60'
             }`}
           >
             📍 Office Address
           </button>
           <button
             onClick={() => setActiveTab('about')}
-            className={`flex-1 px-4 py-4 font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap ${
+            className={`px-3.5 py-2 font-semibold text-xs rounded-md transition-all whitespace-nowrap cursor-pointer ${
               activeTab === 'about'
-                ? 'text-[#121212] border-b-2 border-[#F4BF4B] bg-[#F4BF4B]/10'
-                : 'text-[#121212]/50 hover:text-[#121212] hover:bg-[#121212]/5'
+                ? 'bg-slate-900 text-amber-400 font-bold shadow-xs'
+                : 'text-slate-600 hover:bg-slate-200/60'
             }`}
           >
             ℹ️ About Page
           </button>
           <button
             onClick={() => setActiveTab('contact-page')}
-            className={`flex-1 px-4 py-4 font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap ${
+            className={`px-3.5 py-2 font-semibold text-xs rounded-md transition-all whitespace-nowrap cursor-pointer ${
               activeTab === 'contact-page'
-                ? 'text-[#121212] border-b-2 border-[#F4BF4B] bg-[#F4BF4B]/10'
-                : 'text-[#121212]/50 hover:text-[#121212] hover:bg-[#121212]/5'
+                ? 'bg-slate-900 text-amber-400 font-bold shadow-xs'
+                : 'text-slate-600 hover:bg-slate-200/60'
             }`}
           >
             ✉️ Contact Page
@@ -409,50 +402,50 @@ export const AdminSettingsManager: React.FC = () => {
         </div>
 
         {/* Tab Content */}
-        <div className="p-8">
+        <div className="p-6">
           {/* Contact Information Tab */}
           {activeTab === 'contact' && contactInfo && (
-            <div className="space-y-6 max-w-2xl">
-              <h3 className="font-brand font-black text-xl uppercase tracking-tight text-[#121212]">Contact Information</h3>
+            <div className="space-y-5 max-w-2xl">
+              <h3 className="font-sans font-bold text-base text-slate-900">Contact Information</h3>
 
               {!editMode ? (
-                <div className="rounded-[14px] bg-[#FCFBF7] p-6 space-y-4 border-2 border-[#121212]/10">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="saas-card bg-slate-50/50 p-5 space-y-4 border-slate-200/80">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-[#121212]/50 mb-1">Primary Phone</p>
-                      <p className="text-sm font-black text-[#121212]">{contactInfo.primaryPhone || 'Not set'}</p>
+                      <p className="text-xs font-semibold text-slate-500 mb-0.5">Primary Phone</p>
+                      <p className="text-xs font-bold text-slate-900">{contactInfo.primaryPhone || 'Not set'}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-[#121212]/50 mb-1">Secondary Phone</p>
-                      <p className="text-sm font-black text-[#121212]">{contactInfo.secondaryPhone || 'Not set'}</p>
+                      <p className="text-xs font-semibold text-slate-500 mb-0.5">Secondary Phone</p>
+                      <p className="text-xs font-bold text-slate-900">{contactInfo.secondaryPhone || 'Not set'}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-[#121212]/50 mb-1">Primary Email</p>
-                      <p className="text-sm font-black text-[#121212]">{contactInfo.primaryEmail || 'Not set'}</p>
+                      <p className="text-xs font-semibold text-slate-500 mb-0.5">Primary Email</p>
+                      <p className="text-xs font-bold text-slate-900">{contactInfo.primaryEmail || 'Not set'}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-[#121212]/50 mb-1">Support Email</p>
-                      <p className="text-sm font-black text-[#121212]">{contactInfo.supportEmail || 'Not set'}</p>
+                      <p className="text-xs font-semibold text-slate-500 mb-0.5">Support Email</p>
+                      <p className="text-xs font-bold text-slate-900">{contactInfo.supportEmail || 'Not set'}</p>
                     </div>
                   </div>
                   {(contactInfo.facebook || contactInfo.instagram || contactInfo.twitter || contactInfo.linkedin) && (
-                    <div className="border-t-2 border-[#121212]/10 pt-4">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-[#121212]/50 mb-3">Social Media & Messaging</p>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {contactInfo.facebook && <p className="text-xs font-bold text-[#121212]/70"><span className="font-black text-[#121212]">Facebook:</span> {contactInfo.facebook}</p>}
-                        {contactInfo.instagram && <p className="text-xs font-bold text-[#121212]/70"><span className="font-black text-[#121212]">Instagram:</span> {contactInfo.instagram}</p>}
-                        {contactInfo.twitter && <p className="text-xs font-bold text-[#121212]/70"><span className="font-black text-[#121212]">Twitter:</span> {contactInfo.twitter}</p>}
-                        {contactInfo.linkedin && <p className="text-xs font-bold text-[#121212]/70"><span className="font-black text-[#121212]">LinkedIn:</span> {contactInfo.linkedin}</p>}
-                        {contactInfo.whatsapp && <p className="text-xs font-bold text-[#121212]/70"><span className="font-black text-[#121212]">WhatsApp:</span> {contactInfo.whatsapp}</p>}
+                    <div className="border-t border-slate-200/60 pt-3.5">
+                      <p className="text-xs font-semibold text-slate-500 mb-2">Social Media & Messaging</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                        {contactInfo.facebook && <p className="text-slate-600"><span className="font-semibold text-slate-900">Facebook:</span> {contactInfo.facebook}</p>}
+                        {contactInfo.instagram && <p className="text-slate-600"><span className="font-semibold text-slate-900">Instagram:</span> {contactInfo.instagram}</p>}
+                        {contactInfo.twitter && <p className="text-slate-600"><span className="font-semibold text-slate-900">Twitter:</span> {contactInfo.twitter}</p>}
+                        {contactInfo.linkedin && <p className="text-slate-600"><span className="font-semibold text-slate-900">LinkedIn:</span> {contactInfo.linkedin}</p>}
+                        {contactInfo.whatsapp && <p className="text-slate-600"><span className="font-semibold text-slate-900">WhatsApp:</span> {contactInfo.whatsapp}</p>}
                       </div>
                     </div>
                   )}
                 </div>
               ) : (
                 <>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-[#121212]/60 mb-2">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Primary Phone *
                   </label>
                   <input
@@ -460,12 +453,12 @@ export const AdminSettingsManager: React.FC = () => {
                     value={contactInfo.primaryPhone || ''}
                     onChange={(e) => handleContactChange('primaryPhone', e.target.value)}
                     placeholder="+1 (555) 123-4567"
-                    className="w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-bold text-sm text-[#121212] transition-all"
+                    className="saas-input w-full text-xs text-slate-900"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-[#121212]/60 mb-2">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Secondary Phone
                   </label>
                   <input
@@ -473,12 +466,12 @@ export const AdminSettingsManager: React.FC = () => {
                     value={contactInfo.secondaryPhone || ''}
                     onChange={(e) => handleContactChange('secondaryPhone', e.target.value)}
                     placeholder="+1 (555) 987-6543"
-                    className="w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-bold text-sm text-[#121212] transition-all"
+                    className="saas-input w-full text-xs text-slate-900"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-[#121212]/60 mb-2">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Primary Email *
                   </label>
                   <input
@@ -486,12 +479,12 @@ export const AdminSettingsManager: React.FC = () => {
                     value={contactInfo.primaryEmail || ''}
                     onChange={(e) => handleContactChange('primaryEmail', e.target.value)}
                     placeholder="contact@company.com"
-                    className="w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-bold text-sm text-[#121212] transition-all"
+                    className="saas-input w-full text-xs text-slate-900"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-[#121212]/60 mb-2">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Support Email
                   </label>
                   <input
@@ -499,91 +492,121 @@ export const AdminSettingsManager: React.FC = () => {
                     value={contactInfo.supportEmail || ''}
                     onChange={(e) => handleContactChange('supportEmail', e.target.value)}
                     placeholder="support@company.com"
-                    className="w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-bold text-sm text-[#121212] transition-all"
+                    className="saas-input w-full text-xs text-slate-900"
                   />
                 </div>
               </div>
 
-              <div className="border-t-2 border-[#121212]/10 pt-6">
-                <h4 className="font-semibold text-gray-900 mb-4">Social Media</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Dedicated Expedition WhatsApp Dispatch Card */}
+              <div className="p-4 bg-emerald-50 border-2 border-emerald-300 rounded-xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">💬</span>
+                    <h4 className="font-bold text-xs text-emerald-900 uppercase tracking-wider">
+                      Expedition WhatsApp Dispatch Number
+                    </h4>
+                  </div>
+                  {contactInfo.whatsapp && (
+                    <a
+                      href={`https://wa.me/${contactInfo.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent('Hello NFA Admin, testing WhatsApp integration.')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[10px] font-bold text-emerald-700 underline flex items-center gap-1 hover:text-emerald-900"
+                    >
+                      <span>Test WhatsApp Link</span> ↗
+                    </a>
+                  )}
+                </div>
+                <p className="text-[11px] text-emerald-800 leading-relaxed font-medium">
+                  When travelers click <strong>ENQUIRE NOW</strong>, their itinerary details will be automatically pre-filled and dispatched to this WhatsApp number.
+                </p>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-700 uppercase mb-1">
+                    WhatsApp Number (Include Country Code e.g. +91 or +41) *
+                  </label>
+                  <input
+                    type="tel"
+                    value={contactInfo.whatsapp || ''}
+                    onChange={(e) => {
+                      handleContactChange('whatsapp', e.target.value);
+                      localStorage.setItem('nfa_admin_whatsapp', e.target.value);
+                    }}
+                    placeholder="e.g. +91 98765 43210 or 919876543210"
+                    className="saas-input w-full text-xs font-bold text-slate-900 bg-white"
+                  />
+                </div>
+              </div>
+
+              <div className="border-t border-slate-100 pt-4 space-y-3">
+                <h4 className="font-semibold text-xs text-slate-900 uppercase tracking-wider">Social Media Links</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-[#121212]/60 mb-2">Facebook</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Facebook</label>
                     <input
                       type="url"
                       value={contactInfo.facebook || ''}
                       onChange={(e) => handleContactChange('facebook', e.target.value)}
                       placeholder="https://facebook.com/yourpage"
-                      className="w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-bold text-sm text-[#121212] transition-all"
+                      className="saas-input w-full text-xs text-slate-900"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-[#121212]/60 mb-2">Instagram</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Instagram</label>
                     <input
                       type="url"
                       value={contactInfo.instagram || ''}
                       onChange={(e) => handleContactChange('instagram', e.target.value)}
                       placeholder="https://instagram.com/yourpage"
-                      className="w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-bold text-sm text-[#121212] transition-all"
+                      className="saas-input w-full text-xs text-slate-900"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-[#121212]/60 mb-2">Twitter</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Twitter</label>
                     <input
                       type="url"
                       value={contactInfo.twitter || ''}
                       onChange={(e) => handleContactChange('twitter', e.target.value)}
                       placeholder="https://twitter.com/yourpage"
-                      className="w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-bold text-sm text-[#121212] transition-all"
+                      className="saas-input w-full text-xs text-slate-900"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-[#121212]/60 mb-2">LinkedIn</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">LinkedIn</label>
                     <input
                       type="url"
                       value={contactInfo.linkedin || ''}
                       onChange={(e) => handleContactChange('linkedin', e.target.value)}
                       placeholder="https://linkedin.com/company/yourpage"
-                      className="w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-bold text-sm text-[#121212] transition-all"
+                      className="saas-input w-full text-xs text-slate-900"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-[#121212]/60 mb-2">YouTube</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">YouTube</label>
                     <input
                       type="url"
                       value={contactInfo.youtube || ''}
                       onChange={(e) => handleContactChange('youtube', e.target.value)}
                       placeholder="https://youtube.com/yourpage"
-                      className="w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-bold text-sm text-[#121212] transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-[#121212]/60 mb-2">WhatsApp</label>
-                    <input
-                      type="tel"
-                      value={contactInfo.whatsapp || ''}
-                      onChange={(e) => handleContactChange('whatsapp', e.target.value)}
-                      placeholder="+1 (555) 123-4567"
-                      className="w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-bold text-sm text-[#121212] transition-all"
+                      className="saas-input w-full text-xs text-slate-900"
                     />
                   </div>
                 </div>
               </div>
 
-              <div className="flex flex-col md:flex-row justify-end gap-3 pt-6 border-t-2 border-[#121212]/10">
+              <div className="flex flex-col md:flex-row justify-end gap-2 pt-4 border-t border-slate-100">
                 <button
                   onClick={() => setDeleteConfirm('contact')}
-                  className="flex items-center gap-2 px-6 py-3 rounded-[14px] border-2 border-[#9E1B1D]/20 text-[#9E1B1D] font-black text-[11px] uppercase tracking-widest hover:bg-[#9E1B1D] hover:text-white transition-all"
+                  className="px-4 py-2 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 font-semibold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                 >
-                  <Trash2 size={18} />
+                  <Trash2 size={15} />
                   Delete
                 </button>
                 <button
                   onClick={saveContactInfo}
                   disabled={saving}
-                  className="flex items-center gap-2 px-6 py-3 rounded-[14px] bg-[#121212] text-[#F4BF4B] font-black text-[11px] uppercase tracking-widest shadow-[0_12px_24px_rgba(18,18,18,0.12)] hover:bg-[#9E1B1D] hover:text-white transition-all disabled:opacity-50"
+                  className="px-4 py-2 rounded-lg bg-[#121212] text-[#F4BF4B] font-semibold text-xs hover:bg-slate-800 transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
                 >
-                  <Save size={18} />
+                  <Save size={15} />
                   {saving ? 'Saving...' : 'Save Contact Info'}
                 </button>
               </div>
@@ -594,48 +617,48 @@ export const AdminSettingsManager: React.FC = () => {
 
           {/* Address Tab */}
           {activeTab === 'address' && address && (
-            <div className="space-y-6 max-w-2xl">
-              <h3 className="font-brand font-black text-xl uppercase tracking-tight text-[#121212]">Office Address</h3>
+            <div className="space-y-5 max-w-2xl">
+              <h3 className="font-sans font-bold text-base text-slate-900">Office Address</h3>
 
               {!editMode ? (
-                <div className="rounded-[14px] bg-[#FCFBF7] p-6 space-y-4 border-2 border-[#121212]/10">
-                  <div className="grid grid-cols-1 gap-4">
+                <div className="saas-card bg-slate-50/50 p-5 space-y-4 border-slate-200/80">
+                  <div className="grid grid-cols-1 gap-3">
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-[#121212]/50 mb-1">Street Address</p>
-                      <p className="text-sm font-black text-[#121212]">{address.street || 'Not set'}</p>
+                      <p className="text-xs font-semibold text-slate-500 mb-0.5">Street Address</p>
+                      <p className="text-xs font-bold text-slate-900">{address.street || 'Not set'}</p>
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                       <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-[#121212]/50 mb-1">City</p>
-                        <p className="text-base font-semibold text-gray-900">{address.city || 'Not set'}</p>
+                        <p className="text-xs font-semibold text-slate-500 mb-0.5">City</p>
+                        <p className="text-xs font-bold text-slate-900">{address.city || 'Not set'}</p>
                       </div>
                       <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-[#121212]/50 mb-1">State</p>
-                        <p className="text-base font-semibold text-gray-900">{address.state || 'Not set'}</p>
+                        <p className="text-xs font-semibold text-slate-500 mb-0.5">State</p>
+                        <p className="text-xs font-bold text-slate-900">{address.state || 'Not set'}</p>
                       </div>
                       <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-[#121212]/50 mb-1">Postal Code</p>
-                        <p className="text-base font-semibold text-gray-900">{address.postalCode || 'Not set'}</p>
+                        <p className="text-xs font-semibold text-slate-500 mb-0.5">Postal Code</p>
+                        <p className="text-xs font-bold text-slate-900">{address.postalCode || 'Not set'}</p>
                       </div>
                       <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-[#121212]/50 mb-1">Country</p>
-                        <p className="text-base font-semibold text-gray-900">{address.country || 'Not set'}</p>
+                        <p className="text-xs font-semibold text-slate-500 mb-0.5">Country</p>
+                        <p className="text-xs font-bold text-slate-900">{address.country || 'Not set'}</p>
                       </div>
                     </div>
                   </div>
-                  <div className="border-t-2 border-[#121212]/10 pt-4">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-[#121212]/50 mb-3">Map Coordinates</p>
-                    <div className="grid grid-cols-2 gap-4">
-                      <p className="text-xs font-bold text-[#121212]/70"><span className="font-black text-[#121212]">Latitude:</span> {address.latitude || '0'}</p>
-                      <p className="text-xs font-bold text-[#121212]/70"><span className="font-black text-[#121212]">Longitude:</span> {address.longitude || '0'}</p>
+                  <div className="border-t border-slate-200/60 pt-3.5">
+                    <p className="text-xs font-semibold text-slate-500 mb-2">Map Coordinates</p>
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <p className="text-slate-600"><span className="font-semibold text-slate-900">Latitude:</span> {address.latitude || '0'}</p>
+                      <p className="text-slate-600"><span className="font-semibold text-slate-900">Longitude:</span> {address.longitude || '0'}</p>
                     </div>
                   </div>
                 </div>
               ) : (
                 <>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-[#121212]/60 mb-2">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Street Address *
                   </label>
                   <input
@@ -643,103 +666,103 @@ export const AdminSettingsManager: React.FC = () => {
                     value={address.street || ''}
                     onChange={(e) => handleAddressChange('street', e.target.value)}
                     placeholder="123 Main Street"
-                    className="w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-bold text-sm text-[#121212] transition-all"
+                    className="saas-input w-full text-xs text-slate-900"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-[#121212]/60 mb-2">City *</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">City *</label>
                   <input
                     type="text"
                     value={address.city || ''}
                     onChange={(e) => handleAddressChange('city', e.target.value)}
                     placeholder="New York"
-                    className="w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-bold text-sm text-[#121212] transition-all"
+                    className="saas-input w-full text-xs text-slate-900"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-[#121212]/60 mb-2">State/Province</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">State/Province</label>
                   <input
                     type="text"
                     value={address.state || ''}
                     onChange={(e) => handleAddressChange('state', e.target.value)}
                     placeholder="NY"
-                    className="w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-bold text-sm text-[#121212] transition-all"
+                    className="saas-input w-full text-xs text-slate-900"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-[#121212]/60 mb-2">Postal Code</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Postal Code</label>
                   <input
                     type="text"
                     value={address.postalCode || ''}
                     onChange={(e) => handleAddressChange('postalCode', e.target.value)}
                     placeholder="10001"
-                    className="w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-bold text-sm text-[#121212] transition-all"
+                    className="saas-input w-full text-xs text-slate-900"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-[#121212]/60 mb-2">Country</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Country</label>
                   <input
                     type="text"
                     value={address.country || ''}
                     onChange={(e) => handleAddressChange('country', e.target.value)}
                     placeholder="United States"
-                    className="w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-bold text-sm text-[#121212] transition-all"
+                    className="saas-input w-full text-xs text-slate-900"
                   />
                 </div>
               </div>
 
-              <div className="border-t-2 border-[#121212]/10 pt-6">
-                <h4 className="font-semibold text-gray-900 mb-4">Map Coordinates</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="border-t border-slate-100 pt-4 space-y-3">
+                <h4 className="font-semibold text-xs text-slate-900 uppercase tracking-wider">Map Coordinates</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-[#121212]/60 mb-2">Latitude</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Latitude</label>
                     <input
                       type="number"
                       step="0.0001"
                       value={address.latitude || 0}
                       onChange={(e) => handleCoordinatesChange('latitude', e.target.value)}
                       placeholder="40.7128"
-                      className="w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-bold text-sm text-[#121212] transition-all"
+                      className="saas-input w-full text-xs text-slate-900"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-[#121212]/60 mb-2">Longitude</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Longitude</label>
                     <input
                       type="number"
                       step="0.0001"
                       value={address.longitude || 0}
                       onChange={(e) => handleCoordinatesChange('longitude', e.target.value)}
                       placeholder="-74.0060"
-                      className="w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-bold text-sm text-[#121212] transition-all"
+                      className="saas-input w-full text-xs text-slate-900"
                     />
                   </div>
                 </div>
               </div>
 
-              <div className="border-t-2 border-[#121212]/10 pt-6">
-                <h4 className="font-semibold text-gray-900 mb-4">Office Hours</h4>
-                <div className="space-y-3">
+              <div className="border-t border-slate-100 pt-4 space-y-3">
+                <h4 className="font-semibold text-xs text-slate-900 uppercase tracking-wider">Office Hours</h4>
+                <div className="space-y-2">
                   {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map(day => (
-                    <div key={day} className="flex items-center gap-4">
-                      <label className="w-24 font-medium text-gray-700 capitalize">{day}</label>
+                    <div key={day} className="flex items-center gap-3">
+                      <label className="w-24 text-xs font-semibold text-slate-700 capitalize">{day}</label>
                       <input
                         type="text"
                         value={address.officeHours?.[day as keyof typeof address.officeHours]?.open || ''}
                         onChange={(e) => handleOfficeHoursChange(day, 'open', e.target.value)}
                         placeholder="09:00 AM"
-                        className="px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] font-bold text-sm text-[#121212] transition-all cursor-pointer"
+                        className="saas-input text-xs text-slate-900 w-32"
                       />
-                      <span className="text-sm font-bold text-[#121212]/60">-</span>
+                      <span className="text-xs text-slate-400 font-semibold">-</span>
                       <input
                         type="text"
                         value={address.officeHours?.[day as keyof typeof address.officeHours]?.close || ''}
                         onChange={(e) => handleOfficeHoursChange(day, 'close', e.target.value)}
                         placeholder="06:00 PM"
-                        className="px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] font-bold text-sm text-[#121212] transition-all cursor-pointer"
+                        className="saas-input text-xs text-slate-900 w-32"
                       />
                     </div>
                   ))}
@@ -748,20 +771,20 @@ export const AdminSettingsManager: React.FC = () => {
                 </>
               )}
 
-              <div className="flex flex-col md:flex-row justify-end gap-3 pt-6 border-t-2 border-[#121212]/10">
+              <div className="flex flex-col md:flex-row justify-end gap-2 pt-4 border-t border-slate-100">
                 <button
                   onClick={() => setDeleteConfirm('address')}
-                  className="flex items-center gap-2 px-6 py-3 rounded-[14px] border-2 border-[#9E1B1D]/20 text-[#9E1B1D] font-black text-[11px] uppercase tracking-widest hover:bg-[#9E1B1D] hover:text-white transition-all"
+                  className="px-4 py-2 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 font-semibold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                 >
-                  <Trash2 size={18} />
+                  <Trash2 size={15} />
                   Delete
                 </button>
                 <button
                   onClick={saveAddress}
                   disabled={saving}
-                  className="flex items-center gap-2 px-6 py-3 rounded-[14px] bg-[#121212] text-[#F4BF4B] font-black text-[11px] uppercase tracking-widest shadow-[0_12px_24px_rgba(18,18,18,0.12)] hover:bg-[#9E1B1D] hover:text-white transition-all disabled:opacity-50"
+                  className="px-4 py-2 rounded-lg bg-[#121212] text-[#F4BF4B] font-semibold text-xs hover:bg-slate-800 transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
                 >
-                  <Save size={18} />
+                  <Save size={15} />
                   {saving ? 'Saving...' : 'Save Address'}
                 </button>
               </div>
@@ -770,81 +793,81 @@ export const AdminSettingsManager: React.FC = () => {
 
           {/* About Page Tab */}
           {activeTab === 'about' && aboutPage && (
-            <div className="space-y-6 max-w-4xl">
-              <h3 className="font-brand font-black text-xl uppercase tracking-tight text-[#121212]">About Page</h3>
+            <div className="space-y-5 max-w-4xl">
+              <h3 className="font-sans font-bold text-base text-slate-900">About Page Settings</h3>
 
               {!editMode ? (
-                <div className="rounded-[14px] bg-[#FCFBF7] p-6 space-y-6 border-2 border-[#121212]/10">
-                  <div className="grid grid-cols-2 gap-6">
+                <div className="saas-card bg-slate-50/50 p-5 space-y-4 border-slate-200/80">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-[#121212]/50">Title</p>
-                      <p className="text-sm font-bold text-[#121212] mt-1">{aboutPage.title || 'Not set'}</p>
+                      <p className="text-xs font-semibold text-slate-500 mb-0.5">Title</p>
+                      <p className="text-xs font-bold text-slate-900">{aboutPage.title || 'Not set'}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-[#121212]/50">Status</p>
-                      <p className="text-sm font-bold text-[#121212] mt-1">{aboutPage.status || 'draft'}</p>
+                      <p className="text-xs font-semibold text-slate-500 mb-0.5">Status</p>
+                      <p className="text-xs font-bold text-slate-900 capitalize">{aboutPage.status || 'draft'}</p>
                     </div>
                   </div>
                   <div>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-[#121212]/50">Content</p>
-                    <div className="text-sm font-bold text-[#121212]/70 mt-2 bg-white p-4 rounded-[14px] border-2 border-[#121212]/10 font-mono max-h-32 overflow-y-auto">
+                    <p className="text-xs font-semibold text-slate-500 mb-1">Content Preview</p>
+                    <div className="text-xs font-mono text-slate-700 bg-white p-3 rounded-lg border border-slate-200/80 max-h-32 overflow-y-auto">
                       {aboutPage.content ? aboutPage.content.substring(0, 200) + (aboutPage.content.length > 200 ? '...' : '') : 'Not set'}
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-6">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-[#121212]/50">SEO Description</p>
-                      <p className="text-sm font-bold text-[#121212]/70 mt-1 line-clamp-2">{aboutPage.seoDescription || 'Not set'}</p>
+                      <p className="text-xs font-semibold text-slate-500 mb-0.5">SEO Description</p>
+                      <p className="text-xs text-slate-600 line-clamp-2">{aboutPage.seoDescription || 'Not set'}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-[#121212]/50">SEO Keywords</p>
-                      <p className="text-sm font-bold text-[#121212]/70 mt-1 line-clamp-2">{aboutPage.seoKeywords?.join(', ') || 'Not set'}</p>
+                      <p className="text-xs font-semibold text-slate-500 mb-0.5">SEO Keywords</p>
+                      <p className="text-xs text-slate-600 line-clamp-2">{aboutPage.seoKeywords?.join(', ') || 'Not set'}</p>
                     </div>
                   </div>
                   <div>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-[#121212]/50">Published</p>
-                    <p className="text-sm font-bold text-[#121212] mt-1">{aboutPage.published ? '✓ Yes' : '✗ No'}</p>
+                    <p className="text-xs font-semibold text-slate-500 mb-0.5">Published Status</p>
+                    <p className="text-xs font-bold text-slate-900">{aboutPage.published ? '✓ Published' : '✗ Draft'}</p>
                   </div>
                 </div>
               ) : (
                 <>
                   <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-[#121212]/60 mb-2">Title</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Title</label>
                     <input
                       type="text"
                       value={aboutPage.title || ''}
                       onChange={(e) => handlePageChange('title', e.target.value, 'about')}
                       placeholder="About Us"
-                      className="w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-bold text-sm text-[#121212] transition-all"
+                      className="saas-input w-full text-xs text-slate-900"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-[#121212]/60 mb-2">
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
                       Page Content (HTML supported)
                     </label>
                     <textarea
                       value={aboutPage.content || ''}
                       onChange={(e) => handlePageChange('content', e.target.value, 'about')}
                       placeholder="Enter about page content..."
-                      rows={10}
-                      className="w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-bold text-sm text-[#121212] transition-all font-mono"
+                      rows={8}
+                      className="saas-input w-full text-xs text-slate-900 font-mono"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-[#121212]/60 mb-2">SEO Description</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">SEO Description</label>
                     <textarea
                       value={aboutPage.seoDescription || ''}
                       onChange={(e) => handlePageChange('seoDescription', e.target.value, 'about')}
                       placeholder="Meta description for search engines"
                       rows={2}
-                      className="w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-bold text-sm text-[#121212] transition-all"
+                      className="saas-input w-full text-xs text-slate-900"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-[#121212]/60 mb-2">
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
                       SEO Keywords (comma separated)
                     </label>
                     <input
@@ -852,24 +875,24 @@ export const AdminSettingsManager: React.FC = () => {
                       value={aboutPage.seoKeywords?.join(',') || ''}
                       onChange={(e) => handlePageChange('seoKeywords', e.target.value.split(',').map(k => k.trim()), 'about')}
                       placeholder="keyword1, keyword2, keyword3"
-                      className="w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-bold text-sm text-[#121212] transition-all"
+                      className="saas-input w-full text-xs text-slate-900"
                     />
                   </div>
 
                   <div className="flex items-center gap-4">
-                    <label className="flex items-center gap-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={aboutPage.published || false}
                         onChange={(e) => handlePageChange('published', e.target.checked, 'about')}
-                        className="w-5 h-5 accent-[#121212] rounded"
+                        className="w-4 h-4 accent-[#121212] rounded cursor-pointer"
                       />
-                      <span className="text-xs font-bold uppercase tracking-widest text-[#121212]">Published</span>
+                      <span className="text-xs font-semibold text-slate-800">Published</span>
                     </label>
                     <select
                       value={aboutPage.status || 'draft'}
                       onChange={(e) => handlePageChange('status', e.target.value, 'about')}
-                      className="px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] font-bold text-sm text-[#121212] transition-all cursor-pointer"
+                      className="saas-input text-xs text-slate-900 w-36 cursor-pointer"
                     >
                       <option value="draft">Draft</option>
                       <option value="published">Published</option>
@@ -878,20 +901,20 @@ export const AdminSettingsManager: React.FC = () => {
                 </>
               )}
 
-              <div className="flex flex-col md:flex-row justify-end gap-3 pt-6 border-t-2 border-[#121212]/10">
+              <div className="flex flex-col md:flex-row justify-end gap-2 pt-4 border-t border-slate-100">
                 <button
                   onClick={() => setDeleteConfirm('about')}
-                  className="flex items-center gap-2 px-6 py-3 rounded-[14px] border-2 border-[#9E1B1D]/20 text-[#9E1B1D] font-black text-[11px] uppercase tracking-widest hover:bg-[#9E1B1D] hover:text-white transition-all"
+                  className="px-4 py-2 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 font-semibold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                 >
-                  <Trash2 size={18} />
+                  <Trash2 size={15} />
                   Delete
                 </button>
                 <button
                   onClick={() => savePage('about')}
                   disabled={saving}
-                  className="flex items-center gap-2 px-6 py-3 rounded-[14px] bg-[#121212] text-[#F4BF4B] font-black text-[11px] uppercase tracking-widest shadow-[0_12px_24px_rgba(18,18,18,0.12)] hover:bg-[#9E1B1D] hover:text-white transition-all disabled:opacity-50"
+                  className="px-4 py-2 rounded-lg bg-[#121212] text-[#F4BF4B] font-semibold text-xs hover:bg-slate-800 transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
                 >
-                  <Save size={18} />
+                  <Save size={15} />
                   {saving ? 'Saving...' : 'Save About Page'}
                 </button>
               </div>
@@ -900,81 +923,81 @@ export const AdminSettingsManager: React.FC = () => {
 
           {/* Contact Page Tab */}
           {activeTab === 'contact-page' && contactPageContent && (
-            <div className="space-y-6 max-w-4xl">
-              <h3 className="font-brand font-black text-xl uppercase tracking-tight text-[#121212]">Contact Page</h3>
+            <div className="space-y-5 max-w-4xl">
+              <h3 className="font-sans font-bold text-base text-slate-900">Contact Page Settings</h3>
 
               {!editMode ? (
-                <div className="rounded-[14px] bg-[#FCFBF7] p-6 space-y-6 border-2 border-[#121212]/10">
-                  <div className="grid grid-cols-2 gap-6">
+                <div className="saas-card bg-slate-50/50 p-5 space-y-4 border-slate-200/80">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-[#121212]/50">Title</p>
-                      <p className="text-sm font-bold text-[#121212] mt-1">{contactPageContent.title || 'Not set'}</p>
+                      <p className="text-xs font-semibold text-slate-500 mb-0.5">Title</p>
+                      <p className="text-xs font-bold text-slate-900">{contactPageContent.title || 'Not set'}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-[#121212]/50">Status</p>
-                      <p className="text-sm font-bold text-[#121212] mt-1">{contactPageContent.status || 'draft'}</p>
+                      <p className="text-xs font-semibold text-slate-500 mb-0.5">Status</p>
+                      <p className="text-xs font-bold text-slate-900 capitalize">{contactPageContent.status || 'draft'}</p>
                     </div>
                   </div>
                   <div>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-[#121212]/50">Content</p>
-                    <div className="text-sm font-bold text-[#121212]/70 mt-2 bg-white p-4 rounded-[14px] border-2 border-[#121212]/10 font-mono max-h-32 overflow-y-auto">
+                    <p className="text-xs font-semibold text-slate-500 mb-1">Content Preview</p>
+                    <div className="text-xs font-mono text-slate-700 bg-white p-3 rounded-lg border border-slate-200/80 max-h-32 overflow-y-auto">
                       {contactPageContent.content ? contactPageContent.content.substring(0, 200) + (contactPageContent.content.length > 200 ? '...' : '') : 'Not set'}
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-6">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-[#121212]/50">SEO Description</p>
-                      <p className="text-sm font-bold text-[#121212]/70 mt-1 line-clamp-2">{contactPageContent.seoDescription || 'Not set'}</p>
+                      <p className="text-xs font-semibold text-slate-500 mb-0.5">SEO Description</p>
+                      <p className="text-xs text-slate-600 line-clamp-2">{contactPageContent.seoDescription || 'Not set'}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-[#121212]/50">SEO Keywords</p>
-                      <p className="text-sm font-bold text-[#121212]/70 mt-1 line-clamp-2">{contactPageContent.seoKeywords?.join(', ') || 'Not set'}</p>
+                      <p className="text-xs font-semibold text-slate-500 mb-0.5">SEO Keywords</p>
+                      <p className="text-xs text-slate-600 line-clamp-2">{contactPageContent.seoKeywords?.join(', ') || 'Not set'}</p>
                     </div>
                   </div>
                   <div>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-[#121212]/50">Published</p>
-                    <p className="text-sm font-bold text-[#121212] mt-1">{contactPageContent.published ? '✓ Yes' : '✗ No'}</p>
+                    <p className="text-xs font-semibold text-slate-500 mb-0.5">Published Status</p>
+                    <p className="text-xs font-bold text-slate-900">{contactPageContent.published ? '✓ Published' : '✗ Draft'}</p>
                   </div>
                 </div>
               ) : (
                 <>
                   <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-[#121212]/60 mb-2">Title</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Title</label>
                     <input
                       type="text"
                       value={contactPageContent.title || ''}
                       onChange={(e) => handlePageChange('title', e.target.value, 'contact')}
                       placeholder="Contact Us"
-                      className="w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-bold text-sm text-[#121212] transition-all"
+                      className="saas-input w-full text-xs text-slate-900"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-[#121212]/60 mb-2">
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
                       Page Content (HTML supported)
                     </label>
                     <textarea
                       value={contactPageContent.content || ''}
                       onChange={(e) => handlePageChange('content', e.target.value, 'contact')}
                       placeholder="Enter contact page content..."
-                      rows={10}
-                      className="w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-bold text-sm text-[#121212] transition-all font-mono"
+                      rows={8}
+                      className="saas-input w-full text-xs text-slate-900 font-mono"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-[#121212]/60 mb-2">SEO Description</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">SEO Description</label>
                     <textarea
                       value={contactPageContent.seoDescription || ''}
                       onChange={(e) => handlePageChange('seoDescription', e.target.value, 'contact')}
                       placeholder="Meta description for search engines"
                       rows={2}
-                      className="w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-bold text-sm text-[#121212] transition-all"
+                      className="saas-input w-full text-xs text-slate-900"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-[#121212]/60 mb-2">
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
                       SEO Keywords (comma separated)
                     </label>
                     <input
@@ -982,24 +1005,24 @@ export const AdminSettingsManager: React.FC = () => {
                       value={contactPageContent.seoKeywords?.join(',') || ''}
                       onChange={(e) => handlePageChange('seoKeywords', e.target.value.split(',').map(k => k.trim()), 'contact')}
                       placeholder="keyword1, keyword2, keyword3"
-                      className="w-full px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 font-bold text-sm text-[#121212] transition-all"
+                      className="saas-input w-full text-xs text-slate-900"
                     />
                   </div>
 
                   <div className="flex items-center gap-4">
-                    <label className="flex items-center gap-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={contactPageContent.published || false}
                         onChange={(e) => handlePageChange('published', e.target.checked, 'contact')}
-                        className="w-5 h-5 accent-[#121212] rounded"
+                        className="w-4 h-4 accent-[#121212] rounded cursor-pointer"
                       />
-                      <span className="text-xs font-bold uppercase tracking-widest text-[#121212]">Published</span>
+                      <span className="text-xs font-semibold text-slate-800">Published</span>
                     </label>
                     <select
                       value={contactPageContent.status || 'draft'}
                       onChange={(e) => handlePageChange('status', e.target.value, 'contact')}
-                      className="px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white focus:outline-none focus:border-[#F4BF4B] font-bold text-sm text-[#121212] transition-all cursor-pointer"
+                      className="saas-input text-xs text-slate-900 w-36 cursor-pointer"
                     >
                       <option value="draft">Draft</option>
                       <option value="published">Published</option>
@@ -1008,20 +1031,20 @@ export const AdminSettingsManager: React.FC = () => {
                 </>
               )}
 
-              <div className="flex flex-col md:flex-row justify-end gap-3 pt-6 border-t-2 border-[#121212]/10">
+              <div className="flex flex-col md:flex-row justify-end gap-2 pt-4 border-t border-slate-100">
                 <button
                   onClick={() => setDeleteConfirm('contact-page')}
-                  className="flex items-center gap-2 px-6 py-3 rounded-[14px] border-2 border-[#9E1B1D]/20 text-[#9E1B1D] font-black text-[11px] uppercase tracking-widest hover:bg-[#9E1B1D] hover:text-white transition-all"
+                  className="px-4 py-2 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 font-semibold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                 >
-                  <Trash2 size={18} />
+                  <Trash2 size={15} />
                   Delete
                 </button>
                 <button
                   onClick={() => savePage('contact')}
                   disabled={saving}
-                  className="flex items-center gap-2 px-6 py-3 rounded-[14px] bg-[#121212] text-[#F4BF4B] font-black text-[11px] uppercase tracking-widest shadow-[0_12px_24px_rgba(18,18,18,0.12)] hover:bg-[#9E1B1D] hover:text-white transition-all disabled:opacity-50"
+                  className="px-4 py-2 rounded-lg bg-[#121212] text-[#F4BF4B] font-semibold text-xs hover:bg-slate-800 transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
                 >
-                  <Save size={18} />
+                  <Save size={15} />
                   {saving ? 'Saving...' : 'Save Contact Page'}
                 </button>
               </div>
@@ -1033,16 +1056,16 @@ export const AdminSettingsManager: React.FC = () => {
 
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white rounded-[18px] p-6 lg:p-8 max-w-sm mx-4 space-y-4 shadow-[0_24px_48px_rgba(18,18,18,0.15)]">
-            <h3 className="font-brand font-black text-lg uppercase tracking-tight text-[#121212]">Delete This Setting?</h3>
-            <p className="text-sm font-bold text-[#121212]/60">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="saas-card bg-white p-6 max-w-sm w-full border-slate-200 shadow-xl space-y-4">
+            <h3 className="font-sans font-bold text-base text-slate-900">Delete This Setting?</h3>
+            <p className="text-xs text-slate-500">
               This action cannot be undone. Are you sure you want to delete this setting?
             </p>
-            <div className="flex gap-3 justify-end">
+            <div className="flex gap-2 justify-end pt-2">
               <button
                 onClick={() => setDeleteConfirm(null)}
-                className="px-5 py-3 rounded-[14px] border-2 border-[#121212]/10 text-[#121212] font-black text-[11px] uppercase tracking-widest hover:bg-[#121212]/5 transition-colors"
+                className="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 font-semibold text-xs hover:bg-slate-50 transition-colors cursor-pointer"
               >
                 Cancel
               </button>
@@ -1054,7 +1077,7 @@ export const AdminSettingsManager: React.FC = () => {
                   else if (deleteConfirm === 'contact-page') deletePageContent('contact');
                 }}
                 disabled={saving}
-                className="px-5 py-3 rounded-[14px] bg-[#9E1B1D] text-white font-black text-[11px] uppercase tracking-widest hover:bg-[#121212] transition-colors disabled:opacity-50"
+                className="px-4 py-2 rounded-lg bg-rose-600 text-white font-semibold text-xs hover:bg-rose-700 transition-colors cursor-pointer disabled:opacity-50"
               >
                 {saving ? 'Deleting...' : 'Delete'}
               </button>

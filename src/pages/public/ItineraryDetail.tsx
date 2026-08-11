@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
-import { Save, Eye, X, Check, ArrowRight } from 'lucide-react';
+import { Save, Eye, X, Check, ArrowRight, RefreshCw, Compass } from 'lucide-react';
 import { updateDocument, db } from '../../services/firebaseService';
-import { getDoc, doc, query, collection, where, getDocs, onSnapshot } from 'firebase/firestore';
+import { doc, query, collection, where, onSnapshot } from 'firebase/firestore';
 import { Package } from '../../types/database';
+import { normalizeItinerary } from '../../utils/itineraryNormalizer';
 
 // Section components (strict order per spec)
 import { HeroSection } from '../../components/itinerary/sections/HeroSection';
@@ -19,6 +20,8 @@ import { ReviewsSection } from '../../components/itinerary/sections/ReviewsSecti
 import { FAQSection } from '../../components/itinerary/sections/FAQSection';
 import { RelatedTrips } from '../../components/itinerary/sections/RelatedTrips';
 import { JoiningPointsDisplay } from '../../components/itinerary/JoiningPointsDisplay';
+import { HotelGallery } from '../../components/itinerary/HotelGallery';
+import { StickyPriceCard } from '../../components/itinerary/StickyPriceCard';
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -27,11 +30,30 @@ export const ItineraryDetail = () => {
   const [searchParams] = useSearchParams();
   const isEditing = searchParams.get('edit') === 'true';
 
-  const [pkg, setPkg] = useState<Package | null>(null);
+  const [rawPkg, setRawPkg] = useState<Package | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<boolean>(false);
+  const [notFound, setNotFound] = useState<boolean>(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success'>('idle');
-  const [travelers, setTravelers] = useState(1);
+
+  // Hotel Gallery / Lightbox state
+  const [hotelGalleryState, setHotelGalleryState] = useState<{
+    isOpen: boolean;
+    images: string[];
+    initialIndex: number;
+    hotelName?: string;
+    location?: string;
+  }>({ isOpen: false, images: [], initialIndex: 0 });
+
+  const handleOpenHotelGallery = (images: string[], initialIndex = 0, hotelName?: string, location?: string) => {
+    setHotelGalleryState({
+      isOpen: true,
+      images,
+      initialIndex,
+      hotelName,
+      location,
+    });
+  };
 
   // ─── Load package from Firestore with real-time listener ────────────────
   useEffect(() => {
@@ -41,7 +63,8 @@ export const ItineraryDetail = () => {
 
     const setupListener = async () => {
       setLoading(true);
-      setError(null);
+      setError(false);
+      setNotFound(false);
 
       try {
         // Try finding by Document ID first
@@ -50,7 +73,7 @@ export const ItineraryDetail = () => {
         // Set up real-time listener
         unsubscribe = onSnapshot(docRef, (snapshot) => {
           if (snapshot.exists()) {
-            setPkg({ id: snapshot.id, ...snapshot.data() } as Package);
+            setRawPkg({ id: snapshot.id, ...snapshot.data() } as Package);
             setLoading(false);
           } else {
             // If not found by ID, try by slug
@@ -58,14 +81,14 @@ export const ItineraryDetail = () => {
             const unsubscribeQuery = onSnapshot(q, (querySnap) => {
               if (!querySnap.empty) {
                 const docData = querySnap.docs[0];
-                setPkg({ id: docData.id, ...docData.data() } as Package);
+                setRawPkg({ id: docData.id, ...docData.data() } as Package);
               } else {
-                setError('Package not found. Check the URL and try again.');
+                setNotFound(true);
               }
               setLoading(false);
             }, (err) => {
               console.error("Error listening to slug query:", err);
-              setError('Failed to load package data.');
+              setError(true);
               setLoading(false);
             });
 
@@ -73,12 +96,12 @@ export const ItineraryDetail = () => {
           }
         }, (err) => {
           console.error("Error listening to package:", err);
-          setError('Failed to load package data.');
+          setError(true);
           setLoading(false);
         });
       } catch (err: any) {
         console.error("Error setting up listener:", err);
-        setError('Failed to load package data.');
+        setError(true);
         setLoading(false);
       }
     };
@@ -92,6 +115,18 @@ export const ItineraryDetail = () => {
       }
     };
   }, [id]);
+
+  // Normalize package data
+  const pkg = rawPkg ? normalizeItinerary(rawPkg) : null;
+
+  // ─── Update document title dynamically ────────────────────────────────────
+  useEffect(() => {
+    if (pkg?.title) {
+      document.title = `${pkg.title} | No Fixed Address`;
+    } else {
+      document.title = 'Itinerary Detail | No Fixed Address';
+    }
+  }, [pkg?.title]);
 
   // ─── Admin save ───────────────────────────────────────────────────────────
   const handleGlobalSave = async () => {
@@ -110,30 +145,67 @@ export const ItineraryDetail = () => {
     }
   };
 
-  // ─── States ───────────────────────────────────────────────────────────────
+  // ─── Loading State (Human-friendly Skeleton) ──────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FCFBF7] flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="w-16 h-1 bg-[#F4BF4B] mx-auto animate-pulse" />
-          <span className="font-black text-xl uppercase tracking-widest text-[#121212]">Loading Journey…</span>
+      <div className="min-h-screen bg-[#FCFBF7] flex flex-col items-center justify-center p-6">
+        <div className="text-center space-y-6 max-w-md w-full">
+          <div className="size-16 bg-[#121212] text-[#F4BF4B] flex items-center justify-center mx-auto rounded-full border-4 border-[#F4BF4B] animate-pulse">
+            <Compass size={32} className="animate-spin" />
+          </div>
+          <div className="space-y-2">
+            <div className="w-24 h-1.5 bg-[#F4BF4B] mx-auto rounded-full animate-pulse" />
+            <h2 className="font-brand font-black text-2xl uppercase tracking-widest text-[#121212]">Loading...</h2>
+            <p className="font-sans font-bold text-xs uppercase tracking-wider text-gray-400">Loading journey...</p>
+          </div>
         </div>
       </div>
     );
   }
 
-  if (error || !pkg) {
+  // ─── Error State (No Raw Technical Errors Exposed) ───────────────────────
+  if (error) {
     return (
-      <div className="min-h-screen bg-[#FCFBF7] flex flex-col items-center justify-center gap-6 px-6">
-        <div className="font-black text-2xl uppercase tracking-widest text-[#9E1B1D] text-center">
-          {error || 'Package not found'}
+      <div className="min-h-screen bg-[#FCFBF7] flex flex-col items-center justify-center gap-6 px-6 text-center">
+        <div className="max-w-md bg-white border-4 border-[#121212] p-8 shadow-[8px_8px_0px_0px_#9E1B1D]">
+          <div className="size-12 bg-[#9E1B1D]/10 text-[#9E1B1D] rounded-full flex items-center justify-center mx-auto mb-4">
+            <RefreshCw size={24} />
+          </div>
+          <h2 className="font-brand font-black text-2xl uppercase tracking-tight text-[#121212] mb-2">
+            We couldn't load this journey.
+          </h2>
+          <p className="font-sans text-xs uppercase tracking-wider font-bold text-gray-500 mb-6">
+            Please check your connection and try again.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="w-full bg-[#121212] text-[#F4BF4B] px-8 py-3.5 font-black uppercase text-xs tracking-widest hover:bg-[#F4BF4B] hover:text-[#121212] transition-colors border-2 border-[#121212] flex items-center justify-center gap-2"
+          >
+            <RefreshCw size={14} /> TRY AGAIN
+          </button>
         </div>
-        <Link
-          to="/destinations"
-          className="bg-[#121212] text-white px-8 py-3 font-black uppercase tracking-widest hover:bg-[#F4BF4B] hover:text-[#121212] transition-colors"
-        >
-          Return to Destinations
-        </Link>
+      </div>
+    );
+  }
+
+  // ─── Not Found State ──────────────────────────────────────────────────────
+  if (notFound || !pkg) {
+    return (
+      <div className="min-h-screen bg-[#FCFBF7] flex flex-col items-center justify-center gap-6 px-6 text-center">
+        <div className="max-w-md bg-white border-4 border-[#121212] p-8 shadow-[8px_8px_0px_0px_#F4BF4B]">
+          <h2 className="font-brand font-black text-3xl uppercase tracking-tight text-[#9E1B1D] mb-3">
+            Itinerary Not Found
+          </h2>
+          <p className="font-sans text-xs uppercase tracking-wider font-bold text-gray-600 mb-8">
+            Sorry, we couldn't find the itinerary you're looking for.
+          </p>
+          <Link
+            to="/packages"
+            className="inline-flex items-center gap-2 bg-[#121212] text-white px-8 py-4 font-black uppercase text-xs tracking-widest hover:bg-[#F4BF4B] hover:text-[#121212] transition-colors border-2 border-[#121212]"
+          >
+            View All Itineraries <ArrowRight size={16} />
+          </Link>
+        </div>
       </div>
     );
   }
@@ -181,25 +253,37 @@ export const ItineraryDetail = () => {
       {/* ── 2. QUICK INFO BAR ── */}
       <QuickInfoBar pkg={pkg} />
 
-      {/* ── 3. ABOUT TRIP ── */}
-      <AboutTrip pkg={pkg} />
+      {/* ── 3. CORE ITINERARY JOURNEY WITH STICKY PRICE CARD ── */}
+      <div className="max-w-[1440px] mx-auto px-6 md:px-16 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start relative">
+          
+          {/* Main Editorial & Itinerary Column (lg:col-span-8) */}
+          <div className="lg:col-span-8 min-w-0 space-y-12">
+            <AboutTrip pkg={pkg} />
 
-      {/* ── 4. HIGHLIGHTS ── */}
-      <HighlightsSection pkg={pkg} />
+            {/* Highlights Section */}
+            <HighlightsSection pkg={pkg} />
 
-      {/* ── 5. GALLERY ── */}
-      <GallerySection pkg={pkg} />
+            {/* Gallery Section */}
+            <GallerySection pkg={pkg} />
 
-      {/* ── 6. ITINERARY (critical) ── */}
-      <ItineraryCities pkg={pkg} />
+            {/* Itinerary Timeline */}
+            <ItineraryCities pkg={pkg} onOpenGallery={handleOpenHotelGallery} />
 
-      {/* Joining Points (existing subcollection display) */}
-      <div className="px-6 md:px-16 max-w-[1440px] mx-auto pb-12">
-        <JoiningPointsDisplay packageId={pkg.id} packageTitle={pkg.title} isEditing={isEditing} />
+            {/* Joining Points */}
+            <JoiningPointsDisplay packageId={pkg.id} packageTitle={pkg.title} isEditing={isEditing} />
+
+            {/* Inclusions & Exclusions */}
+            <InclusionsExclusions pkg={pkg} />
+          </div>
+
+          {/* Right Column: Sticky Price Card (lg:col-span-4) */}
+          <div className="hidden lg:block lg:col-span-4 h-full">
+            <StickyPriceCard pkg={pkg} />
+          </div>
+
+        </div>
       </div>
-
-      {/* ── 7. INCLUSIONS / EXCLUSIONS ── */}
-      <InclusionsExclusions pkg={pkg} />
 
       {/* ── 8. DOWNLOAD CTA ── */}
       <DownloadCTA pkg={pkg} />
@@ -216,26 +300,23 @@ export const ItineraryDetail = () => {
       {/* ── 12. RELATED TRIPS ── */}
       <RelatedTrips pkg={pkg} />
 
-      {/* ── MOBILE STICKY CTA ── */}
+      {/* ── HOTEL GALLERY LIGHTBOX MODAL (B5) ── */}
+      <HotelGallery
+        isOpen={hotelGalleryState.isOpen}
+        images={hotelGalleryState.images}
+        initialIndex={hotelGalleryState.initialIndex}
+        hotelName={hotelGalleryState.hotelName}
+        location={hotelGalleryState.location}
+        onClose={() => setHotelGalleryState(prev => ({ ...prev, isOpen: false }))}
+      />
+
+      {/* ── MOBILE & TABLET RESPONSIVE STICKY CARD (B6) ── */}
       {!isEditing && (
-        <div className="lg:hidden fixed bottom-0 left-0 w-full bg-[#121212] border-t-4 border-[#F4BF4B] p-5 z-[100] flex justify-between items-center shadow-2xl">
-          <div>
-            <span className="text-[8px] font-black text-white/40 block tracking-widest uppercase">Investment</span>
-            <span className="text-2xl font-black text-[#F4BF4B]">
-              {(pkg.pricing?.basePrice || 0).toLocaleString()} {pkg.pricing?.currency || 'INR'}
-            </span>
-          </div>
-          <Link
-            to={`/contact?trip=${encodeURIComponent(pkg.title)}`}
-            className="bg-[#F4BF4B] text-[#121212] px-8 py-3 font-black text-xs uppercase tracking-widest flex items-center gap-2 active:scale-95 transition-transform"
-          >
-            Inquire Now <ArrowRight size={16} />
-          </Link>
-        </div>
+        <StickyPriceCard pkg={pkg} />
       )}
 
-      {/* Bottom padding for mobile sticky CTA */}
-      <div className="lg:hidden h-24" />
+      {/* Bottom padding for mobile sticky bar safe area */}
+      <div className="md:hidden h-20" />
     </div>
   );
 };

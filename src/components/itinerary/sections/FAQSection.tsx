@@ -13,15 +13,20 @@ export const FAQSection: React.FC<FAQSectionProps> = ({ pkg }) => {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   useEffect(() => {
+    if (pkg?.packageFaqs && pkg.packageFaqs.length > 0) {
+      setFaqs(pkg.packageFaqs);
+      setLoading(false);
+      return;
+    }
     if (!pkg?.id) { setLoading(false); return; }
     getSubcollectionData<FAQ>('packages', pkg.id, 'faqs')
       .then(data => {
         const sorted = data.filter(f => f.active !== false).sort((a, b) => (a.order || 0) - (b.order || 0));
-        setFaqs(sorted);
+        setFaqs(sorted.length > 0 ? sorted : (pkg?.packageFaqs || []));
       })
-      .catch(() => setFaqs([]))
+      .catch(() => setFaqs(pkg?.packageFaqs || []))
       .finally(() => setLoading(false));
-  }, [pkg?.id]);
+  }, [pkg?.id, pkg?.packageFaqs]);
 
   if (loading || faqs.length === 0) return null;
 

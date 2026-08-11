@@ -1,25 +1,23 @@
-import React, { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  SlidersHorizontal, X, Map as MapIcon, Grid, Search, ArrowUpRight,
-  Clock, Target, CreditCard, ChevronDown, Heart, Tag, Loader2, Star
+  SlidersHorizontal, X, Map as MapIcon, Search,
+  ChevronDown, Tag, Loader2, Sparkles, Compass
 } from "lucide-react";
 import { useDestinations } from "../../hooks/useDestinations";
 import { addToWishlist, removeFromWishlist, isInWishlist } from "../../services/wishlistService";
+import { PackageJourneyCard } from "../../components/packages/PackageJourneyCard";
+import { Package } from "../../types/database";
 
 const SORT_OPTIONS = [
   { value: "featured", label: "Featured" },
   { value: "price_asc", label: "Price: Low → High" },
   { value: "price_desc", label: "Price: High → Low" },
-  { value: "rating", label: "Top Rated" },
   { value: "duration", label: "Duration" },
 ];
 
-const TRAVEL_TYPES = ["ALL", "Adventure", "Luxury", "Wildlife", "Cultural", "Beach", "Mountain"];
 const DIFFICULTY_LEVELS = ["ALL", "Easy", "Moderate", "Challenging", "Expert"];
 const REGIONS = ["ALL", "ASIA", "EUROPE", "NORDIC", "SOUTH AMERICA", "AFRICA", "AMERICAS"];
-const SEASONS = ["ALL", "Summer", "Winter", "Spring", "Autumn", "Year-Round"];
 
 export const Packages = () => {
   const {
@@ -30,24 +28,21 @@ export const Packages = () => {
     sortBy, setSortBy,
     minBudget, setMinBudget,
     maxBudget, setMaxBudget,
-    viewMode, setViewMode,
     clearFilters
   } = useDestinations();
 
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [travelType, setTravelType] = useState("ALL");
-  const [season, setSeason] = useState("ALL");
   const [wishlisted, setWishlisted] = useState<Record<string, boolean>>({});
 
   // Count active filters
   const activeFilterCount = [
     region !== "ALL", difficulty !== "ALL",
-    travelType !== "ALL", season !== "ALL",
-    minBudget !== "", maxBudget !== "",
+    travelType !== "ALL", minBudget !== "", maxBudget !== "",
     searchTerm !== ""
   ].filter(Boolean).length;
 
-  const toggleWishlist = (pkg: any) => {
+  const toggleWishlist = (pkg: Package) => {
     const id = pkg.id;
     if (wishlisted[id] || isInWishlist(id)) {
       removeFromWishlist(id);
@@ -59,7 +54,7 @@ export const Packages = () => {
         image: pkg.media?.thumbnail || '',
         destination: pkg.destinations?.[0] || '',
         price: `₹${pkg.pricing?.basePrice?.toLocaleString() || 0}`,
-        rating: pkg.rating?.average || 0,
+        rating: 5,
         duration: pkg.duration || '',
         category: 'Package',
       });
@@ -70,24 +65,28 @@ export const Packages = () => {
   const handleClearAll = () => {
     clearFilters();
     setTravelType("ALL");
-    setSeason("ALL");
   };
 
-  return (
-    <div className="min-h-screen bg-[#FCFBF7] pt-2 pb-24 nfa-texture">
+  // Separate featured journeys (first 2 when no active filters) vs all journeys
+  const showFeaturedSection = activeFilterCount === 0 && filtered.length > 2;
+  const featuredPackages = showFeaturedSection ? filtered.slice(0, 2) : [];
+  const gridPackages = showFeaturedSection ? filtered.slice(2) : filtered;
 
-      {/* ── HEADER ── */}
+  return (
+    <div className="min-h-screen bg-[#FCFBF7] pt-2 pb-24 nfa-texture text-left">
+
+      {/* ── EDITORIAL PAGE HEADER ── */}
       <div className="max-w-[1440px] mx-auto px-6 mb-12 pt-8">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-8 border-b-4 border-[#121212] pb-10">
           <div>
-            <p className="font-black text-[10px] uppercase tracking-[0.4em] text-[#9E1B1D] mb-3 flex items-center gap-2">
-              <Tag size={12} /> Curated Expeditions
+            <p className="font-sans font-black text-[10px] uppercase tracking-[0.4em] text-[#9E1B1D] mb-3 flex items-center gap-2">
+              <Compass size={14} /> Curated Expeditions
             </p>
-            <h1 className="font-brand font-black uppercase text-[clamp(3rem,7vw,7rem)] leading-[0.8] tracking-tighter text-[#121212]">
-              ALL<br /><span className="text-[#F4BF4B] drop-shadow-[2px_2px_0px_#121212]">PACKAGES.</span>
+            <h1 className="font-brand font-black uppercase text-[clamp(2.5rem,6vw,5.5rem)] leading-[0.85] tracking-tighter text-[#121212]">
+              CURATED<br /><span className="text-[#F4BF4B] drop-shadow-[3px_3px_0px_#121212]">JOURNEYS.</span>
             </h1>
-            <p className="font-sans font-bold text-xs uppercase tracking-widest text-[#121212]/50 mt-4">
-              {loading ? '...' : `${filtered.length} expeditions available`}
+            <p className="font-sans font-bold text-xs uppercase tracking-widest text-[#121212]/60 mt-4 max-w-xl">
+              Curated journeys designed around places, experiences and time.
             </p>
           </div>
 
@@ -97,7 +96,7 @@ export const Packages = () => {
               <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#121212]/40" />
               <input
                 type="text"
-                placeholder="Search packages..."
+                placeholder="Search journeys..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 border-2 border-[#121212] bg-white font-black text-[10px] uppercase tracking-widest outline-none focus:bg-[#F4BF4B]/10"
@@ -116,17 +115,7 @@ export const Packages = () => {
               <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
 
-            <div className="flex border-2 border-[#121212]">
-              <button
-                onClick={() => setViewMode("grid")}
-                className="p-3 bg-[#121212] text-[#F4BF4B]"
-                title="Grid View"
-              >
-                <Grid size={16} />
-              </button>
-            </div>
-
-            {/* Filter Button */}
+            {/* Filter Drawer Toggle */}
             <button
               onClick={() => setIsFilterOpen(true)}
               className="relative flex items-center gap-3 bg-[#121212] text-[#FCFBF7] px-6 py-3 border-2 border-[#121212] shadow-[4px_4px_0px_0px_#F4BF4B] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
@@ -163,12 +152,6 @@ export const Packages = () => {
                 <button onClick={() => setDifficulty("ALL")}><X size={12} /></button>
               </span>
             )}
-            {travelType !== "ALL" && (
-              <span className="flex items-center gap-2 bg-[#121212] text-[#F4BF4B] px-3 py-1 text-[9px] font-black uppercase tracking-widest">
-                Type: {travelType}
-                <button onClick={() => setTravelType("ALL")}><X size={12} /></button>
-              </span>
-            )}
             {(minBudget !== "" || maxBudget !== "") && (
               <span className="flex items-center gap-2 bg-[#121212] text-[#F4BF4B] px-3 py-1 text-[9px] font-black uppercase tracking-widest">
                 Budget: {minBudget || '0'} – {maxBudget || '∞'}
@@ -185,102 +168,82 @@ export const Packages = () => {
         )}
       </div>
 
-      {/* ── CONTENT: GRID or MAP ── */}
+      {/* ── MAIN CONTENT STREAM ── */}
       {loading ? (
-        <div className="flex items-center justify-center py-32">
+        <div className="flex flex-col items-center justify-center py-32 space-y-4">
           <Loader2 className="animate-spin text-[#9E1B1D]" size={40} />
+          <span className="font-sans font-bold text-xs uppercase tracking-widest text-slate-500">Loading journeys...</span>
+        </div>
+      ) : filtered.length === 0 ? (
+        /* EDITORIAL EMPTY STATE */
+        <div className="max-w-[1440px] mx-auto px-6 py-24 text-center">
+          <div className="max-w-md mx-auto p-12 border-4 border-dashed border-[#121212]/20 bg-white rounded-2xl shadow-[8px_8px_0px_0px_#121212] space-y-4">
+            <Sparkles size={40} className="mx-auto text-[#9E1B1D]" />
+            <h3 className="font-brand font-black text-2xl uppercase tracking-tight text-[#121212]">
+              NO JOURNEYS AVAILABLE YET
+            </h3>
+            <p className="font-sans font-medium text-xs text-slate-600 leading-relaxed">
+              We're currently preparing new journeys matching your search criteria. Please adjust your filters or check back soon.
+            </p>
+            {activeFilterCount > 0 && (
+              <button
+                onClick={handleClearAll}
+                className="mt-4 bg-[#121212] text-[#F4BF4B] px-8 py-3.5 border-2 border-[#121212] font-black text-[10px] uppercase tracking-widest hover:bg-[#9E1B1D] hover:text-white transition-all shadow-[4px_4px_0px_0px_#F4BF4B]"
+              >
+                Clear All Filters
+              </button>
+            )}
+          </div>
         </div>
       ) : (
-        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-          <AnimatePresence>
-            {filtered.length === 0 ? (
-              <div className="col-span-full py-24 text-center border-4 border-dashed border-[#121212]/10">
-                <X size={40} className="mx-auto text-[#9E1B1D]/30 mb-4" />
-                <p className="font-black uppercase tracking-widest text-xs text-[#121212]/40">No packages match your filters.</p>
-                <button onClick={handleClearAll} className="mt-6 bg-[#121212] text-[#F4BF4B] px-8 py-3 font-black text-[10px] uppercase tracking-widest hover:bg-[#9E1B1D] transition-colors">
-                  Clear All Filters
-                </button>
+        <div className="max-w-[1440px] mx-auto px-6 space-y-16">
+          
+          {/* ── FEATURED JOURNEYS SECTION ── */}
+          {showFeaturedSection && (
+            <div className="space-y-8">
+              <div className="flex items-center gap-3 border-b-2 border-[#121212]/10 pb-4">
+                <Sparkles size={16} className="text-[#9E1B1D]" />
+                <h2 className="font-brand font-black text-xl uppercase tracking-wider text-[#121212]">
+                  FEATURED JOURNEYS
+                </h2>
               </div>
-            ) : filtered.map((pkg, i) => (
-              <motion.div
-                key={pkg.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ delay: i * 0.04 }}
-                className="group border-[3px] border-[#121212] bg-white shadow-[6px_6px_0px_0px_#121212] flex flex-col overflow-hidden hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
-              >
-                {/* Image */}
-                <div className="relative aspect-[16/10] border-b-[3px] border-[#121212] bg-[#121212] overflow-hidden shrink-0">
-                  <img
-                    src={pkg.media?.thumbnail || `https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600`}
-                    className="w-full h-full object-cover grayscale-[40%] group-hover:grayscale-0 group-hover:scale-105 transition-all duration-700"
-                    alt={pkg.title}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {featuredPackages.map((pkg) => (
+                  <PackageJourneyCard
+                    key={pkg.id}
+                    pkg={pkg}
+                    wishlisted={wishlisted[pkg.id] || isInWishlist(pkg.id)}
+                    onToggleWishlist={toggleWishlist}
+                    isFeatured={true}
                   />
-                  <div className="absolute top-3 left-3 bg-[#F4BF4B] border-2 border-[#121212] px-2 py-0.5 text-[9px] font-black uppercase tracking-widest">
-                    {pkg.destinations?.[0] || 'Global'}
-                  </div>
-                  {/* Wishlist Heart */}
-                  <button
-                    onClick={() => toggleWishlist(pkg)}
-                    className={`absolute top-3 right-3 size-8 flex items-center justify-center border-2 border-[#121212] transition-colors ${
-                      wishlisted[pkg.id] || isInWishlist(pkg.id)
-                        ? 'bg-[#9E1B1D] text-white'
-                        : 'bg-white text-[#121212] hover:bg-[#9E1B1D] hover:text-white'
-                    }`}
-                    title="Save to Wishlist"
-                  >
-                    <Heart size={14} fill={wishlisted[pkg.id] || isInWishlist(pkg.id) ? 'currentColor' : 'none'} />
-                  </button>
-                  {pkg.rating?.average > 0 && (
-                    <div className="absolute bottom-3 right-3 flex items-center gap-1 bg-[#121212] text-[#F4BF4B] px-2 py-1 text-[9px] font-black">
-                      <Star size={10} fill="currentColor" /> {pkg.rating.average.toFixed(1)}
-                    </div>
-                  )}
-                </div>
+                ))}
+              </div>
+            </div>
+          )}
 
-                {/* Data */}
-                <div className="p-4 md:p-5 flex-1 flex flex-col">
-                  <h3 className="font-brand font-black text-2xl uppercase leading-none mb-4 tracking-tighter">
-                    {pkg.title}
-                  </h3>
-                  <div className="grid grid-cols-2 gap-y-3 gap-x-2 border-t border-[#121212]/10 pt-4 mb-5">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[8px] font-black uppercase text-[#121212]/40 tracking-widest flex items-center gap-1">
-                        <Clock size={9} /> Duration
-                      </span>
-                      <span className="text-xs font-bold uppercase">{pkg.duration}</span>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[8px] font-black uppercase text-[#121212]/40 tracking-widest flex items-center gap-1">
-                        <Target size={9} /> Difficulty
-                      </span>
-                      <span className="text-xs font-bold uppercase">{pkg.difficulty}</span>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[8px] font-black uppercase text-[#121212]/40 tracking-widest flex items-center gap-1">
-                        <CreditCard size={9} /> Investment
-                      </span>
-                      <span className="text-xs font-bold uppercase text-[#9E1B1D]">
-                        {pkg.pricing?.basePrice ? `₹${pkg.pricing.basePrice.toLocaleString()}` : 'Contact'}
-                      </span>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[8px] font-black uppercase text-[#121212]/40 tracking-widest">Travelers</span>
-                      <span className="text-xs font-bold uppercase">{pkg.maxTravelers || '—'}</span>
-                    </div>
-                  </div>
-
-                  <Link
-                    to={`/itinerary/${pkg.slug || pkg.id}`}
-                    className="mt-auto w-full bg-[#121212] text-[#FCFBF7] py-3.5 px-4 font-sans font-black text-[10px] uppercase tracking-[0.3em] flex justify-between items-center hover:bg-[#9E1B1D] transition-colors shadow-[4px_4px_0px_0px_#F4BF4B] active:translate-x-1 active:translate-y-1 active:shadow-none"
-                  >
-                    View Expedition <ArrowUpRight size={16} />
-                  </Link>
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
+          {/* ── ALL JOURNEYS GRID ── */}
+          <div className="space-y-8">
+            {showFeaturedSection && (
+              <div className="flex items-center gap-3 border-b-2 border-[#121212]/10 pb-4">
+                <Compass size={16} className="text-[#121212]" />
+                <h2 className="font-brand font-black text-xl uppercase tracking-wider text-[#121212]">
+                  ALL CURATED JOURNEYS ({gridPackages.length})
+                </h2>
+              </div>
+            )}
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {gridPackages.map((pkg) => (
+                <PackageJourneyCard
+                  key={pkg.id}
+                  pkg={pkg}
+                  wishlisted={wishlisted[pkg.id] || isInWishlist(pkg.id)}
+                  onToggleWishlist={toggleWishlist}
+                  isFeatured={false}
+                />
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
@@ -309,7 +272,7 @@ export const Packages = () => {
                 {/* Budget Range */}
                 <div className="mb-8">
                   <h4 className="font-black text-[10px] uppercase tracking-[0.3em] text-[#9E1B1D] mb-5 flex items-center gap-2">
-                    <CreditCard size={12} /> Budget Range (₹)
+                    Budget Range (₹)
                   </h4>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
@@ -357,14 +320,14 @@ export const Packages = () => {
                 {/* Difficulty */}
                 <div className="mb-8">
                   <h4 className="font-black text-[10px] uppercase tracking-[0.3em] text-[#9E1B1D] mb-5 flex items-center gap-2">
-                    <Target size={12} /> Difficulty Level
+                    Difficulty Level
                   </h4>
                   <div className="flex flex-wrap gap-2">
                     {DIFFICULTY_LEVELS.map(d => (
                       <button
                         key={d} onClick={() => setDifficulty(d)}
-                        className={`px-4 py-2 font-black text-[9px] tracking-widest border-2 transition-all ${
-                          difficulty === d ? 'bg-[#121212] text-[#FCFBF7] border-[#121212]' : 'border-[#121212]/20 hover:border-[#121212]'
+                        className={`px-4 py-2 font-black text-[10px] uppercase tracking-widest border-2 transition-all ${
+                          difficulty === d ? 'bg-[#121212] text-[#F4BF4B] border-[#121212]' : 'bg-white text-[#121212] border-[#121212]/20'
                         }`}
                       >
                         {d}
@@ -372,54 +335,21 @@ export const Packages = () => {
                     ))}
                   </div>
                 </div>
-
-                {/* Travel Type */}
-                <div className="mb-8">
-                  <h4 className="font-black text-[10px] uppercase tracking-[0.3em] text-[#9E1B1D] mb-5">Travel Type</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {TRAVEL_TYPES.map(t => (
-                      <button
-                        key={t} onClick={() => setTravelType(t)}
-                        className={`px-4 py-2 font-black text-[9px] tracking-widest border-2 transition-all ${
-                          travelType === t ? 'bg-[#F4BF4B] border-[#121212]' : 'border-[#121212]/20 hover:border-[#121212]'
-                        }`}
-                      >
-                        {t}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Best Season */}
-                <div className="mb-8">
-                  <h4 className="font-black text-[10px] uppercase tracking-[0.3em] text-[#9E1B1D] mb-5">Best Season</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {SEASONS.map(s => (
-                      <button
-                        key={s} onClick={() => setSeason(s)}
-                        className={`px-4 py-2 font-black text-[9px] tracking-widest border-2 transition-all ${
-                          season === s ? 'bg-[#F4BF4B] border-[#121212]' : 'border-[#121212]/20 hover:border-[#121212]'
-                        }`}
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                </div>
               </div>
 
-              <div className="p-8 border-t-4 border-[#121212] flex gap-3">
+              {/* Drawer Footer Actions */}
+              <div className="p-8 border-t-4 border-[#121212] bg-white flex gap-4">
                 <button
                   onClick={handleClearAll}
-                  className="flex-1 py-4 border-2 border-[#121212] font-black text-[10px] uppercase tracking-widest hover:bg-[#121212] hover:text-[#FCFBF7] transition-colors"
+                  className="flex-1 py-4 border-2 border-[#121212] font-black text-[10px] uppercase tracking-widest hover:bg-[#9E1B1D] hover:text-white transition-colors"
                 >
-                  Reset All
+                  Clear Filters
                 </button>
                 <button
                   onClick={() => setIsFilterOpen(false)}
-                  className="flex-[2] bg-[#9E1B1D] text-white py-4 font-sans font-black text-sm uppercase tracking-[0.2em] shadow-[6px_6px_0px_0px_#121212]"
+                  className="flex-1 py-4 bg-[#121212] text-[#F4BF4B] font-black text-[10px] uppercase tracking-widest border-2 border-[#121212] shadow-[4px_4px_0px_0px_#F4BF4B]"
                 >
-                  Apply ({filtered.length} results)
+                  Apply Filters
                 </button>
               </div>
             </motion.aside>

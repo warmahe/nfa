@@ -1,139 +1,156 @@
 import React, { useState } from 'react';
-import { Upload, Link, Loader2, X } from 'lucide-react';
-import { uploadAndReplaceImage } from '../../services/firebaseService';
+import { Upload, Link, X, Loader2 } from 'lucide-react';
+import { useAdminDialog } from './AdminDialogContext';
 
 interface ImageInputProps {
   label: string;
   value: string;
-  storagePath: string; // e.g. 'packages/iceland/thumbnail'
   onSave: (url: string) => void;
-  aspectClass?: string; // e.g. 'aspect-video' | 'aspect-square'
-  oldUrl?: string;
+  storagePath?: string;
+  aspectClass?: string;
 }
 
 export const ImageInput: React.FC<ImageInputProps> = ({
   label,
   value,
-  storagePath,
   onSave,
-  aspectClass = 'aspect-video',
-  oldUrl,
+  storagePath = 'general',
+  aspectClass = 'aspect-video'
 }) => {
-  const [mode, setMode] = useState<'url' | 'upload'>('url');
-  const [urlInput, setUrlInput] = useState(value || '');
+  const { confirm, toast } = useAdminDialog();
+  const [mode, setMode] = useState<'url' | 'upload'>('upload');
+  const [urlInput, setUrlInput] = useState(value);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleUrlCommit = () => {
-    const trimmed = urlInput.trim();
-    if (trimmed) onSave(trimmed);
-    setError('');
+  const handleUrlSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!urlInput.trim()) return;
+    onSave(urlInput.trim());
+    toast("Image URL updated.", "success");
   };
 
-  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith('image/')) { setError('Please select an image file.'); return; }
-    setError('');
+
+    if (!file.type.startsWith('image/')) {
+      setError('Please select a valid image file');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image size should be less than 5MB');
+      return;
+    }
+
     setUploading(true);
+    setError('');
+
     try {
-      const url = await uploadAndReplaceImage(file, storagePath, oldUrl || value || null);
+      const { uploadImage } = await import('../../services/firebaseService');
+      const url = await uploadImage(file, storagePath);
       onSave(url);
       setUrlInput(url);
+      toast("Image uploaded successfully.", "success");
     } catch (err: any) {
-      setError('Upload failed: ' + (err.message || 'Unknown error'));
+      setError(err.message || 'Error uploading image');
+      toast("Error uploading image: " + err.message, "error");
     } finally {
       setUploading(false);
-      e.target.value = '';
     }
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2.5">
       <div className="flex items-center justify-between">
-        <label className="text-[10px] font-black uppercase tracking-widest text-[#121212]/60">{label}</label>
-        <div className="flex rounded-[10px] overflow-hidden border-2 border-[#121212]/15 bg-[#FCFBF7]">
+        <label className="text-xs font-semibold text-slate-700">{label}</label>
+        <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-md border border-slate-200/80">
           <button
             type="button"
             onClick={() => setMode('url')}
-            className={`px-4 py-2 text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all ${mode === 'url' ? 'bg-[#121212] text-[#F4BF4B]' : 'text-[#121212]/70 hover:bg-[#121212]/10'}`}
+            className={`px-3 py-1 text-[10px] font-semibold flex items-center gap-1 transition-all rounded-sm cursor-pointer ${mode === 'url' ? 'bg-[#121212] text-[#F4BF4B] shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
           >
-            <Link size={11} /> URL
+            <Link size={12} /> URL
           </button>
           <button
             type="button"
             onClick={() => setMode('upload')}
-            className={`px-4 py-2 text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all ${mode === 'upload' ? 'bg-[#121212] text-[#F4BF4B]' : 'text-[#121212]/70 hover:bg-[#121212]/10'}`}
+            className={`px-3 py-1 text-[10px] font-semibold flex items-center gap-1 transition-all rounded-sm cursor-pointer ${mode === 'upload' ? 'bg-[#121212] text-[#F4BF4B] shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
           >
-            <Upload size={11} /> Upload
+            <Upload size={12} /> Upload
           </button>
         </div>
       </div>
 
       {mode === 'url' ? (
-        <div className="flex gap-2">
+        <form onSubmit={handleUrlSubmit} className="flex gap-2">
           <input
             type="text"
             value={urlInput}
             onChange={e => setUrlInput(e.target.value)}
-            onBlur={handleUrlCommit}
-            onKeyDown={e => e.key === 'Enter' && handleUrlCommit()}
-            placeholder="https://..."
-            className="flex-1 px-4 py-3 rounded-[14px] border-2 border-[#121212]/10 bg-white outline-none focus:border-[#F4BF4B] focus:ring-2 focus:ring-[#F4BF4B]/20 text-xs font-bold text-[#121212] transition-all"
+            placeholder="https://images.unsplash.com/..."
+            className="saas-input flex-1 text-xs font-sans text-slate-900"
           />
           <button
-            type="button"
-            onClick={handleUrlCommit}
-            className="px-4 py-3 rounded-[14px] bg-[#121212] text-[#F4BF4B] font-black text-[10px] uppercase tracking-widest hover:bg-[#9E1B1D] hover:text-white transition-all"
+            type="submit"
+            className="px-3.5 py-1.5 rounded-lg bg-[#121212] text-[#F4BF4B] font-semibold text-xs hover:bg-slate-800 transition-colors cursor-pointer"
           >
-            Set
+            Apply
           </button>
-        </div>
+        </form>
       ) : (
-        <label className="relative block border-2 border-dashed border-[#121212]/15 bg-white cursor-pointer hover:bg-[#F4BF4B]/5 hover:border-[#F4BF4B] rounded-[14px] transition-all">
-          <div className="p-6 flex flex-col items-center justify-center gap-2">
+        <label className={`block border-2 border-dashed border-slate-200 hover:border-slate-300 rounded-xl p-4 text-center cursor-pointer transition-colors bg-slate-50/50 ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleFileUpload}
+            className="hidden"
+          />
+          <div className="flex flex-col items-center gap-1.5">
+            <Upload size={18} className="text-slate-400" />
             {uploading ? (
-              <>
-                <Loader2 size={24} className="animate-spin text-[#9E1B1D]" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-[#121212]">Compressing & Uploading…</span>
-              </>
+              <span className="text-xs font-semibold text-slate-800">Compressing & Uploading…</span>
             ) : (
-              <>
-                <Upload size={24} className="text-[#121212]/30" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-[#121212]/50">Click to select image</span>
-                <span className="text-[9px] font-bold text-[#121212]/40">Auto-compressed to max 1200px · JPEG</span>
-              </>
+              <span className="text-xs font-medium text-slate-600">Click to select image</span>
             )}
           </div>
-          <input type="file" accept="image/*" className="hidden" onChange={handleFile} disabled={uploading} />
         </label>
       )}
 
-      {error && <p className="text-[10px] font-black text-[#9E1B1D] uppercase tracking-widest">{error}</p>}
+      {error && <p className="text-xs font-semibold text-rose-600">{error}</p>}
 
       {(value || urlInput) && (
-        <div className={`relative rounded-[14px] border-2 border-[#121212]/10 overflow-hidden ${aspectClass}`}>
+        <div className={`relative rounded-lg border border-slate-200/80 overflow-hidden ${aspectClass}`}>
           <img src={value || urlInput} alt={label} className="w-full h-full object-cover" onError={e => (e.currentTarget.style.display = 'none')} />
           <button
             type="button"
-            onClick={async () => { 
-              if (!window.confirm("Delete this image? This action cannot be undone.")) return;
-              const imgUrl = value || urlInput;
-              if (imgUrl.includes('firebasestorage.googleapis.com')) {
-                try {
-                  const { deleteImage } = await import('../../services/firebaseService');
-                  await deleteImage(imgUrl);
-                } catch (e) {
-                  console.error("Cleanup failed:", e);
+            onClick={() => { 
+              confirm({
+                title: "Delete Asset Image",
+                message: "Are you sure you want to delete this image asset?",
+                type: "danger",
+                confirmText: "Delete Asset",
+                onConfirm: async () => {
+                  const imgUrl = value || urlInput;
+                  if (imgUrl.includes('firebasestorage.googleapis.com')) {
+                    try {
+                      const { deleteImage } = await import('../../services/firebaseService');
+                      await deleteImage(imgUrl);
+                    } catch (e) {
+                      console.error("Cleanup failed:", e);
+                    }
+                  }
+                  onSave(''); 
+                  setUrlInput(''); 
+                  toast("Image asset removed.", "info");
                 }
-              }
-              onSave(''); 
-              setUrlInput(''); 
+              });
             }}
-            className="absolute top-2 right-2 bg-[#9E1B1D] text-white p-2 rounded-[10px] hover:bg-[#121212] transition-all shadow-lg flex items-center justify-center"
-            title="Remove and Delete asset"
+            className="absolute top-2 right-2 bg-rose-600 text-white p-1.5 rounded-md hover:bg-rose-700 transition-colors shadow-md flex items-center justify-center cursor-pointer"
+            title="Remove asset"
           >
-            <X size={16} />
+            <X size={14} />
           </button>
         </div>
       )}

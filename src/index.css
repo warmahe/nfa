@@ -157,21 +157,64 @@
   }
 }
 
+/* Enterprise SaaS Dashboard Utilities */
+@layer components {
+  .saas-card {
+    background-color: #ffffff;
+    border: 1px solid rgba(18, 18, 18, 0.08);
+    border-radius: 12px;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.02), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .saas-card:hover {
+    border-color: rgba(18, 18, 18, 0.15);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04), 0 2px 4px -2px rgba(0, 0, 0, 0.03);
+  }
+
+  .saas-input {
+    background-color: #ffffff;
+    border: 1px solid rgba(18, 18, 18, 0.12);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: #121212;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .saas-input:focus {
+    outline: none;
+    border-color: #121212;
+    box-shadow: 0 0 0 2px rgba(18, 18, 18, 0.08);
+  }
+
+  .saas-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+}
+
 /* Improved scrollbar styling */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #FCFBF7;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #121212;
-  border-radius: 4px;
+  background: rgba(18, 18, 18, 0.15);
+  border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #9E1B1D;
-}
+  background: rgba(18, 18, 18, 0.3);
+}

@@ -15,7 +15,7 @@ export const Login = () => {
       await loginAdmin(email, password);
       navigate('/admin');
     } catch (err: any) {
-      setError("INVALID CREDENTIALS. ACCESS DENIED.");
+      setError("Invalid email or password. Please try again.");
     }
   };
 
@@ -26,8 +26,8 @@ export const Login = () => {
           <div className="bg-[#121212] text-[#F4BF4B] p-4 mb-6 rotate-45 border-2 border-[#121212]">
              <Lock size={32} className="-rotate-45" />
           </div>
-          <h1 className="font-brand font-black text-4xl uppercase tracking-tighter">ADMIN LOGIN</h1>
-          <p className="font-sans font-bold text-[10px] uppercase tracking-[0.3em] text-gray-400 mt-2">Admin Login</p>
+          <h1 className="font-sans font-bold text-xl uppercase tracking-tight text-slate-900">Sign In to Admin Workspace</h1>
+          <p className="font-sans font-bold text-[10px] uppercase tracking-[0.3em] text-gray-400 mt-2">Staff & Admin Portal</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-6">
