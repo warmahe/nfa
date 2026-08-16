@@ -8,6 +8,8 @@ import {
   deleteDocument,
 } from '../../services/firebaseService';
 import { ImageInput } from './ImageInput';
+import { GalleryManager } from './GalleryManager';
+import { AdminSEOEditor } from './AdminSEOEditor';
 import {
   ArrowLeft,
   Plus,
@@ -181,6 +183,7 @@ export const AdminDestinationManager: React.FC<AdminDestinationManagerProps> = (
   const [activeTab, setActiveTab] = useState<TabType>('basic');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'published' | 'unpublished'>('all');
+  const [contentFilter, setContentFilter] = useState<'all' | 'ready' | 'needs_details' | 'draft'>('all');
 
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -539,9 +542,6 @@ export const AdminDestinationManager: React.FC<AdminDestinationManagerProps> = (
     if (!showForm) return null;
     return checkDestinationContent(formState);
   }, [formState, showForm]);
-
-  // E32 — Content status filter
-  const [contentFilter, setContentFilter] = useState<'all' | 'ready' | 'needs_details' | 'draft'>('all');
 
   const inputClass = 'saas-input w-full text-xs text-slate-900 font-sans focus:ring-2 focus:ring-[#121212] focus:border-transparent';
   const labelClass = 'block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1';
@@ -1288,7 +1288,7 @@ export const AdminDestinationManager: React.FC<AdminDestinationManagerProps> = (
                 {/* Cover Image Upload / URL */}
                 <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
                   <ImageInput
-                    label="DESTINATION COVER IMAGE"
+                    label="DESTINATION COVER PHOTO"
                     value={formState.coverImage || ''}
                     onSave={(url) => {
                       setFormState((prev) => ({ ...prev, coverImage: url }));
@@ -1296,70 +1296,26 @@ export const AdminDestinationManager: React.FC<AdminDestinationManagerProps> = (
                     }}
                     storagePath="destinations/covers"
                     aspectClass="aspect-21/9"
+                    helpText="Primary landscape photograph displayed across destination cards and hero header."
+                    removeWarningMessage="Removing this cover photo will leave this destination without a primary visual. Remove photo?"
                   />
                 </div>
 
                 {/* Gallery Images Grid Manager */}
-                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">DESTINATION GALLERY PHOTOS</h4>
-                      <p className="text-xs text-slate-500 font-medium">Add gallery images to display on the destination showcase.</p>
-                    </div>
-                  </div>
-
-                  <ImageInput
-                    label="ADD NEW GALLERY PHOTO"
-                    value=""
-                    onSave={(url) => {
-                      if (url) handleAddGalleryImage(url);
-                    }}
-                    storagePath="destinations/gallery"
-                    aspectClass="aspect-video"
-                  />
-
-                  {(!formState.gallery || formState.gallery.length === 0) ? (
-                    <div className="p-8 text-center border-2 border-dashed border-slate-200 rounded-xl text-slate-400 text-xs font-bold uppercase tracking-wider">
-                      No destination photos added yet.
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 pt-2">
-                      {formState.gallery.map((imgUrl, idx) => (
-                        <div key={idx} className="group relative aspect-square rounded-xl overflow-hidden border border-slate-200 bg-slate-900 shadow-sm">
-                          <img src={imgUrl} alt={`Gallery photo ${idx + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                          <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 p-2">
-                            <button
-                              type="button"
-                              onClick={() => moveArrayItem('gallery', idx, idx - 1)}
-                              disabled={idx === 0}
-                              className="p-1.5 bg-white/20 text-white rounded-md hover:bg-white/40 disabled:opacity-30 cursor-pointer"
-                              title="Move left"
-                            >
-                              <ChevronUp size={14} className="-rotate-90" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => moveArrayItem('gallery', idx, idx + 1)}
-                              disabled={idx === formState.gallery!.length - 1}
-                              className="p-1.5 bg-white/20 text-white rounded-md hover:bg-white/40 disabled:opacity-30 cursor-pointer"
-                              title="Move right"
-                            >
-                              <ChevronDown size={14} className="-rotate-90" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => removeItemFromArray('gallery', idx)}
-                              className="p-1.5 bg-rose-600 text-white rounded-md hover:bg-rose-700 cursor-pointer"
-                              title="Remove photo"
-                            >
-                              <X size={14} />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <GalleryManager
+                  label="DESTINATION PHOTO GALLERY"
+                  helpText="Curated photography showcasing landmarks, landscapes, and culture."
+                  gallery={formState.gallery || []}
+                  onChange={(updatedGallery) => {
+                    setFormState((prev) => ({ ...prev, gallery: updatedGallery }));
+                    setIsDirty(true);
+                  }}
+                  storagePath="destinations/gallery"
+                  onUseAsCover={(url) => {
+                    setFormState((prev) => ({ ...prev, coverImage: url }));
+                    setIsDirty(true);
+                  }}
+                />
               </div>
             )}
 
@@ -1451,52 +1407,29 @@ export const AdminDestinationManager: React.FC<AdminDestinationManagerProps> = (
                   </div>
                 </div>
 
-                <div>
-                  <label className={labelClass}>SEO Meta Description</label>
-                  <textarea
-                    name="seoDescription"
-                    value={formState.seoDescription || ''}
-                    onChange={handleInputChange}
-                    placeholder="Search engine snippet description..."
-                    rows={3}
-                    className={inputClass + ' resize-none'}
+                {/* E34 Destination SEO & Search Visibility Editor */}
+                <div className="pt-2">
+                  <AdminSEOEditor
+                    seo={formState.seo || {
+                      description: formState.seoDescription,
+                      keywords: formState.seoKeywords,
+                    }}
+                    onChange={(updatedSeo) => {
+                      setFormState((prev) => ({
+                        ...prev,
+                        seo: updatedSeo,
+                        seoDescription: updatedSeo.description,
+                        seoKeywords: updatedSeo.keywords,
+                      }));
+                      setIsDirty(true);
+                    }}
+                    fallbackTitle={formState.name ? `${formState.name}, ${formState.country || 'World'}` : ''}
+                    fallbackDescription={formState.shortDescription || formState.description || formState.whyVisit || ''}
+                    fallbackImage={formState.coverImage || formState.gallery?.[0]}
+                    slug={formState.slug || formState.id}
+                    baseRoute="destinations"
+                    contentTypeLabel="Destination"
                   />
-                </div>
-
-                <div>
-                  <label className={labelClass}>SEO Keywords</label>
-                  <div className="flex gap-2 mb-3">
-                    <input
-                      type="text"
-                      value={newKeywordInput}
-                      onChange={(e) => setNewKeywordInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          addItemToArray('seoKeywords', newKeywordInput, () => setNewKeywordInput(''));
-                        }
-                      }}
-                      placeholder="e.g., Botswana Safari, Okavango Delta Luxury Travel"
-                      className={inputClass}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => addItemToArray('seoKeywords', newKeywordInput, () => setNewKeywordInput(''))}
-                      className="px-4 py-2 bg-[#121212] text-[#F4BF4B] font-black text-xs uppercase tracking-wider rounded-lg shrink-0 hover:bg-slate-800 cursor-pointer"
-                    >
-                      ADD KEYWORD
-                    </button>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {(formState.seoKeywords || []).map((kw, idx) => (
-                      <span key={idx} className="px-3 py-1 bg-slate-100 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 flex items-center gap-2">
-                        {kw}
-                        <button type="button" onClick={() => removeItemFromArray('seoKeywords', idx)} className="hover:text-rose-600 cursor-pointer">
-                          <X size={12} />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
                 </div>
               </div>
             )}

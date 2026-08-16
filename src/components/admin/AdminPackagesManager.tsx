@@ -18,6 +18,10 @@ import {
   RichInclusionExclusion, TripHighlight, QuickInfoItem
 } from '../../types/database';
 import { ImageInput } from './ImageInput';
+import { GalleryManager } from './GalleryManager';
+import { AdminSEOEditor } from './AdminSEOEditor';
+import { JourneyDepartureManager } from './JourneyDepartureManager';
+import { JourneyTravelWindowManager } from './JourneyTravelWindowManager';
 import { useAdminDialog } from './AdminDialogContext';
 import { normalizeItinerary } from '../../utils/itineraryNormalizer';
 import {
@@ -231,6 +235,7 @@ type EditorTab =
   | 'INCLUSIONS'
   | 'FAQS'
   | 'PRICING'
+  | 'AVAILABILITY'
   | 'MEDIA'
   | 'TRAVEL_INFO'
   | 'PUBLISHING';
@@ -303,6 +308,7 @@ export const AdminPackagesManager = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'published' | 'unpublished'>('all');
   const [styleFilter, setStyleFilter] = useState<string>('ALL');
+  const [contentFilter, setContentFilter] = useState<'all' | 'ready' | 'needs_details' | 'draft'>('all');
 
   // Modals & Confirmation States
   const [discardConfirm, setDiscardConfirm] = useState(false);
@@ -605,9 +611,6 @@ export const AdminPackagesManager = () => {
     return checkPackageContent(activePackage);
   }, [activePackage]);
 
-  // E32 — Content status filter
-  const [contentFilter, setContentFilter] = useState<'all' | 'ready' | 'needs_details' | 'draft'>('all');
-
   // Derived Journey Structure Summary
   const journeySummary = useMemo(() => {
     if (!activePackage) return null;
@@ -829,9 +832,10 @@ export const AdminPackagesManager = () => {
               { id: 'INCLUSIONS', label: '6. Inclusions', icon: FileCheck },
               { id: 'FAQS', label: '7. Questions', icon: HelpCircle },
               { id: 'PRICING', label: '8. Pricing', icon: DollarSign },
-              { id: 'MEDIA', label: '9. Media & PDF', icon: ImageIcon },
-              { id: 'TRAVEL_INFO', label: '10. Travel Info', icon: Info },
-              { id: 'PUBLISHING', label: '11. Publishing & SEO', icon: Shield },
+              { id: 'AVAILABILITY', label: '9. Dates & Availability', icon: Calendar },
+              { id: 'MEDIA', label: '10. Media & PDF', icon: ImageIcon },
+              { id: 'TRAVEL_INFO', label: '11. Travel Info', icon: Info },
+              { id: 'PUBLISHING', label: '12. Publishing & SEO', icon: Shield },
             ].map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -1208,7 +1212,7 @@ export const AdminPackagesManager = () => {
                             </div>
 
                             {/* Section 2: STOP MEDIA */}
-                            <div className="p-4 bg-white border border-slate-200 rounded-xl space-y-3">
+                            <div className="p-4 bg-white border border-slate-200 rounded-xl space-y-4">
                               <h6 className="text-[11px] font-black uppercase tracking-wider text-slate-900">2. STOP MEDIA</h6>
                               <ImageInput
                                 label="STOP HERO PHOTO"
@@ -1220,6 +1224,24 @@ export const AdminPackagesManager = () => {
                                 }}
                                 storagePath={`packages/${activePackage.id || 'new'}/stops`}
                                 aspectClass="aspect-21/9"
+                                helpText="Main landscape photo representing this journey stop."
+                              />
+
+                              <GalleryManager
+                                label="STOP PHOTO GALLERY"
+                                helpText="Supporting photography for this journey destination."
+                                gallery={city.gallery || []}
+                                onChange={(updatedGallery) => {
+                                  const current = [...(activePackage.itineraryCities || [])];
+                                  current[idx] = { ...current[idx], gallery: updatedGallery };
+                                  handleFieldChange('itineraryCities', current);
+                                }}
+                                storagePath={`packages/${activePackage.id || 'new'}/stops/${idx}`}
+                                onUseAsCover={(url) => {
+                                  const current = [...(activePackage.itineraryCities || [])];
+                                  current[idx] = { ...current[idx], heroImage: url };
+                                  handleFieldChange('itineraryCities', current);
+                                }}
                               />
                             </div>
 
@@ -1770,6 +1792,21 @@ export const AdminPackagesManager = () => {
                                   aria-label={`Hotel for Day ${day.day || dIdx + 1}`}
                                 />
                               </div>
+
+                              {/* Section 9: DAY PHOTOS GALLERY */}
+                              <GalleryManager
+                                label={`DAY ${day.day || dIdx + 1} PHOTOS`}
+                                helpText="Optional photography highlighting today's itinerary."
+                                gallery={day.images || []}
+                                onChange={(updatedImages) => {
+                                  const updatedCities = [...(activePackage.itineraryCities || [])];
+                                  const updatedDays = [...(updatedCities[cIdx].days || [])];
+                                  updatedDays[dIdx] = { ...updatedDays[dIdx], images: updatedImages };
+                                  updatedCities[cIdx] = { ...updatedCities[cIdx], days: updatedDays };
+                                  handleFieldChange('itineraryCities', updatedCities);
+                                }}
+                                storagePath={`packages/${activePackage.id || 'new'}/days/${day.day || dIdx + 1}`}
+                              />
                             </div>
                           );
                         })}
@@ -1892,6 +1929,31 @@ export const AdminPackagesManager = () => {
                         }}
                         storagePath={`packages/${activePackage.id || 'new'}/hotels`}
                         aspectClass="aspect-16/9"
+                        helpText="Main photo of the hotel exterior or signature suite."
+                      />
+
+                      {/* Hotel Photo Gallery */}
+                      <GalleryManager
+                        label="HOTEL PHOTO GALLERY"
+                        helpText="Additional photography of rooms, dining, views, and amenities."
+                        gallery={hotel.images || []}
+                        onChange={(updatedImages) => {
+                          const updatedCities = [...(activePackage.itineraryCities || [])];
+                          updatedCities[cIdx] = {
+                            ...updatedCities[cIdx],
+                            hotel: { ...hotel, images: updatedImages }
+                          };
+                          handleFieldChange('itineraryCities', updatedCities);
+                        }}
+                        storagePath={`packages/${activePackage.id || 'new'}/hotels/${cIdx}`}
+                        onUseAsCover={(url) => {
+                          const updatedCities = [...(activePackage.itineraryCities || [])];
+                          updatedCities[cIdx] = {
+                            ...updatedCities[cIdx],
+                            hotel: { ...hotel, image: url }
+                          };
+                          handleFieldChange('itineraryCities', updatedCities);
+                        }}
                       />
                     </div>
                   );
@@ -2182,16 +2244,49 @@ export const AdminPackagesManager = () => {
             {/* Tab 9: MEDIA & ITINERARY PDF */}
             {activeTab === 'MEDIA' && (
               <div className="space-y-6">
+                {/* Journey Cover Photo */}
                 <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
                   <ImageInput
-                    label="JOURNEY COVER PHOTO (THUMBNAIL)"
+                    label="JOURNEY COVER PHOTO"
                     value={activePackage.media?.thumbnail || ''}
                     onSave={(url) => handleNestedChange('media', 'thumbnail', url)}
                     storagePath={`packages/${activePackage.id || 'new'}`}
                     aspectClass="aspect-21/9"
+                    helpText="Hero image displayed across journey cards, search, and page header."
+                    removeWarningMessage="Removing this cover photo will leave this journey without a primary visual. Remove photo?"
                   />
                 </div>
 
+                {/* Journey Gallery */}
+                <GalleryManager
+                  label="JOURNEY PHOTO GALLERY"
+                  helpText="Comprehensive photo collection showcasing the complete journey."
+                  gallery={activePackage.media?.gallery || []}
+                  onChange={(updatedGallery) => handleNestedChange('media', 'gallery', updatedGallery)}
+                  storagePath={`packages/${activePackage.id || 'new'}/gallery`}
+                  onUseAsCover={(url) => handleNestedChange('media', 'thumbnail', url)}
+                />
+
+                {/* Journey Video URL */}
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">JOURNEY VIDEO LINK</h4>
+                    <p className="text-xs text-slate-500 font-medium">Optional video URL (e.g. Vimeo or YouTube link) showcasing the expedition.</p>
+                  </div>
+                  <input
+                    type="text"
+                    value={activePackage.media?.videos?.[0] || ''}
+                    onChange={(e) => {
+                      const val = e.target.value.trim();
+                      handleNestedChange('media', 'videos', val ? [val] : []);
+                    }}
+                    placeholder="https://www.youtube.com/watch?v=... or https://vimeo.com/..."
+                    className={inputClass}
+                    aria-label="Journey Video URL"
+                  />
+                </div>
+
+                {/* Official Itinerary PDF Document */}
                 <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
                   <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">OFFICIAL ITINERARY PDF DOCUMENT</h4>
                   <p className="text-xs text-slate-500 font-medium">Upload or replace the official downloadable itinerary PDF.</p>
@@ -2278,6 +2373,156 @@ export const AdminPackagesManager = () => {
               </div>
             )}
 
+            {/* Tab 9: DATES & AVAILABILITY (E50) */}
+            {activeTab === 'AVAILABILITY' && (
+              <div className="space-y-8">
+                {/* Availability Mode Selector */}
+                <div className="p-6 bg-slate-50 border border-slate-200 rounded-xl space-y-4">
+                  <div>
+                    <h4 className="font-brand font-black text-base uppercase tracking-tight text-slate-900">
+                      Travel Date & Availability Mode
+                    </h4>
+                    <p className="text-xs text-slate-500">
+                      Define how this journey is scheduled for travellers.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {[
+                      {
+                        mode: 'PRIVATE_FLEXIBLE',
+                        title: 'Private Flexible',
+                        desc: "Travel dates can be tailored around the traveller's preferred window.",
+                      },
+                      {
+                        mode: 'FIXED_DEPARTURES',
+                        title: 'Fixed Departures',
+                        desc: 'Travel is organized around configured departure dates.',
+                      },
+                      {
+                        mode: 'BOTH',
+                        title: 'Both Fixed & Flexible',
+                        desc: 'Travellers can choose a listed departure or request private dates.',
+                      },
+                    ].map((item) => {
+                      const isSelected = (activePackage.availability?.mode || 'PRIVATE_FLEXIBLE') === item.mode;
+                      return (
+                        <button
+                          key={item.mode}
+                          type="button"
+                          onClick={() => {
+                            const currentAvail = activePackage.availability || {};
+                            handleFieldChange('availability', {
+                              ...currentAvail,
+                              mode: item.mode as any,
+                            });
+                          }}
+                          className={`p-4 rounded-xl border-2 text-left transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-white border-[#121212] shadow-md ring-2 ring-[#F4BF4B]'
+                              : 'bg-white/60 border-slate-200 hover:border-slate-300'
+                          }`}
+                        >
+                          <span className="font-brand font-black text-xs uppercase tracking-wider block text-slate-900">
+                            {item.title}
+                          </span>
+                          <span className="text-[11px] text-slate-500 leading-relaxed block mt-1">
+                            {item.desc}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Fixed Departure Dates Manager */}
+                {((activePackage.availability?.mode || 'PRIVATE_FLEXIBLE') === 'FIXED_DEPARTURES' ||
+                  activePackage.availability?.mode === 'BOTH') && (
+                  <div className="p-6 bg-white border border-slate-200 rounded-xl shadow-xs">
+                    <JourneyDepartureManager
+                      departures={activePackage.availability?.departures || []}
+                      onChange={(newDepartures) => {
+                        const currentAvail = activePackage.availability || {};
+                        handleFieldChange('availability', {
+                          ...currentAvail,
+                          departures: newDepartures,
+                        });
+                      }}
+                    />
+                  </div>
+                )}
+
+                {/* Flexible Seasonal Travel Windows */}
+                {((activePackage.availability?.mode || 'PRIVATE_FLEXIBLE') === 'PRIVATE_FLEXIBLE' ||
+                  activePackage.availability?.mode === 'BOTH') && (
+                  <div className="p-6 bg-white border border-slate-200 rounded-xl shadow-xs">
+                    <JourneyTravelWindowManager
+                      travelWindows={activePackage.availability?.travelWindows || []}
+                      onChange={(newWindows) => {
+                        const currentAvail = activePackage.availability || {};
+                        handleFieldChange('availability', {
+                          ...currentAvail,
+                          travelWindows: newWindows,
+                        });
+                      }}
+                    />
+                  </div>
+                )}
+
+                {/* Booking Lead Time & Public Guidance Note */}
+                <div className="p-6 bg-slate-50 border border-slate-200 rounded-xl space-y-4">
+                  <h4 className="font-brand font-black text-base uppercase tracking-tight text-slate-900">
+                    Booking Guidance & Lead Time
+                  </h4>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <label className="block font-black uppercase text-[10px] tracking-wider text-slate-700 mb-1">
+                        Recommended Lead Time (Days in Advance)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        placeholder="e.g. 30 (enquire at least 30 days before travel)"
+                        value={activePackage.availability?.bookingLeadTimeDays || ''}
+                        onChange={(e) => {
+                          const days = e.target.value ? parseInt(e.target.value, 10) : undefined;
+                          const currentAvail = activePackage.availability || {};
+                          handleFieldChange('availability', {
+                            ...currentAvail,
+                            bookingLeadTimeDays: days,
+                          });
+                        }}
+                        className="w-full p-2.5 bg-white border border-slate-300 rounded-lg font-bold text-slate-900 outline-none focus:border-[#121212]"
+                      />
+                      <p className="text-[10px] text-slate-400 mt-1">
+                        Informational guidance shown to travellers (e.g. "We recommend enquiring at least 30 days prior").
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block font-black uppercase text-[10px] tracking-wider text-slate-700 mb-1">
+                        Custom Availability Note / Guidance
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Bespoke luxury permits are strictly limited per season."
+                        value={activePackage.availability?.availabilityNote || ''}
+                        onChange={(e) => {
+                          const currentAvail = activePackage.availability || {};
+                          handleFieldChange('availability', {
+                            ...currentAvail,
+                            availabilityNote: e.target.value,
+                          });
+                        }}
+                        className="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-slate-900 outline-none focus:border-[#121212]"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Tab 11: PUBLISHING & SEO */}
             {activeTab === 'PUBLISHING' && (
               <div className="space-y-4">
@@ -2354,6 +2599,20 @@ export const AdminPackagesManager = () => {
                   <p className="text-[10px] font-medium text-slate-400">
                     Saving as draft is always allowed. Publishing makes this journey visible to website visitors.
                   </p>
+                </div>
+
+                {/* E34 Journey SEO & Search Visibility Editor */}
+                <div className="pt-2">
+                  <AdminSEOEditor
+                    seo={activePackage.seo || {}}
+                    onChange={(updatedSeo) => handleFieldChange('seo', updatedSeo)}
+                    fallbackTitle={activePackage.title || ''}
+                    fallbackDescription={activePackage.editorialIntro || activePackage.overview || activePackage.description || ''}
+                    fallbackImage={activePackage.media?.thumbnail || activePackage.media?.gallery?.[0]}
+                    slug={activePackage.slug || activePackage.id}
+                    baseRoute="itinerary"
+                    contentTypeLabel="Journey"
+                  />
                 </div>
               </div>
             )}

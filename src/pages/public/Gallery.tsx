@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { Database, FolderKanban, Map } from "lucide-react";
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../services/firebaseService';
+import { SeoHead } from '../../components/shared/SeoHead';
+import { resolveStaticPageSEO } from '../../utils/seo';
 
 export const Gallery = () => {
   const [folders, setFolders] = useState<any[]>([]);
@@ -22,6 +24,7 @@ export const Gallery = () => {
 
   return (
     <div className="min-h-screen bg-nfa-cream text-nfa-charcoal nfa-texture pt-10 pb-24">
+      <SeoHead metadata={resolveStaticPageSEO('gallery')} />
       <div className="max-w-[1440px] mx-auto px-[clamp(0.5rem,3vw,3rem)]">
         <div className="flex flex-col md:flex-row justify-between md:items-end gap-6 mb-20 border-b-[4px] border-nfa-charcoal pb-8">
            <div>

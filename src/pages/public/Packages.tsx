@@ -2,12 +2,16 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   SlidersHorizontal, X, Map as MapIcon, Search,
-  ChevronDown, Tag, Loader2, Sparkles, Compass
+  ChevronDown, Tag, Loader2, Sparkles, Compass, Bookmark
 } from "lucide-react";
+import { Link } from "react-router-dom";
+import { useJourneyShortlist } from "../../hooks/useJourneyShortlist";
 import { useDestinations } from "../../hooks/useDestinations";
 import { addToWishlist, removeFromWishlist, isInWishlist } from "../../services/wishlistService";
 import { PackageJourneyCard } from "../../components/packages/PackageJourneyCard";
 import { Package } from "../../types/database";
+import { SeoHead } from "../../components/shared/SeoHead";
+import { resolveStaticPageSEO } from "../../utils/seo";
 
 const SORT_OPTIONS = [
   { value: "featured", label: "Featured" },
@@ -34,6 +38,7 @@ export const Packages = () => {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [travelType, setTravelType] = useState("ALL");
   const [wishlisted, setWishlisted] = useState<Record<string, boolean>>({});
+  const { shortlistCount } = useJourneyShortlist();
 
   // Count active filters
   const activeFilterCount = [
@@ -74,6 +79,7 @@ export const Packages = () => {
 
   return (
     <div className="min-h-screen bg-[#FCFBF7] pt-2 pb-24 nfa-texture text-left">
+      <SeoHead metadata={resolveStaticPageSEO('packages')} />
 
       {/* ── EDITORIAL PAGE HEADER ── */}
       <div className="max-w-[1440px] mx-auto px-6 mb-12 pt-8">
@@ -356,6 +362,37 @@ export const Packages = () => {
           </>
         )}
       </AnimatePresence>
+
+      {/* Floating Shortlist Indicator Toolbar (E49) */}
+      {shortlistCount > 0 && (
+        <div className="fixed bottom-6 right-6 z-40 animate-in slide-in-from-bottom-5 duration-300">
+          <div className="bg-[#121212] text-white p-3 sm:px-5 sm:py-3.5 border-2 border-[#F4BF4B] shadow-[6px_6px_0px_0px_#9E1B1D] flex items-center gap-4 rounded-xl">
+            <div className="flex items-center gap-2">
+              <Bookmark size={16} className="fill-[#F4BF4B] text-[#F4BF4B]" />
+              <span className="font-black text-xs uppercase tracking-wider text-[#F4BF4B]">
+                {shortlistCount} {shortlistCount === 1 ? 'Journey' : 'Journeys'} Shortlisted
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {shortlistCount >= 2 && (
+                <Link
+                  to="/compare"
+                  className="px-3.5 py-1.5 bg-[#F4BF4B] text-[#121212] font-black text-[10px] uppercase tracking-wider hover:bg-white transition-colors"
+                >
+                  COMPARE
+                </Link>
+              )}
+              <Link
+                to="/shortlist"
+                className="px-3.5 py-1.5 bg-white/10 text-white font-bold text-[10px] uppercase tracking-wider hover:bg-white/20 transition-colors"
+              >
+                VIEW SHORTLIST
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

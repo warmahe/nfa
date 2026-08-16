@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from "react";
-import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Bookmark } from "lucide-react";
 
 import { EnquiryProvider } from "../context/EnquiryContext";
 import { EnquiryModal } from "../components/enquiry/EnquiryModal";
+import { useJourneyShortlist } from "../hooks/useJourneyShortlist";
 
 const MainLayout = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { shortlistCount } = useJourneyShortlist();
 
   const handleLogoClick = () => {
     if (location.pathname === '/') {
@@ -24,10 +24,12 @@ const MainLayout = () => {
   }, [location.pathname]);
 
   const navItems = [
-    { label: "ABOUT", href: "/about" },
+    { label: "EXPLORE", href: "/explore" },
     { label: "ITINERARIES", href: "/packages" },
     { label: "DESTINATIONS", href: "/destinations" },
     { label: "STORIES", href: "/stories" },
+    { label: "REVIEWS", href: "/reviews" },
+    { label: "ABOUT", href: "/about" },
     { label: "CONTACT", href: "/contact" },
     { label: "MY ACCOUNT", href: "/dashboard" }
   ];
@@ -57,6 +59,21 @@ const MainLayout = () => {
             </div>
 
             <div className="flex items-center gap-4">
+              {/* Shortlist Counter Navigation Icon */}
+              <Link
+                to="/shortlist"
+                aria-label={`View Journey Shortlist (${shortlistCount} saved)`}
+                className="relative p-2 text-[#FCFBF7]/80 hover:text-[#F4BF4B] transition-colors flex items-center gap-1.5 cursor-pointer"
+                title="Your Journey Shortlist"
+              >
+                <Bookmark size={20} className={shortlistCount > 0 ? "fill-[#F4BF4B] text-[#F4BF4B]" : ""} />
+                {shortlistCount > 0 && (
+                  <span className="bg-[#9E1B1D] text-white font-black text-[9px] size-4 rounded-full flex items-center justify-center -ml-1">
+                    {shortlistCount}
+                  </span>
+                )}
+              </Link>
+
               <button
                 className="lg:hidden flex items-center justify-center p-2 text-[#F4BF4B] bg-[#121212] transition-colors"
                 onClick={() => setIsMenuOpen(prev => !prev)}
@@ -81,6 +98,15 @@ const MainLayout = () => {
                   {item.label}
                 </Link>
               ))}
+
+              <Link
+                to="/shortlist"
+                onClick={() => setIsMenuOpen(false)}
+                className="font-brand font-black text-3xl uppercase tracking-tighter text-[#F4BF4B] flex items-center gap-2 pt-2 border-t border-white/10"
+              >
+                <Bookmark size={24} className={shortlistCount > 0 ? "fill-[#F4BF4B]" : ""} />
+                SHORTLIST {shortlistCount > 0 ? `(${shortlistCount})` : ''}
+              </Link>
             </div>
           </div>
         </header>

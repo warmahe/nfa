@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Clock, MapPin, ArrowRight, Heart, Star, Sparkles, Compass } from 'lucide-react';
+import { Clock, MapPin, ArrowRight, Heart, Star, Sparkles, Compass, Calendar } from 'lucide-react';
 import { Package } from '../../types/database';
+import { JourneyShortlistButton } from '../discovery/JourneyShortlistButton';
 
 interface PackageJourneyCardProps {
   pkg: Package;
@@ -53,6 +53,24 @@ export const PackageJourneyCard: React.FC<PackageJourneyCardProps> = ({
     ? `${currency === 'INR' ? '₹' : currency}${basePrice.toLocaleString()}`
     : 'Price on request';
 
+  // E50 Departure Indicator
+  const todayStr = new Date().toISOString().split('T')[0];
+  const upcomingDeparture = pkg.availability?.departures
+    ?.filter((d) => d.date >= todayStr && d.status !== 'CLOSED')
+    ?.sort((a, b) => a.date.localeCompare(b.date))?.[0];
+
+  let departureTag: string | null = null;
+  if (upcomingDeparture) {
+    const formatted = new Date(upcomingDeparture.date).toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+    departureTag = `Next: ${formatted}`;
+  } else if (pkg.availability?.mode === 'PRIVATE_FLEXIBLE') {
+    departureTag = 'Flexible Dates';
+  }
+
   return (
     <div 
       className={`group bg-white border-4 border-[#121212] shadow-[6px_6px_0px_0px_#121212] hover:shadow-[10px_10px_0px_0px_#F4BF4B] transition-all duration-300 flex flex-col overflow-hidden text-left ${
@@ -72,31 +90,48 @@ export const PackageJourneyCard: React.FC<PackageJourneyCardProps> = ({
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#121212]/80 via-transparent to-black/30" />
 
-        {/* Duration Badge */}
-        {pkg.duration && (
-          <div className="absolute top-4 left-4 z-10 bg-[#F4BF4B] text-[#121212] border-2 border-[#121212] px-3 py-1 text-[9px] font-black uppercase tracking-[0.2em] shadow-md flex items-center gap-1.5">
-            <Clock size={11} /> {pkg.duration}
-          </div>
-        )}
+        {/* Badges Container (Duration & Next Departure) */}
+        <div className="absolute top-4 left-4 z-10 flex flex-col gap-1.5 items-start">
+          {pkg.duration && (
+            <div className="bg-[#F4BF4B] text-[#121212] border-2 border-[#121212] px-3 py-1 text-[9px] font-black uppercase tracking-[0.2em] shadow-md flex items-center gap-1.5">
+              <Clock size={11} /> {pkg.duration}
+            </div>
+          )}
+          {departureTag && (
+            <div className="bg-[#121212]/90 backdrop-blur-sm text-[#F4BF4B] border border-[#F4BF4B]/40 px-2.5 py-0.5 text-[8px] font-black uppercase tracking-wider shadow-sm flex items-center gap-1">
+              <Calendar size={10} /> {departureTag}
+            </div>
+          )}
+        </div>
 
-        {/* Wishlist Button */}
-        {onToggleWishlist && (
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onToggleWishlist(pkg);
-            }}
-            className={`absolute top-4 right-4 z-10 size-9 flex items-center justify-center border-2 border-[#121212] transition-colors shadow-md ${
-              wishlisted
-                ? 'bg-[#9E1B1D] text-white'
-                : 'bg-white/90 text-[#121212] hover:bg-[#9E1B1D] hover:text-white'
-            }`}
-            title="Save to Wishlist"
-          >
-            <Heart size={15} fill={wishlisted ? 'currentColor' : 'none'} />
-          </button>
-        )}
+        {/* Top Right Action Buttons (Shortlist & Wishlist) */}
+        <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+          <JourneyShortlistButton
+            packageId={pkg.id}
+            slug={pkg.slug}
+            title={pkg.title}
+            variant="icon"
+          />
+
+          {/* Wishlist Button */}
+          {onToggleWishlist && (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onToggleWishlist(pkg);
+              }}
+              className={`size-9 flex items-center justify-center border-2 border-[#121212] transition-colors shadow-md ${
+                wishlisted
+                  ? 'bg-[#9E1B1D] text-white'
+                  : 'bg-white/90 text-[#121212] hover:bg-[#9E1B1D] hover:text-white'
+              }`}
+              title="Save to Wishlist"
+            >
+              <Heart size={15} fill={wishlisted ? 'currentColor' : 'none'} />
+            </button>
+          )}
+        </div>
 
         {/* Bottom Destination Tag */}
         <div className="absolute bottom-4 left-4 right-4 z-10 flex items-center gap-2">

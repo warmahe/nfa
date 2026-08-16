@@ -1,0 +1,34 @@
+# NO FIXED ADDRESS — Search Engine Directives
+# https://nofixedaddress.co.in
+
+User-agent: *
+
+# Allow Public Content
+Allow: /
+Allow: /packages
+Allow: /destinations
+Allow: /destinations/*
+Allow: /itinerary/*
+Allow: /stories
+Allow: /stories/*
+Allow: /gallery
+Allow: /gallery/*
+Allow: /about
+Allow: /contact
+Allow: /faq
+Allow: /reviews
+Allow: /testimonials
+Allow: /privacy
+Allow: /terms
+
+# Disallow Private / Authenticated / Operational Routes
+Disallow: /admin
+Disallow: /admin/*
+Disallow: /dashboard
+Disallow: /dashboard/*
+Disallow: /my-journey/*
+Disallow: /login
+Disallow: /login/*
+
+# Sitemap
+Sitemap: https://nofixedaddress.co.in/sitemap.xml

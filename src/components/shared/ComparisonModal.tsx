@@ -35,7 +35,7 @@ export const ComparisonModal: React.FC<ComparisonModalProps> = ({
     setPackages([]);
   };
 
-  const handleBook = (destination: string) => {
+  const handleExplore = (destination: string) => {
     onClose();
     navigate(`/itinerary/${destination.toLowerCase()}`);
   };
@@ -151,12 +151,12 @@ export const ComparisonModal: React.FC<ComparisonModalProps> = ({
                         {pkg.description}
                       </p>
 
-                      {/* Book Button */}
+                      {/* Action Button */}
                       <button
-                        onClick={() => handleBook(pkg.destination)}
+                        onClick={() => handleExplore(pkg.destination)}
                         className="w-full mt-4 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white font-bold py-2 rounded-lg transition-all transform hover:scale-105 shadow-md"
                       >
-                        Book Now
+                        Explore Journey
                       </button>
                     </div>
                   </div>
@@ -216,10 +216,10 @@ export const ComparisonModal: React.FC<ComparisonModalProps> = ({
                       </p>
 
                       <button
-                        onClick={() => handleBook(pkg.destination)}
+                        onClick={() => handleExplore(pkg.destination)}
                         className="w-full mt-3 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white font-bold py-2 rounded-lg text-sm transition-all"
                       >
-                        Book
+                        Explore
                       </button>
                     </div>
                   </div>

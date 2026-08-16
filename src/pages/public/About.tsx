@@ -1,6 +1,8 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { Compass, Users, Map, Flame } from 'lucide-react';
+import { SeoHead } from '../../components/shared/SeoHead';
+import { resolveStaticPageSEO } from '../../utils/seo';
 
 export const About = () => {
   const container: any = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.2 } } };
@@ -8,6 +10,7 @@ export const About = () => {
 
   return (
     <div className="min-h-screen bg-[#FCFBF7] pt-24 pb-24 nfa-texture selection:bg-nfa-gold">
+      <SeoHead metadata={resolveStaticPageSEO('about')} />
       
       {/* 1. KINETIC HEADER */}
       <motion.section 

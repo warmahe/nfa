@@ -2,6 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, ChevronDown, HelpCircle, X } from 'lucide-react';
 import { FAQ_DATA } from '../../utils/constants';
+import { SeoHead } from '../../components/shared/SeoHead';
+import { resolveStaticPageSEO } from '../../utils/seo';
 
 export const FAQ = () => {
   const [search, setSearch] = useState("");
@@ -22,6 +24,7 @@ export const FAQ = () => {
 
   return (
     <div className="min-h-screen bg-[#FCFBF7] pt-24 md:pt-32 pb-24 px-[clamp(1rem,4vw,3rem)] nfa-texture">
+      <SeoHead metadata={resolveStaticPageSEO('faq')} />
       <div className="max-w-[1000px] mx-auto">
         
         {/* HEADER */}

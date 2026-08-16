@@ -156,6 +156,17 @@ export const checkPackageContent = (pkg: Package): ContentCheckResult => {
       cities.length === 0 || cities.some((c) => hasText(c.description)), 'STOPS'),
     check('inclusions', 'What\'s included in the journey',
       Array.isArray(pkg.inclusionsRich) && pkg.inclusionsRich.length > 0, 'INCLUSIONS'),
+    check('availability', 'Travel dates & availability configured',
+      Boolean(
+        !pkg.availability ||
+        pkg.availability.mode === 'PRIVATE_FLEXIBLE' ||
+        (Array.isArray(pkg.availability?.departures) && pkg.availability.departures.length > 0) ||
+        (Array.isArray(pkg.availability?.travelWindows) && pkg.availability.travelWindows.length > 0)
+      ),
+      'AVAILABILITY',
+      pkg.availability?.mode === 'FIXED_DEPARTURES' && (!pkg.availability?.departures || pkg.availability.departures.length === 0)
+        ? 'Fixed departure mode is selected, but no upcoming departure dates have been added.'
+        : undefined),
   ];
 
   const requiredFailCount = required.filter((r) => !r.passed).length;

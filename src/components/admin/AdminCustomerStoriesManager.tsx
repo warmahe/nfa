@@ -23,6 +23,8 @@ import {
   Destination
 } from '../../types/database';
 import { ImageInput } from './ImageInput';
+import { GalleryManager } from './GalleryManager';
+import { AdminSEOEditor } from './AdminSEOEditor';
 import { getPublicCustomerDisplayName } from '../stories/CustomerStoryCard';
 import {
   checkCustomerStoryContent, getStoryBadge,
@@ -166,6 +168,7 @@ export const AdminCustomerStoriesManager: React.FC = () => {
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'DRAFT' | 'PUBLISHED' | 'FEATURED'>('ALL');
+  const [contentFilter, setContentFilter] = useState<'all' | 'ready' | 'needs_details' | 'draft'>('all');
 
   // Editor State
   const [isEditorOpen, setIsEditorOpen] = useState(false);
@@ -215,6 +218,7 @@ export const AdminCustomerStoriesManager: React.FC = () => {
   const [featured, setFeatured] = useState(false);
   const [displayOrder, setDisplayOrder] = useState<number>(0);
   const [adminConsent, setAdminConsent] = useState(false);
+  const [seo, setSeo] = useState<ContentSEO>({});
 
   // 1. Realtime Story & Relational Subscriptions
   useEffect(() => {
@@ -296,6 +300,7 @@ export const AdminCustomerStoriesManager: React.FC = () => {
     setFeatured(false);
     setDisplayOrder(0);
     setAdminConsent(false);
+    setSeo({});
     setActiveTab('STORY');
   };
 
@@ -334,6 +339,10 @@ export const AdminCustomerStoriesManager: React.FC = () => {
     setFeatured(Boolean(story.featured));
     setDisplayOrder(story.displayOrder || 0);
     setAdminConsent(story.status === 'PUBLISHED');
+    setSeo(story.seo || {
+      description: story.seoDescription,
+      keywords: story.seoKeywords,
+    });
     setIsEditorOpen(true);
     setActiveTab('STORY');
   };
@@ -416,6 +425,9 @@ export const AdminCustomerStoriesManager: React.FC = () => {
         status: finalStatus,
         featured: Boolean(featured),
         displayOrder: Number(displayOrder) || 0,
+        seo,
+        seoDescription: seo.description,
+        seoKeywords: seo.keywords,
       };
 
       if (editingStory) {
@@ -521,9 +533,6 @@ export const AdminCustomerStoriesManager: React.FC = () => {
     const needsAttention = stories.filter((s) => getStoryBadge(s) === 'needs_details').length;
     return { total, published, drafts, featuredCount, needsAttention };
   }, [stories]);
-
-  // E32 — Content status filter
-  const [contentFilter, setContentFilter] = useState<'all' | 'ready' | 'needs_details' | 'draft'>('all');
 
   // E32 — Live content quality check on editor state
   const contentCheck = useMemo((): ContentCheckResult | null => {
@@ -975,12 +984,26 @@ export const AdminCustomerStoriesManager: React.FC = () => {
             {/* Tab 4: PHOTOS & HIGHLIGHTS */}
             {activeTab === 'PHOTOS' && (
               <div className="space-y-6">
-                <ImageInput
-                  label="STORY COVER PHOTO"
-                  value={coverImage}
-                  onSave={(url) => setCoverImage(url)}
-                  storagePath={`stories/${editingStory?.id || 'new'}`}
-                  aspectClass="aspect-21/9"
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                  <ImageInput
+                    label="STORY COVER PHOTO"
+                    value={coverImage}
+                    onSave={(url) => setCoverImage(url)}
+                    storagePath={`stories/${editingStory?.id || 'new'}`}
+                    aspectClass="aspect-21/9"
+                    helpText="Hero photo showcased across story cards and the story article header."
+                    removeWarningMessage="Removing this cover photo will leave this customer story without a primary visual. Remove photo?"
+                  />
+                </div>
+
+                {/* Story Photo Journal Gallery */}
+                <GalleryManager
+                  label="STORY PHOTO JOURNAL"
+                  helpText="Photographs captured during the customer's journey."
+                  gallery={gallery}
+                  onChange={(updatedGallery) => setGallery(updatedGallery)}
+                  storagePath={`stories/${editingStory?.id || 'new'}/gallery`}
+                  onUseAsCover={(url) => setCoverImage(url)}
                 />
 
                 <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
@@ -1132,6 +1155,20 @@ export const AdminCustomerStoriesManager: React.FC = () => {
                       Confirm this customer story is ready to be shared publicly on the NFA Travel website.
                     </span>
                   </label>
+                </div>
+
+                {/* E34 Customer Story SEO & Search Visibility */}
+                <div className="pt-2">
+                  <AdminSEOEditor
+                    seo={seo}
+                    onChange={(updatedSeo) => setSeo(updatedSeo)}
+                    fallbackTitle={title ? `${title}` : ''}
+                    fallbackDescription={excerpt || customerQuote || storyContent.slice(0, 150) || ''}
+                    fallbackImage={coverImage || gallery?.[0]}
+                    slug={slug}
+                    baseRoute="stories"
+                    contentTypeLabel="Customer Story"
+                  />
                 </div>
               </div>
             )}

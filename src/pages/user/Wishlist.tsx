@@ -5,6 +5,8 @@ import { getCollectionData } from '../../services/firebaseService';
 import { getWishlist, removeFromWishlist, WishlistItem, exportWishlistAsCSV } from '../../services/wishlistService';
 import { Package } from '../../types/database';
 import { motion, AnimatePresence } from 'motion/react';
+import { SeoHead } from '../../components/shared/SeoHead';
+import { resolveStaticPageSEO } from '../../utils/seo';
 
 export const Wishlist = () => {
   const [savedItems, setSavedItems] = useState<WishlistItem[]>([]);
@@ -51,7 +53,8 @@ export const Wishlist = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#FCFBF7] pt-24 pb-24 px-[clamp(1rem,4vw,3rem)] nfa-texture">
+    <div className="min-h-screen bg-[#FCFBF7] pt-24 md:pt-32 pb-24 px-[clamp(1rem,4vw,3rem)] nfa-texture selection:bg-nfa-gold">
+      <SeoHead metadata={resolveStaticPageSEO('dashboard')} />
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="border-b-4 border-[#121212] pb-10 mb-16">

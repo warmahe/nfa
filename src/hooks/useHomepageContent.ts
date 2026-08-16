@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { doc, collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../services/firebaseService';
-import { HomepageSettings, Package, Destination, CustomerStory } from '../types/database';
+import { HomepageSettings, Package, Destination, CustomerStory, Review } from '../types/database';
 import { STATIC_HOMEPAGE_DATA } from '../utils/staticHomeData';
 
 export interface ResolvedHomepageData {
@@ -9,6 +9,7 @@ export interface ResolvedHomepageData {
   featuredPackages: Package[];
   featuredDestinations: Destination[];
   featuredStories: CustomerStory[];
+  featuredReviews: Review[];
 }
 
 export const useHomepageContent = () => {
@@ -16,6 +17,7 @@ export const useHomepageContent = () => {
   const [allPackages, setAllPackages] = useState<Package[]>([]);
   const [allDestinations, setAllDestinations] = useState<Destination[]>([]);
   const [allStories, setAllStories] = useState<CustomerStory[]>([]);
+  const [allReviews, setAllReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -68,11 +70,24 @@ export const useHomepageContent = () => {
       (err) => console.error('Error listening to stories in homepage hook:', err)
     );
 
+    // 5. Subscribe to global_reviews collection (published only)
+    const unsubReviews = onSnapshot(
+      collection(db, 'global_reviews'),
+      (snap) => {
+        const revs = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Review));
+        setAllReviews(
+          revs.filter((r) => r.approved !== false && r.status !== 'ARCHIVED' && (r.content || (r as any).testimonial))
+        );
+      },
+      (err) => console.error('Error listening to reviews in homepage hook:', err)
+    );
+
     return () => {
       unsubSettings();
       unsubPackages();
       unsubDestinations();
       unsubStories();
+      unsubReviews();
     };
   }, []);
 
@@ -108,6 +123,30 @@ export const useHomepageContent = () => {
         if (mapped.length > 0) return mapped;
       }
       return allStories.filter((s) => s.featured || s.status === 'PUBLISHED').slice(0, 4);
+    })(),
+    featuredReviews: (() => {
+      const count = settings?.reviews?.count || 3;
+      const featuredOnly = settings?.reviews?.featuredOnly !== false;
+      const selectedIds = settings?.reviews?.reviewIds || settings?.featuredReviewIds || [];
+
+      if (selectedIds.length > 0) {
+        const mapped = selectedIds
+          .map((id) => allReviews.find((r) => r.id === id))
+          .filter((r): r is Review => Boolean(r));
+        if (mapped.length > 0) return mapped.slice(0, count);
+      }
+
+      // If featuredOnly is true, prioritize reviews marked featured
+      let pool = allReviews;
+      if (featuredOnly) {
+        const feat = allReviews.filter((r) => r.featured === true);
+        if (feat.length > 0) pool = feat;
+      }
+
+      // Sort by displayOrder asc
+      return [...pool]
+        .sort((a, b) => (a.displayOrder ?? 10) - (b.displayOrder ?? 10))
+        .slice(0, count);
     })(),
   };
 

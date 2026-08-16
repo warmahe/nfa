@@ -114,14 +114,14 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ pkg }) => {
               onClick={handleEnquireClick}
               className="bg-[#F4BF4B] text-[#121212] px-6 py-4 md:px-8 md:py-5 font-black text-[11px] uppercase tracking-[0.25em] flex items-center gap-2.5 hover:bg-white transition-all shadow-[6px_6px_0px_0px_rgba(244,191,75,0.4)] active:translate-x-1 active:translate-y-1 active:shadow-none border-2 border-[#121212] group cursor-pointer"
             >
-              Enquire Now <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+              ENQUIRE NOW <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
             </button>
 
             <button
               onClick={scrollToDownload}
-              className="bg-white/10 backdrop-blur-md text-white border-2 border-white/30 px-6 py-4 md:px-8 md:py-5 font-black text-[11px] uppercase tracking-[0.25em] flex items-center gap-2.5 hover:bg-white hover:text-[#121212] hover:border-white transition-all active:scale-95"
+              className="bg-white/10 backdrop-blur-md text-white border-2 border-white/30 px-6 py-4 md:px-8 md:py-5 font-black text-[11px] uppercase tracking-[0.25em] flex items-center gap-2.5 hover:bg-white hover:text-[#121212] hover:border-white transition-all active:scale-95 cursor-pointer"
             >
-              <Download size={16} /> Download Itinerary
+              <Download size={16} /> DOWNLOAD ITINERARY
             </button>
           </div>
         </div>

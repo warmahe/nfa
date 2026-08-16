@@ -3,6 +3,8 @@ import { useSearchParams } from 'react-router-dom';
 import { MapPin, Mail, Phone, Compass, ShieldCheck } from 'lucide-react';
 import { EnquiryForm } from '../../components/enquiry/EnquiryForm';
 import { EnquiryTarget } from '../../context/EnquiryContext';
+import { SeoHead } from '../../components/shared/SeoHead';
+import { resolveStaticPageSEO } from '../../utils/seo';
 
 export const Contact = () => {
   const [searchParams] = useSearchParams();
@@ -21,6 +23,7 @@ export const Contact = () => {
 
   return (
     <div className="min-h-screen bg-[#FCFBF7] pt-24 md:pt-32 pb-24 px-[clamp(1rem,4vw,3rem)] nfa-texture">
+      <SeoHead metadata={resolveStaticPageSEO('contact')} />
       <div className="max-w-[1280px] mx-auto">
         
         {/* Header */}

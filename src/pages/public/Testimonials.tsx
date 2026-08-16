@@ -4,6 +4,8 @@ import { collection, getDocs, query, orderBy, where } from 'firebase/firestore';
 import { db } from '../../services/firebaseService';
 import { Review } from '../../types/database';
 import { motion } from 'motion/react';
+import { SeoHead } from '../../components/shared/SeoHead';
+import { resolveStaticPageSEO } from '../../utils/seo';
 
 const RATING_STATS = [
   { stars: 5, pct: 74 },
@@ -49,6 +51,7 @@ export const Testimonials = () => {
 
   return (
     <div className="min-h-screen bg-[#FCFBF7] pt-24 md:pt-32 pb-24 px-[clamp(1rem,4vw,3rem)] nfa-texture selection:bg-nfa-gold">
+      <SeoHead metadata={resolveStaticPageSEO('testimonials')} />
       <div className="max-w-[1440px] mx-auto">
 
         {/* ── HEADER ── */}

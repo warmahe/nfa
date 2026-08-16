@@ -14,6 +14,18 @@ export const ENQUIRY_STATUS_LABELS: Record<string, string> = {
   CLOSED: 'Closed',
 };
 
+// ENQUIRY STATUS EXPLANATIONS (CUSTOMER-SAFE)
+export const ENQUIRY_STATUS_EXPLANATIONS: Record<string, string> = {
+  NEW: "We've received your travel request and our team is reviewing your ideas.",
+  CONTACTED: "Our travel team has contacted you to explore your travel plans.",
+  IN_DISCUSSION: "We're actively discussing and refining your travel plans with you.",
+  CUSTOMIZATION: "Your journey is being tailored around your specific dates and preferences.",
+  PROPOSAL_SENT: "Your custom travel proposal and recommended stays have been prepared.",
+  READY_TO_BOOK: "Your bespoke journey is ready to be confirmed at your pace.",
+  CONVERTED: "Your travel request is now an official confirmed booking.",
+  CLOSED: "This travel request has been completed or closed.",
+};
+
 // BOOKING STATUS
 export const BOOKING_STATUS_LABELS: Record<string, string> = {
   DRAFT: 'Draft',

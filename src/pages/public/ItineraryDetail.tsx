@@ -3,7 +3,7 @@ import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { Save, Eye, X, Check, ArrowRight, RefreshCw, Compass } from 'lucide-react';
 import { updateDocument, db } from '../../services/firebaseService';
 import { doc, query, collection, where, onSnapshot } from 'firebase/firestore';
-import { Package } from '../../types/database';
+import { Package, CustomerStory } from '../../types/database';
 import { normalizeItinerary } from '../../utils/itineraryNormalizer';
 
 // Section components (strict order per spec)
@@ -19,9 +19,15 @@ import { PricingDates } from '../../components/itinerary/sections/PricingDates';
 import { ReviewsSection } from '../../components/itinerary/sections/ReviewsSection';
 import { FAQSection } from '../../components/itinerary/sections/FAQSection';
 import { RelatedTrips } from '../../components/itinerary/sections/RelatedTrips';
+import { RelatedJourneys } from '../../components/discovery/RelatedJourneys';
+import { RelatedStories } from '../../components/discovery/RelatedStories';
 import { JoiningPointsDisplay } from '../../components/itinerary/JoiningPointsDisplay';
 import { HotelGallery } from '../../components/itinerary/HotelGallery';
 import { StickyPriceCard } from '../../components/itinerary/StickyPriceCard';
+import { PracticalInfoSection } from '../../components/itinerary/sections/PracticalInfoSection';
+import { WhatHappensNext } from '../../components/itinerary/sections/WhatHappensNext';
+import { SeoHead } from '../../components/shared/SeoHead';
+import { resolvePackageSEO, resolveStaticPageSEO } from '../../utils/seo';
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -44,6 +50,23 @@ export const ItineraryDetail = () => {
     hotelName?: string;
     location?: string;
   }>({ isOpen: false, images: [], initialIndex: 0 });
+
+  // E48 Public Discovery datasets
+  const [allPackages, setAllPackages] = useState<Package[]>([]);
+  const [allStories, setAllStories] = useState<CustomerStory[]>([]);
+
+  useEffect(() => {
+    const unsubPkgs = onSnapshot(collection(db, 'packages'), (snap) => {
+      setAllPackages(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Package)));
+    });
+    const unsubStories = onSnapshot(collection(db, 'customerStories'), (snap) => {
+      setAllStories(snap.docs.map((d) => ({ id: d.id, ...d.data() } as CustomerStory)));
+    });
+    return () => {
+      unsubPkgs();
+      unsubStories();
+    };
+  }, []);
 
   const handleOpenHotelGallery = (images: string[], initialIndex = 0, hotelName?: string, location?: string) => {
     setHotelGalleryState({
@@ -192,6 +215,7 @@ export const ItineraryDetail = () => {
   if (notFound || !pkg) {
     return (
       <div className="min-h-screen bg-[#FCFBF7] flex flex-col items-center justify-center gap-6 px-6 text-center">
+        <SeoHead metadata={resolveStaticPageSEO('notFound')} />
         <div className="max-w-md bg-white border-4 border-[#121212] p-8 shadow-[8px_8px_0px_0px_#F4BF4B]">
           <h2 className="font-brand font-black text-3xl uppercase tracking-tight text-[#9E1B1D] mb-3">
             Itinerary Not Found
@@ -213,6 +237,8 @@ export const ItineraryDetail = () => {
   // ─── Page render ──────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#FCFBF7] nfa-texture selection:bg-nfa-gold">
+      {/* Dynamic SEO Meta Tags, Social Previews & Structured JSON-LD */}
+      <SeoHead metadata={resolvePackageSEO(pkg)} />
 
       {/* ── ADMIN LIVE EDITOR TOOLBAR ── */}
       {isEditing && (
@@ -261,6 +287,9 @@ export const ItineraryDetail = () => {
           <div className="lg:col-span-8 min-w-0 space-y-12">
             <AboutTrip pkg={pkg} />
 
+            {/* Travel Information & Decision Support */}
+            <PracticalInfoSection pkg={pkg} />
+
             {/* Highlights Section */}
             <HighlightsSection pkg={pkg} />
 
@@ -294,11 +323,25 @@ export const ItineraryDetail = () => {
       {/* ── 10. REVIEWS ── */}
       <ReviewsSection pkg={pkg} />
 
-      {/* ── 11. FAQs ── */}
+      {/* ── 11. WHAT HAPPENS AFTER YOU ENQUIRE (Trust & Decision Support) ── */}
+      <WhatHappensNext pkg={pkg} />
+
+      {/* ── 12. FAQs ── */}
       <FAQSection pkg={pkg} />
 
-      {/* ── 12. RELATED TRIPS ── */}
-      <RelatedTrips pkg={pkg} />
+      {/* ── 13. MORE JOURNEYS TO EXPLORE (E48 Discovery) ── */}
+      <RelatedJourneys currentJourney={pkg} allJourneys={allPackages} limit={3} />
+
+      {/* ── 13.5 RELATED TRAVELLER STORIES (E48 Discovery) ── */}
+      <RelatedStories
+        context={{
+          journeyId: pkg.id,
+          journeySlug: pkg.slug,
+          destination: pkg.destinations?.[0] || pkg.destination,
+        }}
+        allStories={allStories}
+        limit={3}
+      />
 
       {/* ── HOTEL GALLERY LIGHTBOX MODAL (B5) ── */}
       <HotelGallery

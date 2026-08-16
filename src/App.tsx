@@ -16,6 +16,9 @@ import { ItineraryDetail } from "./pages/public/ItineraryDetail";
 import { FAQ } from "./pages/public/FAQ";
 import { Reviews } from "./pages/public/Reviews";
 import { Testimonials } from "./pages/public/Testimonials";
+import { Explore } from "./pages/public/Explore";
+import { Shortlist } from "./pages/public/Shortlist";
+import { CompareJourneys } from "./pages/public/CompareJourneys";
 import { Privacy } from "./pages/public/Privacy";
 import { Terms } from "./pages/public/Terms";
 import { Login } from "./pages/system/Login";
@@ -38,6 +41,7 @@ export default function App() {
             {/* Main Public Flow */}
             <Route index element={<Home />} />
             <Route path="about" element={<About />} />
+            <Route path="explore" element={<Explore />} />
             <Route path="packages" element={<Packages />} />
             <Route path="destinations" element={<Destinations />} />
             <Route path="destinations/:slug" element={<DestinationDetail />} />
@@ -55,6 +59,8 @@ export default function App() {
             <Route path="faq" element={<FAQ />} />
             <Route path="reviews" element={<Reviews />} />
             <Route path="testimonials" element={<Testimonials />} />
+            <Route path="shortlist" element={<Shortlist />} />
+            <Route path="compare" element={<CompareJourneys />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="wishlist" element={<Wishlist />} />
 

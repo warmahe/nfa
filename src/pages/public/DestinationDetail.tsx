@@ -2,11 +2,16 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../services/firebaseService';
-import { Destination } from '../../types/database';
+import { Destination, Review, CustomerStory, Package } from '../../types/database';
 import { useDestinations } from '../../hooks/useDestinations';
 import { PackageJourneyCard } from '../../components/packages/PackageJourneyCard';
+import { TravellerReviewCard } from '../../components/reviews/TravellerReviewCard';
+import { RelatedDestinations } from '../../components/discovery/RelatedDestinations';
+import { RelatedStories } from '../../components/discovery/RelatedStories';
 import { useEnquiry } from '../../context/EnquiryContext';
-import { MapPin, Compass, Sparkles, Sun, ArrowRight, Loader2, BedDouble } from 'lucide-react';
+import { MapPin, Compass, Sparkles, Sun, ArrowRight, Loader2, BedDouble, CloudRain, Thermometer, Globe, Clock, Coins, ShieldAlert, ShieldCheck, BookOpen } from 'lucide-react';
+import { SeoHead } from '../../components/shared/SeoHead';
+import { resolveDestinationSEO, resolveStaticPageSEO } from '../../utils/seo';
 
 export const DestinationDetail = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -43,6 +48,46 @@ export const DestinationDetail = () => {
 
     return () => unsub();
   }, [slug]);
+
+  // Realtime global reviews dataset for this destination
+  const [destinationReviews, setDestinationReviews] = useState<Review[]>([]);
+  const [allDestinations, setAllDestinations] = useState<Destination[]>([]);
+  const [allStories, setAllStories] = useState<CustomerStory[]>([]);
+
+  useEffect(() => {
+    const unsubAllDests = onSnapshot(collection(db, 'destinations'), (snap) => {
+      setAllDestinations(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Destination)));
+    });
+    const unsubAllStories = onSnapshot(collection(db, 'customerStories'), (snap) => {
+      setAllStories(snap.docs.map((d) => ({ id: d.id, ...d.data() } as CustomerStory)));
+    });
+    return () => {
+      unsubAllDests();
+      unsubAllStories();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!destination) return;
+    const unsub = onSnapshot(
+      collection(db, 'global_reviews'),
+      (snapshot) => {
+        const all = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Review));
+        const destName = destination.name.toLowerCase();
+        const destSlug = (destination.slug || '').toLowerCase();
+        const matching = all.filter((r) => {
+          if (r.approved === false || r.status === 'ARCHIVED') return false;
+          if (!r.content && !(r as any).testimonial) return false;
+          const rDest = (r.destination || '').toLowerCase();
+          const rDestSlug = (r.destinationSlug || '').toLowerCase();
+          return rDest === destName || rDestSlug === destSlug || rDest.includes(destName);
+        });
+        setDestinationReviews(matching);
+      },
+      (err) => console.error('Error fetching destination reviews:', err)
+    );
+    return () => unsub();
+  }, [destination]);
 
   // Match packages that include this destination in destinations[] or itineraryCities[]
   const relatedPackages = useMemo(() => {
@@ -81,6 +126,7 @@ export const DestinationDetail = () => {
   if (!destination) {
     return (
       <div className="min-h-screen bg-[#FCFBF7] flex flex-col items-center justify-center py-32 px-6 text-center">
+        <SeoHead metadata={resolveStaticPageSEO('notFound')} />
         <div className="max-w-md p-12 border-4 border-dashed border-[#121212]/20 bg-white rounded-2xl shadow-[8px_8px_0px_0px_#121212] space-y-4">
           <Compass size={40} className="mx-auto text-[#9E1B1D]" />
           <h2 className="font-brand font-black text-2xl uppercase tracking-tight text-[#121212]">
@@ -105,6 +151,8 @@ export const DestinationDetail = () => {
 
   return (
     <div className="min-h-screen bg-[#FCFBF7] pb-24 text-left nfa-texture">
+      {/* Dynamic SEO Meta Tags, Social Previews & Structured JSON-LD */}
+      <SeoHead metadata={resolveDestinationSEO(destination)} />
 
       {/* ── 1. HERO BANNER ── */}
       <div className="relative w-full min-h-[60vh] md:min-h-[75vh] bg-[#121212] flex items-end justify-start overflow-hidden">
@@ -178,9 +226,9 @@ export const DestinationDetail = () => {
           </div>
 
           {/* Logistics Quick Facts Sidebar */}
-          <div className="bg-white border-4 border-[#121212] p-6 rounded-2xl shadow-[6px_6px_0px_0px_#121212] space-y-6">
-            <h3 className="font-brand font-black text-lg uppercase tracking-wider text-[#121212] border-b-2 border-[#121212]/10 pb-3">
-              Essential Travel Logistics
+          <div className="bg-white border-4 border-[#121212] p-6 rounded-2xl shadow-[6px_6px_0px_0px_#121212] space-y-5">
+            <h3 className="font-brand font-black text-lg uppercase tracking-wider text-[#121212] border-b-2 border-[#121212]/10 pb-3 flex items-center gap-2">
+              <Compass size={18} className="text-[#9E1B1D]" /> Essential Travel Logistics
             </h3>
 
             {destination.bestTimeToVisit && (
@@ -222,24 +270,50 @@ export const DestinationDetail = () => {
             {destination.languageSpoken && destination.languageSpoken.length > 0 && (
               <div>
                 <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 block mb-1">
-                  Languages
+                  Languages Spoken
                 </span>
                 <span className="text-xs font-bold text-slate-900">{destination.languageSpoken.join(', ')}</span>
               </div>
             )}
 
+            {/* Climate summary (Rainfall & Temperature) */}
+            {(destination.averageTemperature || (typeof destination.rainfall === 'number' && destination.rainfall > 0)) && (
+              <div className="pt-2 border-t border-slate-100 space-y-2">
+                <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 block">
+                  Climate & Weather
+                </span>
+                <div className="grid grid-cols-2 gap-2">
+                  {destination.averageTemperature && (
+                    <div className="p-2.5 bg-[#FCFBF7] border border-slate-200 text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <Thermometer size={14} className="text-[#9E1B1D]" />
+                      <span>{destination.averageTemperature.min}°C – {destination.averageTemperature.max}°C</span>
+                    </div>
+                  )}
+                  {typeof destination.rainfall === 'number' && destination.rainfall > 0 && (
+                    <div className="p-2.5 bg-[#FCFBF7] border border-slate-200 text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <CloudRain size={14} className="text-blue-600" />
+                      <span>{destination.rainfall} mm/yr</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {destination.visaRequirements && (
-              <div>
+              <div className="pt-2 border-t border-slate-100">
                 <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 block mb-1">
-                  Visa & Travel Info
+                  Visa & Entry Guidelines
                 </span>
                 <p className="text-xs font-medium text-slate-700 leading-relaxed">{destination.visaRequirements}</p>
+                <span className="text-[8px] font-medium text-slate-400 italic block mt-1">
+                  * Entry requirements may vary by nationality. Our travel team will advise for your passport.
+                </span>
               </div>
             )}
 
             <button
-              onClick={() => openEnquiry({ destination: destination.name, source: 'DIRECT' })}
-              className="w-full bg-[#121212] text-[#F4BF4B] py-3.5 px-4 border-2 border-[#121212] font-black text-[10px] uppercase tracking-[0.25em] flex justify-center items-center gap-2 hover:bg-[#9E1B1D] hover:text-white hover:border-[#9E1B1D] transition-all shadow-[4px_4px_0px_0px_#F4BF4B]"
+              onClick={() => openEnquiry({ destination: destination.name, destinationSlug: destination.slug, source: 'DESTINATION', entryPoint: 'STICKY_CARD' })}
+              className="w-full bg-[#121212] text-[#F4BF4B] py-3.5 px-4 border-2 border-[#121212] font-black text-[10px] uppercase tracking-[0.25em] flex justify-center items-center gap-2 hover:bg-[#9E1B1D] hover:text-white hover:border-[#9E1B1D] transition-all shadow-[4px_4px_0px_0px_#F4BF4B] cursor-pointer mt-4"
             >
               PLAN YOUR JOURNEY <ArrowRight size={14} />
             </button>
@@ -338,10 +412,10 @@ export const DestinationDetail = () => {
                 No active journeys currently listed for {destination.name}. Contact us to design a custom expedition.
               </p>
               <button
-                onClick={() => openEnquiry({ destination: destination.name, source: 'DIRECT' })}
-                className="mt-4 bg-[#121212] text-[#F4BF4B] px-6 py-2.5 font-black text-[10px] uppercase tracking-widest hover:bg-[#9E1B1D] transition-colors"
+                onClick={() => openEnquiry({ destination: destination.name, destinationSlug: destination.slug, source: 'DESTINATION', entryPoint: 'SECTION_CTA' })}
+                className="mt-4 bg-[#121212] text-[#F4BF4B] px-6 py-2.5 font-black text-[10px] uppercase tracking-widest hover:bg-[#9E1B1D] transition-colors cursor-pointer"
               >
-                Plan Custom Expedition
+                PLAN CUSTOM EXPEDITION
               </button>
             </div>
           ) : (
@@ -352,6 +426,83 @@ export const DestinationDetail = () => {
             </div>
           )}
         </div>
+
+        {/* ── 5.5 TRAVELLER EXPERIENCES & SOCIAL PROOF (E47) ── */}
+        {destinationReviews.length > 0 && (
+          <div className="space-y-8 pt-8 border-t-4 border-[#121212]">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
+              <div>
+                <span className="flex items-center gap-2 font-black text-[10px] uppercase tracking-[0.3em] text-[#9E1B1D] mb-1">
+                  <ShieldCheck size={14} /> Verified Reflections
+                </span>
+                <h2 className="font-brand font-black text-3xl uppercase tracking-tighter text-[#121212]">
+                  TRAVELLER EXPERIENCES IN {destination.name.toUpperCase()}
+                </h2>
+              </div>
+              <Link
+                to={`/reviews?destination=${encodeURIComponent(destination.name)}`}
+                className="text-xs font-bold uppercase tracking-widest text-[#9E1B1D] hover:underline flex items-center gap-1"
+              >
+                Read All Reviews ({destinationReviews.length}) →
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+              {destinationReviews.slice(0, 3).map((review) => (
+                <TravellerReviewCard key={review.id} review={review} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── 5.6 RELATED CUSTOMER STORIES (E48 Discovery) ── */}
+        <RelatedStories
+          context={{
+            destination: destination.name,
+            destinationSlug: destination.slug,
+          }}
+          allStories={allStories}
+          title={`STORIES FROM ${destination.name.toUpperCase()}`}
+          limit={3}
+        />
+
+        {/* ── 5.7 EXPLORE MORE DESTINATIONS (E48 Discovery) ── */}
+        <RelatedDestinations
+          currentDestination={destination}
+          allDestinations={allDestinations}
+          allJourneys={packages}
+          limit={3}
+        />
+
+        {/* ── 6. DESTINATION PLANNING CTA BLOCK ── */}
+        <section className="bg-[#121212] text-white p-8 md:p-12 border-4 border-[#121212] rounded-2xl shadow-[10px_10px_0px_0px_#F4BF4B] space-y-6 text-center">
+          <Compass size={40} className="mx-auto text-[#F4BF4B]" />
+          <div className="space-y-2 max-w-xl mx-auto">
+            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-[#F4BF4B]">
+              Bespoke Journey Planning
+            </span>
+            <h3 className="font-brand font-black text-3xl md:text-4xl uppercase text-white tracking-tight">
+              PLAN YOUR {destination.name.toUpperCase()} JOURNEY
+            </h3>
+            <p className="font-serif italic text-base text-slate-300">
+              Ready to explore {destination.name}? Talk to our travel team to shape a private, custom expedition around you.
+            </p>
+          </div>
+
+          <button
+            onClick={() =>
+              openEnquiry({
+                destination: destination.name,
+                destinationSlug: destination.slug,
+                source: 'DESTINATION',
+                entryPoint: 'SECTION_CTA',
+              })
+            }
+            className="inline-flex items-center gap-3 bg-[#F4BF4B] text-[#121212] px-8 py-4 border-2 border-[#121212] font-black text-xs uppercase tracking-[0.2em] hover:bg-[#9E1B1D] hover:text-white transition-colors shadow-[4px_4px_0px_0px_#FCFBF7] cursor-pointer"
+          >
+            PLAN YOUR JOURNEY <ArrowRight size={16} />
+          </button>
+        </section>
       </div>
     </div>
   );

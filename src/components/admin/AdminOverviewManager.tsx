@@ -3,7 +3,8 @@ import {
   LayoutTemplate, AlertCircle, Clock, Calendar, CheckCircle2,
   Users, ChevronRight, ArrowUpRight, Plus, MapPin, Package,
   BookOpen, Sparkles, AlertTriangle, ShieldCheck, Check, Filter,
-  ArrowRight, PhoneCall, FileText, Compass, ExternalLink, RefreshCw
+  ArrowRight, PhoneCall, FileText, Compass, ExternalLink, RefreshCw,
+  GitPullRequest, Star, Heart
 } from 'lucide-react';
 import {
   Booking, EnquiryDocument, CustomerDocument, Package as TravelPackage,
@@ -144,6 +145,33 @@ export const AdminOverviewManager: React.FC<AdminOverviewManagerProps> = ({
     const activeLeadsCount = enquiries.filter((e) => e.status !== 'CONVERTED' && e.status !== 'CLOSED').length;
     const confirmedBookingsCount = bookings.filter((b) => b.bookingStatus === 'CONFIRMED').length;
 
+    const returningTravellersCount = customers.filter((c) => {
+      const cId = c.customerId || c.id;
+      const cEmail = c.email?.toLowerCase();
+      return bookings.some((b) => {
+        const isCompleted =
+          b.status === 'COMPLETED' ||
+          b.bookingStatus === 'COMPLETED' ||
+          b.bookingStatus === 'completed' ||
+          b.operationalStatus === 'TRIP_COMPLETED';
+        if (!isCompleted) return false;
+        if (
+          b.customerId &&
+          (b.customerId === cId ||
+            b.customerId === c.userId ||
+            b.customerId === c.customerReference)
+        )
+          return true;
+        if (b.userId && c.userId && b.userId === c.userId) return true;
+        if (cEmail && b.primaryTraveler?.email?.toLowerCase() === cEmail) return true;
+        return false;
+      });
+    }).length;
+
+    const feedbackToReviewCount = bookings.filter(
+      (b) => !!b.feedback?.submitted && (b.feedback.status === 'SUBMITTED' || !b.feedback.status)
+    ).length;
+
     return {
       newEnquiriesCount,
       followUpsDueCount,
@@ -151,8 +179,10 @@ export const AdminOverviewManager: React.FC<AdminOverviewManagerProps> = ({
       tripsToPrepareCount,
       activeLeadsCount,
       confirmedBookingsCount,
+      returningTravellersCount,
+      feedbackToReviewCount,
     };
-  }, [enquiries, bookings, tripDateRange]);
+  }, [enquiries, bookings, customers, tripDateRange]);
 
   // ── 2. NEEDS ATTENTION URGENT PRIORITY STREAM ──
   const attentionItems = useMemo(() => {
@@ -343,7 +373,7 @@ export const AdminOverviewManager: React.FC<AdminOverviewManagerProps> = ({
       </div>
 
       {/* ── 1. TODAY'S OVERVIEW KPI CARDS ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
         <button
           onClick={() => onNavigateTab('BOOKINGS', { filter: 'NEW' })}
           className="p-4 bg-white border border-slate-200/80 rounded-xl hover:border-slate-400 transition-all text-left group cursor-pointer shadow-xs"
@@ -357,7 +387,7 @@ export const AdminOverviewManager: React.FC<AdminOverviewManagerProps> = ({
         </button>
 
         <button
-          onClick={() => onNavigateTab('BOOKINGS', { filter: 'FOLLOWUP' })}
+          onClick={() => onNavigateTab('COMMUNICATIONS', { filter: 'DUE_TODAY' })}
           className="p-4 bg-white border border-slate-200/80 rounded-xl hover:border-slate-400 transition-all text-left group cursor-pointer shadow-xs"
         >
           <div className="flex items-center justify-between">
@@ -381,7 +411,7 @@ export const AdminOverviewManager: React.FC<AdminOverviewManagerProps> = ({
         </button>
 
         <button
-          onClick={() => onNavigateTab('BOOKINGS', { filter: 'PREPARATION' })}
+          onClick={() => onNavigateTab('TRIP_PREPARATION', { tripPrepFilter: 'TRIPS_TO_PREPARE' })}
           className="p-4 bg-white border border-slate-200/80 rounded-xl hover:border-slate-400 transition-all text-left group cursor-pointer shadow-xs"
         >
           <div className="flex items-center justify-between">
@@ -414,6 +444,30 @@ export const AdminOverviewManager: React.FC<AdminOverviewManagerProps> = ({
           </div>
           <p className="font-black text-2xl text-emerald-800 mt-1">{kpiData.confirmedBookingsCount}</p>
           <p className="text-[10px] font-semibold text-slate-500 mt-0.5">Booked trips</p>
+        </button>
+
+        <button
+          onClick={() => onNavigateTab('CUSTOMERS', { customerFilter: 'RETURNING_TRAVELLERS' })}
+          className="p-4 bg-white border border-slate-200/80 rounded-xl hover:border-slate-400 transition-all text-left group cursor-pointer shadow-xs"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-purple-700">Returning</span>
+            <Heart size={16} className="text-purple-600 group-hover:scale-110 transition-transform" />
+          </div>
+          <p className="font-black text-2xl text-purple-900 mt-1">{kpiData.returningTravellersCount}</p>
+          <p className="text-[10px] font-semibold text-slate-500 mt-0.5">Completed &ge; 1 trip</p>
+        </button>
+
+        <button
+          onClick={() => onNavigateTab('FEEDBACK', { feedbackFilter: 'AWAITING_REVIEW' })}
+          className="p-4 bg-white border border-slate-200/80 rounded-xl hover:border-slate-400 transition-all text-left group cursor-pointer shadow-xs"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800">Feedback Review</span>
+            <Star size={16} className="text-amber-500 group-hover:scale-110 transition-transform" />
+          </div>
+          <p className="font-black text-2xl text-amber-900 mt-1">{kpiData.feedbackToReviewCount}</p>
+          <p className="text-[10px] font-semibold text-slate-500 mt-0.5">Awaiting review</p>
         </button>
       </div>
 
@@ -489,8 +543,16 @@ export const AdminOverviewManager: React.FC<AdminOverviewManagerProps> = ({
             </h3>
             <p className="text-xs text-slate-500 font-medium">Realtime breakdown of active traveller enquiries by stage.</p>
           </div>
-          <div className="text-xs font-bold text-slate-600">
-            Conversion Rate: <span className="font-black text-emerald-700">{pipelineMetrics.conversionRate}</span>
+          <div className="flex items-center gap-3">
+            <div className="text-xs font-bold text-slate-600">
+              Conversion Rate: <span className="font-black text-emerald-700">{pipelineMetrics.conversionRate}</span>
+            </div>
+            <button
+              onClick={() => onNavigateTab('WORKFLOW')}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#121212] text-[#F4BF4B] rounded-lg font-black text-xs uppercase tracking-wider hover:bg-[#9E1B1D] hover:text-white transition-colors cursor-pointer"
+            >
+              <GitPullRequest size={13} /> View Workflow
+            </button>
           </div>
         </div>
 

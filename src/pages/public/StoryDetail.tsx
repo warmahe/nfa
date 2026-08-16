@@ -16,11 +16,17 @@ import {
   ExternalLink,
   Camera
 } from 'lucide-react';
-import { subscribeToCustomerStoryBySlug } from '../../services/firebaseService';
-import { CustomerStory } from '../../types/database';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { subscribeToCustomerStoryBySlug, db } from '../../services/firebaseService';
+import { CustomerStory, Package, Review } from '../../types/database';
 import { getPublicCustomerDisplayName } from '../../components/stories/CustomerStoryCard';
+import { RelatedStories } from '../../components/discovery/RelatedStories';
+import { RelatedJourneys } from '../../components/discovery/RelatedJourneys';
+import { RelatedReviews } from '../../components/discovery/RelatedReviews';
 import { useEnquiry } from '../../context/EnquiryContext';
 import { HotelGallery } from '../../components/itinerary/HotelGallery';
+import { SeoHead } from '../../components/shared/SeoHead';
+import { resolveCustomerStorySEO, resolveStaticPageSEO } from '../../utils/seo';
 
 export const StoryDetail = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -29,6 +35,32 @@ export const StoryDetail = () => {
 
   const [story, setStory] = useState<CustomerStory | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // E48 Public Discovery datasets
+  const [allStories, setAllStories] = useState<CustomerStory[]>([]);
+  const [allPackages, setAllPackages] = useState<Package[]>([]);
+  const [allReviews, setAllReviews] = useState<Review[]>([]);
+
+  useEffect(() => {
+    const unsubStories = onSnapshot(collection(db, 'customerStories'), (snap) => {
+      setAllStories(snap.docs.map((d) => ({ id: d.id, ...d.data() } as CustomerStory)));
+    });
+    const unsubPkgs = onSnapshot(collection(db, 'packages'), (snap) => {
+      setAllPackages(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Package)));
+    });
+    const unsubRevs = onSnapshot(collection(db, 'global_reviews'), (snap) => {
+      setAllReviews(
+        snap.docs
+          .map((d) => ({ id: d.id, ...d.data() } as Review))
+          .filter((r) => r.approved !== false && r.status !== 'ARCHIVED')
+      );
+    });
+    return () => {
+      unsubStories();
+      unsubPkgs();
+      unsubRevs();
+    };
+  }, []);
 
   // Gallery Lightbox State
   const [lightboxState, setLightboxState] = useState<{
@@ -103,6 +135,7 @@ export const StoryDetail = () => {
   if (!story || story.status === 'DRAFT') {
     return (
       <div className="min-h-screen bg-[#FCFBF7] pt-40 text-center flex flex-col items-center justify-center gap-6 text-[#121212] px-6 nfa-texture">
+        <SeoHead metadata={resolveStaticPageSEO('notFound')} />
         <div className="p-8 border-4 border-[#121212] bg-white shadow-[8px_8px_0px_0px_#121212] max-w-md w-full space-y-4">
           <FileText size={48} className="mx-auto text-slate-300" />
           <h1 className="font-brand font-black text-3xl uppercase">Story Unavailable</h1>
@@ -122,6 +155,9 @@ export const StoryDetail = () => {
 
   return (
     <article className="min-h-screen bg-[#FCFBF7] text-[#121212] selection:bg-[#F4BF4B] selection:text-[#121212] nfa-texture pb-24">
+      {/* Dynamic SEO Meta, Social Previews & Article JSON-LD */}
+      <SeoHead metadata={resolveCustomerStorySEO(story)} />
+
       {/* ── 1. TOP READING PROGRESS BAR ── */}
       <motion.div
         className="fixed top-20 left-0 right-0 h-1.5 bg-[#9E1B1D] origin-left z-[60]"
@@ -348,6 +384,46 @@ export const StoryDetail = () => {
           </div>
         )}
 
+        {/* ── 7.5 MORE TRAVELLER STORIES (E48 Discovery) ── */}
+        <RelatedStories
+          context={{
+            currentStoryId: story.id,
+            currentStorySlug: story.slug,
+            journeyId: story.itineraryId,
+            journeySlug: story.itinerarySlug,
+            destination: story.destination,
+            destinationSlug: story.destinationSlug,
+          }}
+          allStories={allStories}
+          limit={3}
+        />
+
+        {/* ── 7.6 RELATED JOURNEYS TO EXPLORE (E48 Discovery) ── */}
+        <RelatedJourneys
+          currentJourney={
+            story.itineraryId
+              ? allPackages.find((p) => p.id === story.itineraryId || p.slug === story.itinerarySlug)
+              : null
+          }
+          allJourneys={allPackages}
+          title="EXPEDITIONS YOU MAY EXPLORE"
+          subtitle="INSPIRED BY THIS JOURNEY"
+          limit={3}
+        />
+
+        {/* ── 7.7 RELATED TRAVELLER REVIEWS (E48 Discovery) ── */}
+        <RelatedReviews
+          context={{
+            journeyId: story.itineraryId,
+            journeySlug: story.itinerarySlug,
+            destination: story.destination,
+            destinationSlug: story.destinationSlug,
+          }}
+          allReviews={allReviews}
+          title="WHAT TRAVELLERS SAY"
+          limit={3}
+        />
+
         {/* ── 8. ENQUIRY CTA BLOCK (B7 Flow Integration) ── */}
         <section className="bg-[#121212] text-white p-8 md:p-12 border-4 border-[#121212] rounded-2xl shadow-[10px_10px_0px_0px_#F4BF4B] space-y-6 text-center">
           <Sparkles size={40} className="mx-auto text-[#F4BF4B]" />
@@ -363,16 +439,21 @@ export const StoryDetail = () => {
           <button
             onClick={() =>
               openEnquiryModal({
-                source: 'STORY' as any,
+                source: 'CUSTOMER_STORY',
                 entryPoint: 'STORY_DETAIL_CTA',
                 itineraryId: story.itineraryId,
-                itineraryTitle: story.itineraryTitle || story.title,
+                itinerarySlug: story.itinerarySlug,
+                itineraryTitle: story.itineraryTitle,
+                storyTitle: story.title,
+                storyId: story.id,
+                storySlug: story.slug,
                 destination: story.destination,
+                destinationSlug: story.destinationSlug,
               })
             }
             className="inline-flex items-center gap-3 bg-[#F4BF4B] text-[#121212] px-8 py-4 border-2 border-[#121212] font-black text-xs uppercase tracking-[0.2em] hover:bg-[#9E1B1D] hover:text-white transition-colors shadow-[4px_4px_0px_0px_#FCFBF7] cursor-pointer"
           >
-            ENQUIRE NOW <ArrowRight size={16} />
+            PLAN YOUR OWN JOURNEY <ArrowRight size={16} />
           </button>
         </section>
       </main>

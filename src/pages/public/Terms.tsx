@@ -1,12 +1,14 @@
-import React from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { SeoHead } from '../../components/shared/SeoHead';
+import { resolveStaticPageSEO } from '../../utils/seo';
 
 export const Terms = () => {
   const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-[#FCFBF7] pt-24 pb-24 px-[clamp(1rem,4vw,3rem)]">
+      <SeoHead metadata={resolveStaticPageSEO('terms')} />
       <div className="max-w-[800px] mx-auto">
         <button
           onClick={() => navigate('/')}

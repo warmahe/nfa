@@ -3,6 +3,8 @@ import { SlidersHorizontal, X, MapPin, Search, ChevronDown, Compass, Loader2, Sp
 import { motion, AnimatePresence } from "motion/react";
 import { useDestinationsData } from "../../hooks/useDestinationsData";
 import { OperationalCard } from "../../components/destinations/OperationalCard";
+import { SeoHead } from "../../components/shared/SeoHead";
+import { resolveStaticPageSEO } from "../../utils/seo";
 
 const REGIONS = ["ALL", "EUROPE", "ASIA", "NORDIC", "AFRICA", "SOUTH AMERICA", "AMERICAS"];
 
@@ -46,6 +48,7 @@ export const Destinations = () => {
 
   return (
     <div className="min-h-screen bg-[#FCFBF7] pt-2 pb-24 nfa-texture text-left">
+      <SeoHead metadata={resolveStaticPageSEO('destinations')} />
 
       {/* ── EDITORIAL HEADER ── */}
       <div className="max-w-[1440px] mx-auto px-6 mb-12 pt-8">

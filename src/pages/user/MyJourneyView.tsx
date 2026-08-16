@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -24,34 +24,66 @@ import {
   Clock3,
   ChevronDown,
   ChevronRight,
-  ExternalLink
+  ExternalLink,
+  Phone,
+  MessageSquare,
+  Building,
+  Check,
+  X,
+  Eye,
+  ShieldCheck,
+  Navigation,
+  HelpCircle,
+  BookOpen,
+  ArrowRight,
+  Globe,
+  Star,
 } from 'lucide-react';
 import { doc, onSnapshot, query, collection, where, getDocs } from 'firebase/firestore';
 import { useAuth, db } from '../../services/firebaseService';
-import { Booking, Package, ItineraryCity, ItineraryDay, BookingDocument } from '../../types/database';
+import { Booking, Package, ItineraryCity, ItineraryDay, BookingDocument, CustomerStory, Destination } from '../../types/database';
 import { normalizeItinerary } from '../../utils/itineraryNormalizer';
 import { HotelCard } from '../../components/itinerary/HotelCard';
 import { HotelGallery } from '../../components/itinerary/HotelGallery';
+import { PackageJourneyCard } from '../../components/packages/PackageJourneyCard';
+import { TravellerFeedbackModal } from '../../components/user/TravellerFeedbackModal';
+import { useEnquiry } from '../../context/EnquiryContext';
+import { SeoHead } from '../../components/shared/SeoHead';
+import { resolveStaticPageSEO } from '../../utils/seo';
 
-const BOOKING_STATUS_CONFIG: Record<string, { label: string; bg: string; text: string; icon: any }> = {
-  CONFIRMED: { label: 'CONFIRMED EXPEDITION', bg: 'bg-emerald-100 border-emerald-300', text: 'text-emerald-900', icon: CheckCircle2 },
-  COMPLETED: { label: 'COMPLETED EXPEDITION', bg: 'bg-emerald-100 border-emerald-300', text: 'text-emerald-900', icon: CheckCircle },
-  PENDING_CONFIRMATION: { label: 'PENDING CONFIRMATION', bg: 'bg-amber-100 border-amber-300', text: 'text-amber-900', icon: Clock3 },
-  DRAFT: { label: 'DRAFT EXPEDITION', bg: 'bg-slate-100 border-slate-300', text: 'text-slate-700', icon: Clock3 },
-  CANCELLED: { label: 'EXPEDITION CANCELLED', bg: 'bg-rose-100 border-rose-300', text: 'text-rose-900', icon: XCircle },
+const DOC_CATEGORY_LABELS: Record<string, string> = {
+  ITINERARY: 'Itinerary PDF',
+  TRAVEL_DOCUMENT: 'Travel Document',
+  HOTEL: 'Accommodation Voucher',
+  TRANSFER: 'Transfer Voucher',
+  ACTIVITY: 'Activity Ticket',
+  BOOKING_CONFIRMATION: 'Booking Confirmation',
+  TRAVEL_VOUCHER: 'Travel Voucher',
+  ADDITIONAL: 'Additional Document',
+  OTHER: 'General Travel Document',
 };
 
 export const MyJourneyView: React.FC = () => {
   const { bookingId } = useParams<{ bookingId: string }>();
   const { user, loading: authLoading } = useAuth();
+  const { openEnquiry } = useEnquiry();
   const navigate = useNavigate();
 
   const [booking, setBooking] = useState<Booking | null>(null);
   const [pkg, setPkg] = useState<Package | null>(null);
+  const [allPackages, setAllPackages] = useState<Package[]>([]);
+  const [allDestinations, setAllDestinations] = useState<Destination[]>([]);
+  const [relatedStory, setRelatedStory] = useState<CustomerStory | null>(null);
   const [loadingBooking, setLoadingBooking] = useState(true);
   const [loadingPkg, setLoadingPkg] = useState(true);
   const [unauthorized, setUnauthorized] = useState(false);
   const [notFound, setNotFound] = useState(false);
+
+  // Document Preview Modal State
+  const [previewDoc, setPreviewDoc] = useState<BookingDocument | { title: string; fileUrl: string; category?: string } | null>(null);
+
+  // Feedback Modal State (E46)
+  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
 
   // Hotel Gallery State
   const [hotelGalleryState, setHotelGalleryState] = useState<{
@@ -164,6 +196,88 @@ export const MyJourneyView: React.FC = () => {
     }
   }, [booking]);
 
+  // 3. Realtime Listener for Linked PUBLISHED Customer Story
+  useEffect(() => {
+    if (!booking) return;
+
+    const bRef = booking.bookingReference || booking.id;
+    const q = query(
+      collection(db, 'customerStories'),
+      where('status', '==', 'PUBLISHED')
+    );
+
+    const unsubStories = onSnapshot(q, (snapshot) => {
+      const publishedStories = snapshot.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      })) as CustomerStory[];
+
+      const matched = publishedStories.find(
+        (s) =>
+          s.bookingId === booking.id ||
+          s.bookingId === bRef ||
+          (s as any).bookingReference === bRef ||
+          (booking.customerId && s.customerId === booking.customerId)
+      );
+
+      setRelatedStory(matched || null);
+    });
+
+    return () => unsubStories();
+  }, [booking]);
+
+  // 4. Realtime Listener for Published Packages (Discovery for Completed Trips)
+  useEffect(() => {
+    const unsubPkgs = onSnapshot(collection(db, 'packages'), (snap) => {
+      const pkgs = snap.docs.map((d) => normalizeItinerary({ id: d.id, ...d.data() } as Package));
+      setAllPackages(pkgs);
+    });
+
+    const unsubDests = onSnapshot(collection(db, 'destinations'), (snap) => {
+      const dests = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Destination));
+      setAllDestinations(dests);
+    });
+
+    return () => {
+      unsubPkgs();
+      unsubDests();
+    };
+  }, []);
+
+  // Related Packages (Max 3 published packages, prioritizing same destination or style, excluding current)
+  const relatedPackages = useMemo(() => {
+    if (!allPackages.length) return [];
+    const currentPkgId = booking?.itineraryId || booking?.packageId;
+    const currentDest = booking?.destination?.toLowerCase() || '';
+    const currentStyle = (pkg?.travelStyle || booking?.travelPreferences?.accommodation || '').toLowerCase();
+
+    const candidates = allPackages.filter((p) => {
+      const isPublished = (p as any).published !== false && (p as any).status !== 'DRAFT';
+      if (!isPublished) return false;
+      if (p.id === currentPkgId || (booking?.itinerarySlug && p.slug === booking.itinerarySlug)) return false;
+      return true;
+    });
+
+    return candidates
+      .sort((a, b) => {
+        const aSameDest = a.destination?.toLowerCase().includes(currentDest) ? 1 : 0;
+        const bSameDest = b.destination?.toLowerCase().includes(currentDest) ? 1 : 0;
+        if (aSameDest !== bSameDest) return bSameDest - aSameDest;
+
+        const aSameStyle = a.travelStyle?.toLowerCase().includes(currentStyle) ? 1 : 0;
+        const bSameStyle = b.travelStyle?.toLowerCase().includes(currentStyle) ? 1 : 0;
+        return bSameStyle - aSameStyle;
+      })
+      .slice(0, 3);
+  }, [allPackages, booking, pkg]);
+
+  // Related Destinations (Max 3 published destinations)
+  const relatedDestinations = useMemo(() => {
+    if (!allDestinations.length) return [];
+    const candidates = allDestinations.filter((d) => (d as any).published !== false);
+    return candidates.slice(0, 3);
+  }, [allDestinations]);
+
   // Loading Screen
   if (authLoading || loadingBooking) {
     return (
@@ -223,21 +337,116 @@ export const MyJourneyView: React.FC = () => {
     );
   }
 
-  const statusConfig = BOOKING_STATUS_CONFIG[booking.status || 'PENDING_CONFIRMATION'] || {
-    label: booking.status || 'PENDING',
-    bg: 'bg-amber-100 border-amber-300',
-    text: 'text-amber-900',
-    icon: Clock3
+  // ── Derive Customer-Friendly Status ──
+  const getCustomerStatusInfo = (b: Booking) => {
+    if (b.status === 'CANCELLED' || b.bookingStatus === 'cancelled') {
+      return {
+        label: 'JOURNEY CANCELLED',
+        desc: 'This journey reservation has been cancelled.',
+        bg: 'bg-rose-100 border-rose-300 text-rose-900',
+        icon: XCircle,
+      };
+    }
+    if (b.status === 'COMPLETED' || b.bookingStatus === 'completed' || b.operationalStatus === 'TRIP_COMPLETED') {
+      return {
+        label: 'JOURNEY COMPLETE',
+        desc: 'We hope you had a wonderful journey with NO FIXED ADDRESS.',
+        bg: 'bg-slate-100 border-slate-300 text-slate-800',
+        icon: CheckCircle,
+      };
+    }
+    if (b.operationalStatus === 'TRIP_IN_PROGRESS') {
+      return {
+        label: "YOU'RE CURRENTLY TRAVELLING",
+        desc: 'Enjoy your bespoke expedition! Our dedicated support line remains at your service.',
+        bg: 'bg-emerald-100 border-emerald-300 text-emerald-900',
+        icon: Compass,
+      };
+    }
+    if (b.operationalStatus === 'TRAVELLER_BRIEFED') {
+      return {
+        label: 'JOURNEY READY & BRIEFED',
+        desc: 'Your journey is ready and your pre-departure briefing consultation is complete.',
+        bg: 'bg-emerald-100 border-emerald-300 text-emerald-900',
+        icon: CheckCircle2,
+      };
+    }
+    if (b.operationalStatus === 'READY') {
+      return {
+        label: 'JOURNEY READY FOR TRAVEL',
+        desc: 'All reservations, routes, and travel documents are finalized for your departure.',
+        bg: 'bg-emerald-100 border-emerald-300 text-emerald-900',
+        icon: CheckCircle2,
+      };
+    }
+    if (b.status === 'CONFIRMED' || b.bookingStatus === 'confirmed') {
+      return {
+        label: 'PREPARING YOUR JOURNEY',
+        desc: 'Our travel team is actively preparing your custom route, stays, and documents.',
+        bg: 'bg-blue-100 border-blue-300 text-blue-900',
+        icon: Clock3,
+      };
+    }
+    return {
+      label: 'RESERVATION UNDER REVIEW',
+      desc: 'Your expedition reservation is under final review with our travel team.',
+      bg: 'bg-amber-100 border-amber-300 text-amber-900',
+      icon: Clock3,
+    };
   };
-  const StatusIcon = statusConfig.icon;
 
-  const isCancelled = booking.status === 'CANCELLED';
-  const isPending = booking.status === 'PENDING_CONFIRMATION' || booking.status === 'DRAFT';
+  const statusInfo = getCustomerStatusInfo(booking);
+  const StatusIcon = statusInfo.icon;
+  const isTravellingNow = booking.operationalStatus === 'TRIP_IN_PROGRESS';
+  const isCompleted = booking.status === 'COMPLETED' || booking.bookingStatus === 'completed' || booking.operationalStatus === 'TRIP_COMPLETED';
+
+  // Documents
+  const travDocs = (booking.documents || []).filter((d: BookingDocument) => d.visibleToTraveller !== false);
+  const hasItineraryDoc = travDocs.some((d: BookingDocument) => d.category === 'ITINERARY');
+  const showPkgFallback = !hasItineraryDoc && !!pkg?.itineraryPDF;
+  const allTravellerDocs = [...travDocs];
+  if (showPkgFallback) {
+    allTravellerDocs.push({
+      id: 'pkg-itinerary-pdf',
+      title: `${pkg?.title || 'Official Itinerary'} — PDF`,
+      category: 'ITINERARY',
+      fileUrl: pkg!.itineraryPDF!,
+      visibleToTraveller: true,
+      uploadedAt: booking.createdAt,
+    } as BookingDocument);
+  }
+
+  // Safe WhatsApp Link Generator
+  const buildWhatsAppHandoffUrl = () => {
+    const ref = booking.bookingReference || booking.id;
+    const traveller = booking.primaryTraveler?.name || 'Traveller';
+    const journey = booking.itineraryTitle || booking.destination || 'Expedition';
+    const dest = booking.destination || 'Global';
+    const dates = booking.travelDate || 'Dates TBD';
+    const phone = localStorage.getItem('nfa_admin_whatsapp')?.replace(/\D/g, '') || '919876543210';
+    
+    const text = encodeURIComponent(
+      `Hello NO FIXED ADDRESS Travel Team,\n\nI need help with my journey.\n\nTraveller: ${traveller}\nBooking Reference: ${ref}\nJourney: ${journey}\nDestination: ${dest}\nTravel Dates: ${dates}\n\nCould you please assist me?`
+    );
+    return `https://wa.me/${phone}?text=${text}`;
+  };
+
+  // Plan Another Journey Trigger
+  const handlePlanAnotherJourney = () => {
+    openEnquiry({
+      source: 'COMPLETED_JOURNEY_REPEAT',
+      destination: booking.destination,
+      itineraryTitle: booking.itineraryTitle,
+    });
+  };
 
   return (
     <div className="min-h-screen bg-[#FCFBF7] text-[#121212] pb-24 text-left">
+      {/* Protected Customer Booking Route — noindex, nofollow */}
+      <SeoHead metadata={resolveStaticPageSEO('myJourney')} />
+      
       {/* ── TOP NAV BAR ── */}
-      <div className="bg-[#121212] text-white border-b-4 border-[#F4BF4B] py-4 px-4 sm:px-8">
+      <div className="bg-[#121212] text-white border-b-4 border-[#F4BF4B] py-4 px-4 sm:px-8 sticky top-0 z-30 shadow-md">
         <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-4">
           <Link
             to="/dashboard"
@@ -250,36 +459,27 @@ export const MyJourneyView: React.FC = () => {
             <span className="font-mono text-xs font-bold text-[#F4BF4B] bg-white/10 px-3 py-1 rounded border border-white/20">
               {booking.bookingReference || booking.id}
             </span>
-            <span className={`px-3 py-1 rounded font-black text-[10px] uppercase tracking-widest border ${statusConfig.bg} ${statusConfig.text} flex items-center gap-1.5`}>
-              <StatusIcon size={12} /> {statusConfig.label}
+            <span className={`px-3 py-1 rounded font-black text-[10px] uppercase tracking-widest border ${statusInfo.bg} flex items-center gap-1.5`}>
+              <StatusIcon size={12} /> {statusInfo.label}
             </span>
           </div>
         </div>
       </div>
 
-      {/* ── STATUS BANNERS ── */}
-      {isCancelled && (
-        <div className="bg-rose-900 text-white p-4 text-center border-b-4 border-[#121212]">
-          <div className="max-w-4xl mx-auto flex items-center justify-center gap-2 font-brand font-black text-sm uppercase tracking-widest">
-            <XCircle size={18} /> JOURNEY CANCELLED — THIS BOOKING HAS BEEN CANCELLED
-          </div>
+      {/* ── STATUS BANNER ── */}
+      <div className="bg-[#FCFBF7] border-b-2 border-slate-200 py-3 px-4 sm:px-8">
+        <div className="max-w-6xl mx-auto flex items-center gap-2 text-xs font-bold text-slate-700">
+          <Sparkles size={14} className="text-[#9E1B1D] shrink-0" />
+          <span>{statusInfo.desc}</span>
         </div>
-      )}
+      </div>
 
-      {isPending && (
-        <div className="bg-amber-400 text-[#121212] p-4 text-center border-b-4 border-[#121212]">
-          <div className="max-w-4xl mx-auto flex items-center justify-center gap-2 font-brand font-black text-xs uppercase tracking-widest">
-            <Clock3 size={16} /> BOOKING PENDING CONFIRMATION — YOUR EXPEDITION RESERVATION IS UNDER FINAL REVIEW
-          </div>
-        </div>
-      )}
-
-      {/* ── HERO HEADER ── */}
-      <section className="bg-[#121212] text-white py-12 px-4 sm:px-8 border-b-4 border-[#121212] relative overflow-hidden">
+      {/* ── HERO HEADER / FOCAL JOURNEY CARD ── */}
+      <section id="journey-overview" className="bg-[#121212] text-white py-12 px-4 sm:px-8 border-b-4 border-[#121212] relative overflow-hidden">
         <div className="max-w-6xl mx-auto space-y-6 relative z-10">
           <div className="space-y-2">
             <span className="font-brand font-black text-xs uppercase tracking-[0.3em] text-[#F4BF4B] block">
-              MY EXPEDITION JOURNEY
+              {isCompleted ? 'EXPEDITION ARCHIVE' : 'TRAVEL INFORMATION & ASSISTANCE CENTER'}
             </span>
             <h1 className="font-brand font-black text-3xl sm:text-5xl lg:text-6xl uppercase tracking-tighter text-white leading-tight">
               {booking.itineraryTitle || booking.destination || 'Expedition Journey'}
@@ -289,38 +489,239 @@ export const MyJourneyView: React.FC = () => {
           {/* Key Metadata Bar */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-6 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-xs">
             <div>
-              <span className="text-[9px] font-black uppercase text-slate-400 block tracking-widest">Target Destination</span>
+              <span className="text-[9px] font-black uppercase text-slate-400 block tracking-widest">Destination</span>
               <span className="font-bold text-sm text-white flex items-center gap-1 mt-0.5">
                 📍 {booking.destination || 'Global'}
               </span>
             </div>
             <div>
-              <span className="text-[9px] font-black uppercase text-slate-400 block tracking-widest">Confirmed Travel Date</span>
+              <span className="text-[9px] font-black uppercase text-slate-400 block tracking-widest">Travel Dates</span>
               <span className="font-bold text-sm text-[#F4BF4B] flex items-center gap-1 mt-0.5">
                 🗓️ {booking.travelDate || 'Flexible / TBD'}
               </span>
             </div>
             <div>
-              <span className="text-[9px] font-black uppercase text-slate-400 block tracking-widest">Trip Duration</span>
+              <span className="text-[9px] font-black uppercase text-slate-400 block tracking-widest">Duration</span>
               <span className="font-bold text-sm text-white flex items-center gap-1 mt-0.5">
                 ⏱️ {booking.duration ? `${booking.duration} Days` : 'Custom'}
               </span>
             </div>
             <div>
-              <span className="text-[9px] font-black uppercase text-slate-400 block tracking-widest">Party Size</span>
+              <span className="text-[9px] font-black uppercase text-slate-400 block tracking-widest">Traveller(s)</span>
               <span className="font-bold text-sm text-white flex items-center gap-1 mt-0.5">
-                👥 {booking.numberOfTravelers || 1} Traveller(s)
+                👥 {booking.numberOfTravelers || 1} Person(s)
               </span>
             </div>
+          </div>
+
+          {/* Quick Action Jump Bar */}
+          <div className="flex flex-wrap items-center gap-3 pt-2">
+            {booking.itinerarySlug && (
+              <Link
+                to={`/itinerary/${booking.itinerarySlug}`}
+                target="_blank"
+                className="px-4 py-2.5 bg-[#F4BF4B] text-[#121212] font-black text-xs uppercase tracking-wider rounded-xl hover:bg-white transition-colors flex items-center gap-1.5 shadow-sm"
+              >
+                <ExternalLink size={14} /> View Journey Plan
+              </Link>
+            )}
+
+            <a
+              href="#travel-documents"
+              className="px-4 py-2.5 bg-white/10 border border-white/20 text-white font-bold text-xs uppercase tracking-wider rounded-xl hover:bg-white/20 transition-colors flex items-center gap-1.5"
+            >
+              <FileText size={14} className="text-[#F4BF4B]" /> Travel Documents ({allTravellerDocs.length})
+            </a>
+
+            {isCompleted && (
+              <button
+                onClick={handlePlanAnotherJourney}
+                className="px-4 py-2.5 bg-emerald-600 text-white font-black text-xs uppercase tracking-wider rounded-xl hover:bg-emerald-500 transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
+              >
+                <Compass size={14} /> Plan Another Journey
+              </button>
+            )}
+
+            {isCompleted && relatedStory && relatedStory.status === 'PUBLISHED' && (
+              <Link
+                to={`/stories/${relatedStory.slug}`}
+                className="px-4 py-2.5 bg-amber-400 text-[#121212] font-black text-xs uppercase tracking-wider rounded-xl hover:bg-white transition-colors flex items-center gap-1.5 shadow-sm"
+              >
+                <BookOpen size={14} /> Read Your Travel Story
+              </Link>
+            )}
+
+            {!isCompleted && (
+              <a
+                href="#support-assistance"
+                className="px-4 py-2.5 bg-white/10 border border-white/20 text-white font-bold text-xs uppercase tracking-wider rounded-xl hover:bg-white/20 transition-colors flex items-center gap-1.5"
+              >
+                <Phone size={14} className="text-[#F4BF4B]" /> Need Help / Support
+              </a>
+            )}
           </div>
         </div>
       </section>
 
+      {/* ── TRAVEL INFORMATION SHORTCUT NAVIGATION ── */}
+      <nav aria-label="Journey Sections" className="bg-white border-b-2 border-slate-200 py-3 px-4 sm:px-8 sticky top-[60px] z-20 shadow-xs">
+        <div className="max-w-6xl mx-auto flex items-center gap-2 overflow-x-auto text-[11px] font-black uppercase tracking-wider text-slate-600 scrollbar-none">
+          <a href="#journey-overview" className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-[#121212] hover:text-white transition-colors shrink-0">
+            Overview
+          </a>
+          {!isCompleted && (
+            <a href="#before-you-travel" className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-[#121212] hover:text-white transition-colors shrink-0">
+              Before You Travel
+            </a>
+          )}
+          {!isCompleted && (
+            <a href="#arrival-transfer" className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-[#121212] hover:text-white transition-colors shrink-0">
+              Arrival & Transfer
+            </a>
+          )}
+          <a href="#where-youll-stay" className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-[#121212] hover:text-white transition-colors shrink-0">
+            Where You Stayed
+          </a>
+          <a href="#travel-documents" className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-[#121212] hover:text-white transition-colors shrink-0">
+            Travel Documents
+          </a>
+          {isCompleted && (
+            <a href="#discover-next" className="px-3 py-1.5 rounded-lg bg-[#F4BF4B]/20 text-[#121212] border border-[#F4BF4B] hover:bg-[#121212] hover:text-white transition-colors shrink-0">
+              Explore Next
+            </a>
+          )}
+          <a href="#support-assistance" className="px-3 py-1.5 rounded-lg bg-rose-50 text-[#9E1B1D] border border-rose-200 hover:bg-[#9E1B1D] hover:text-white transition-colors shrink-0">
+            {isCompleted ? 'Memories & Assistance' : 'Support & Help'}
+          </a>
+        </div>
+      </nav>
+
       {/* ── MAIN CONTENT CONTAINER ── */}
       <main className="max-w-6xl mx-auto px-4 sm:px-8 pt-10 space-y-12">
 
-        {/* ── 1. TRAVELLER-SAFE TRIP INFORMATION (E8 Category B) ── */}
-        {(booking.travellerNotes || booking.tripInstructions || (booking.travelPreferences && (booking.travelPreferences.accommodation || booking.travelPreferences.dietary || booking.travelPreferences.accessibility || booking.travelPreferences.interests))) && (
+        {/* ── 1. PRE-DEPARTURE GUIDANCE (ACTIVE TRIPS ONLY) ── */}
+        {!isCompleted && (
+          <section id="before-you-travel" className="bg-white border-4 border-[#121212] p-6 sm:p-8 shadow-[8px_8px_0px_0px_#121212] space-y-6">
+            <div className="flex items-center gap-3 border-b-2 border-[#121212] pb-4">
+              <div className="p-2.5 bg-[#121212] text-[#F4BF4B] rounded-lg">
+                <Compass size={20} />
+              </div>
+              <div>
+                <span className="text-[10px] font-black uppercase text-[#9E1B1D] tracking-widest block">
+                  PRE-DEPARTURE READINESS
+                </span>
+                <h3 className="font-brand font-black text-2xl uppercase text-[#121212]">
+                  BEFORE YOU TRAVEL
+                </h3>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed font-medium">
+              Review these key steps before your departure to ensure a seamless and unforgettable journey.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+              <div className="p-4 bg-[#FCFBF7] border-2 border-slate-200 rounded-xl space-y-1">
+                <span className="font-black text-slate-900 block flex items-center gap-2">
+                  <CheckCircle2 size={14} className="text-emerald-700 shrink-0" /> 1. Review Journey Plan
+                </span>
+                <p className="text-slate-600 text-[11px]">
+                  Familiarize yourself with your daily highlights, timings, and route.
+                </p>
+              </div>
+
+              <div className="p-4 bg-[#FCFBF7] border-2 border-slate-200 rounded-xl space-y-1">
+                <span className="font-black text-slate-900 block flex items-center gap-2">
+                  <CheckCircle2 size={14} className="text-emerald-700 shrink-0" /> 2. Download Documents
+                </span>
+                <p className="text-slate-600 text-[11px]">
+                  Save your official Itinerary PDF and vouchers for offline access.
+                </p>
+              </div>
+
+              <div className="p-4 bg-[#FCFBF7] border-2 border-slate-200 rounded-xl space-y-1">
+                <span className="font-black text-slate-900 block flex items-center gap-2">
+                  <CheckCircle2 size={14} className="text-emerald-700 shrink-0" /> 3. Review Stays
+                </span>
+                <p className="text-slate-600 text-[11px]">
+                  Check accommodation check-in details, locations, and included amenities.
+                </p>
+              </div>
+
+              <div className="p-4 bg-[#FCFBF7] border-2 border-slate-200 rounded-xl space-y-1">
+                <span className="font-black text-slate-900 block flex items-center gap-2">
+                  <CheckCircle2 size={14} className="text-emerald-700 shrink-0" /> 4. Arrival Instructions
+                </span>
+                <p className="text-slate-600 text-[11px]">
+                  Read packing advice, meeting points, and arrival guidance below.
+                </p>
+              </div>
+
+              <div className="p-4 bg-[#FCFBF7] border-2 border-slate-200 rounded-xl space-y-1">
+                <span className="font-black text-slate-900 block flex items-center gap-2">
+                  <CheckCircle2 size={14} className="text-emerald-700 shrink-0" /> 5. Booking Reference
+                </span>
+                <p className="text-slate-600 text-[11px]">
+                  Keep ref <strong className="text-[#9E1B1D]">{booking.bookingReference || booking.id}</strong> handy when speaking to your team.
+                </p>
+              </div>
+
+              <div className="p-4 bg-[#FCFBF7] border-2 border-slate-200 rounded-xl space-y-1">
+                <span className="font-black text-slate-900 block flex items-center gap-2">
+                  <CheckCircle2 size={14} className="text-emerald-700 shrink-0" /> 6. Pre-Departure Contact
+                </span>
+                <p className="text-slate-600 text-[11px]">
+                  Reach our team on WhatsApp anytime for questions or adjustments.
+                </p>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* ── 2. ARRIVAL & TRANSFER (ACTIVE TRIPS ONLY) ── */}
+        {!isCompleted && (
+          <section id="arrival-transfer" className="bg-white border-4 border-[#121212] p-6 sm:p-8 shadow-[8px_8px_0px_0px_#121212] space-y-6">
+            <div className="flex items-center gap-3 border-b-2 border-[#121212] pb-4">
+              <div className="p-2.5 bg-[#121212] text-[#F4BF4B] rounded-lg">
+                <Plane size={20} />
+              </div>
+              <div>
+                <span className="text-[10px] font-black uppercase text-[#9E1B1D] tracking-widest block">
+                  LOGISTICS & TRANSFERS
+                </span>
+                <h3 className="font-brand font-black text-2xl uppercase text-[#121212]">
+                  ARRIVAL & TRANSFER ASSISTANCE
+                </h3>
+              </div>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              {booking.tripInstructions ? (
+                <div className="p-5 bg-[#FCFBF7] border-2 border-[#121212] rounded-xl font-medium text-slate-900 leading-relaxed whitespace-pre-wrap">
+                  {booking.tripInstructions}
+                </div>
+              ) : (
+                <div className="p-5 bg-slate-50 border border-slate-200 rounded-xl text-slate-500 italic">
+                  Arrival and transfer details will appear here once finalized by your travel team.
+                </div>
+              )}
+
+              {pkg?.startLocation && (
+                <div className="p-4 bg-[#FCFBF7] border border-slate-300 rounded-xl space-y-1">
+                  <span className="text-[9px] font-black uppercase text-slate-400 block tracking-wider">
+                    OFFICIAL EXPEDITION MEETING POINT
+                  </span>
+                  <p className="font-bold text-slate-900 text-sm">
+                    📍 {pkg.startLocation}
+                  </p>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* ── 3. TRAVEL INSTRUCTIONS & PREFERENCES ── */}
+        {(booking.travellerNotes || booking.travelPreferences) && (
           <section className="bg-white border-4 border-[#121212] p-6 sm:p-8 shadow-[8px_8px_0px_0px_#9E1B1D] space-y-6">
             <div className="flex items-center gap-3 border-b-2 border-[#121212] pb-4">
               <div className="p-2.5 bg-[#9E1B1D] text-white rounded-lg">
@@ -328,7 +729,7 @@ export const MyJourneyView: React.FC = () => {
               </div>
               <div>
                 <span className="text-[10px] font-black uppercase text-[#9E1B1D] tracking-widest block">
-                  PERSONALIZED TRIP INFORMATION
+                  CONFIRMED TRIP DETAILS
                 </span>
                 <h3 className="font-brand font-black text-2xl uppercase text-[#121212]">
                   TRAVELLER NOTES & PREFERENCES
@@ -336,428 +737,457 @@ export const MyJourneyView: React.FC = () => {
               </div>
             </div>
 
-            <div className="space-y-4 text-xs">
-              {booking.tripInstructions && (
-                <div className="space-y-1.5">
-                  <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider block">
-                    IMPORTANT TRIP INSTRUCTIONS / ARRIVAL GUIDANCE
-                  </span>
-                  <p className="p-4 bg-[#FCFBF7] border-2 border-[#121212] font-medium text-slate-900 rounded-xl leading-relaxed whitespace-pre-wrap">
-                    {booking.tripInstructions}
-                  </p>
-                </div>
-              )}
-
+            <div className="space-y-6 text-xs">
               {booking.travellerNotes && (
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider block">
-                    SPECIAL TRAVELLER NOTES
+                    YOUR SPECIAL TRAVEL NOTES
                   </span>
-                  <p className="p-4 bg-[#FCFBF7] border-2 border-[#121212] font-medium text-slate-900 rounded-xl leading-relaxed whitespace-pre-wrap">
+                  <div className="p-5 bg-[#FCFBF7] border-2 border-[#121212] rounded-xl font-medium text-slate-900 leading-relaxed whitespace-pre-wrap">
                     {booking.travellerNotes}
-                  </p>
+                  </div>
                 </div>
               )}
 
               {booking.travelPreferences && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                  {booking.travelPreferences.accommodation && (
-                    <div className="p-3 bg-[#FCFBF7] border border-slate-300 rounded-lg">
-                      <span className="text-[9px] font-black uppercase text-slate-400 block">Accommodation Preference</span>
-                      <span className="font-bold text-slate-900">{booking.travelPreferences.accommodation}</span>
-                    </div>
-                  )}
-                  {booking.travelPreferences.dietary && (
-                    <div className="p-3 bg-[#FCFBF7] border border-slate-300 rounded-lg">
-                      <span className="text-[9px] font-black uppercase text-slate-400 block">Dietary Requirements</span>
-                      <span className="font-bold text-slate-900">{booking.travelPreferences.dietary}</span>
-                    </div>
-                  )}
-                  {booking.travelPreferences.accessibility && (
-                    <div className="p-3 bg-[#FCFBF7] border border-slate-300 rounded-lg">
-                      <span className="text-[9px] font-black uppercase text-slate-400 block">Accessibility Needs</span>
-                      <span className="font-bold text-slate-900">{booking.travelPreferences.accessibility}</span>
-                    </div>
-                  )}
-                  {booking.travelPreferences.interests && (
-                    <div className="p-3 bg-[#FCFBF7] border border-slate-300 rounded-lg">
-                      <span className="text-[9px] font-black uppercase text-slate-400 block">Special Interests</span>
-                      <span className="font-bold text-slate-900">{booking.travelPreferences.interests}</span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </section>
-        )}
-
-        {/* ── 2. EDITORIAL JOURNEY OVERVIEW ── */}
-        {pkg && (pkg.editorialIntro || pkg.overview || pkg.description || pkg.editorialHighlights?.length) && (
-          <section className="bg-white border-4 border-[#121212] p-6 sm:p-8 shadow-[8px_8px_0px_0px_#121212] space-y-6">
-            <div className="border-b-2 border-slate-200 pb-4">
-              <span className="text-[10px] font-black uppercase text-[#9E1B1D] tracking-widest block mb-1">
-                EDITORIAL SYNOPSIS
-              </span>
-              <h3 className="font-brand font-black text-2xl sm:text-3xl uppercase text-[#121212]">
-                ABOUT THIS JOURNEY
-              </h3>
-            </div>
-
-            {pkg.editorialIntro && (
-              <p className="text-base sm:text-lg font-serif italic text-slate-800 leading-relaxed border-l-4 border-[#F4BF4B] pl-4">
-                "{pkg.editorialIntro}"
-              </p>
-            )}
-
-            {(pkg.overview || pkg.description) && (
-              <p className="text-sm font-medium text-slate-700 leading-relaxed whitespace-pre-line">
-                {pkg.overview || pkg.description}
-              </p>
-            )}
-
-            {/* Travel Style / Best For Badges */}
-            <div className="flex flex-wrap items-center gap-3 pt-2">
-              {pkg.travelStyle && (
-                <span className="px-3 py-1.5 bg-[#121212] text-[#F4BF4B] font-black text-[10px] uppercase tracking-widest border border-[#121212]">
-                  STYLE: {pkg.travelStyle}
-                </span>
-              )}
-              {pkg.bestFor && (
-                <span className="px-3 py-1.5 bg-[#FCFBF7] text-[#121212] font-black text-[10px] uppercase tracking-widest border-2 border-[#121212]">
-                  BEST FOR: {pkg.bestFor}
-                </span>
-              )}
-              {pkg.bestTime && (
-                <span className="px-3 py-1.5 bg-amber-100 text-amber-900 font-black text-[10px] uppercase tracking-widest border border-amber-300">
-                  BEST SEASON: {pkg.bestTime}
-                </span>
-              )}
-            </div>
-
-            {/* Editorial Highlights */}
-            {pkg.editorialHighlights && pkg.editorialHighlights.length > 0 && (
-              <div className="pt-4 border-t border-slate-200 space-y-3">
-                <h4 className="font-brand font-black text-xs uppercase tracking-widest text-[#9E1B1D] flex items-center gap-1.5">
-                  <Sparkles size={14} /> CURATED HIGHLIGHTS
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {pkg.editorialHighlights.map((hl, idx) => (
-                    <div key={idx} className="flex items-start gap-2.5 p-3 bg-[#FCFBF7] border border-slate-200 rounded-lg">
-                      <span className="font-mono text-xs font-bold text-[#9E1B1D]">0{idx + 1}.</span>
-                      <span className="text-xs font-semibold text-slate-800">{hl}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </section>
-        )}
-
-        {/* ── 3. JOURNEY ROUTE / STOPS (E2 Architecture) ── */}
-        {pkg?.itineraryCities && pkg.itineraryCities.length > 0 && (
-          <section className="bg-white border-4 border-[#121212] p-6 sm:p-8 shadow-[8px_8px_0px_0px_#F4BF4B] space-y-6">
-            <div className="border-b-2 border-slate-200 pb-4">
-              <span className="text-[10px] font-black uppercase text-[#9E1B1D] tracking-widest block mb-1">
-                JOURNEY ROUTE & DESTINATIONS
-              </span>
-              <h3 className="font-brand font-black text-2xl sm:text-3xl uppercase text-[#121212]">
-                {pkg.itineraryCities.length} CURATED STOPS
-              </h3>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {pkg.itineraryCities.map((stop, index) => (
-                <div
-                  key={stop.city || index}
-                  className="border-2 border-[#121212] bg-[#FCFBF7] rounded-xl overflow-hidden shadow-[4px_4px_0px_0px_#121212] space-y-4 flex flex-col justify-between"
-                >
-                  {stop.heroImage && (
-                    <div className="h-44 overflow-hidden relative">
-                      <img
-                        src={stop.heroImage}
-                        alt={stop.city || 'Journey Stop'}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
-                      <span className="absolute top-3 left-3 bg-[#121212] text-[#F4BF4B] font-brand font-black text-xs uppercase tracking-widest px-2.5 py-1 border border-[#F4BF4B]">
-                        STOP {String(index + 1).padStart(2, '0')}
-                      </span>
-                    </div>
-                  )}
-
-                  <div className="p-4 space-y-2 flex-grow">
-                    {!stop.heroImage && (
-                      <span className="font-brand font-black text-xs uppercase tracking-widest text-[#9E1B1D] block">
-                        STOP {String(index + 1).padStart(2, '0')}
-                      </span>
+                <div className="space-y-2 pt-2">
+                  <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider block">
+                    YOUR CONFIRMED TRAVEL PREFERENCES
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    {booking.travelPreferences.accommodation && (
+                      <div className="p-3 bg-[#FCFBF7] border border-slate-300 rounded-lg">
+                        <span className="text-[9px] font-black uppercase text-slate-400 block">Stay Style</span>
+                        <span className="font-bold text-slate-900">{booking.travelPreferences.accommodation}</span>
+                      </div>
                     )}
-
-                    <h4 className="font-brand font-black text-xl uppercase text-[#121212]">
-                      {stop.city}
-                    </h4>
-
-                    {stop.nights && stop.nights > 0 && (
-                      <span className="inline-block px-2.5 py-0.5 bg-amber-100 border border-amber-300 text-amber-900 font-bold text-[10px] uppercase tracking-wider rounded-full">
-                        {stop.nights} {stop.nights === 1 ? 'Night' : 'Nights'}
-                      </span>
+                    {booking.travelPreferences.dietary && (
+                      <div className="p-3 bg-[#FCFBF7] border border-slate-300 rounded-lg">
+                        <span className="text-[9px] font-black uppercase text-slate-400 block">Dietary Requirements</span>
+                        <span className="font-bold text-slate-900">{booking.travelPreferences.dietary}</span>
+                      </div>
                     )}
-
-                    {stop.description && (
-                      <p className="text-xs font-medium text-slate-600 line-clamp-3 leading-relaxed pt-1">
-                        {stop.description}
-                      </p>
+                    {booking.travelPreferences.accessibility && (
+                      <div className="p-3 bg-[#FCFBF7] border border-slate-300 rounded-lg">
+                        <span className="text-[9px] font-black uppercase text-slate-400 block">Accessibility</span>
+                        <span className="font-bold text-slate-900">{booking.travelPreferences.accessibility}</span>
+                      </div>
                     )}
-
-                    {stop.arrivalTransfer && (
-                      <div className="text-[10px] font-bold text-slate-700 bg-slate-100 p-2 rounded border border-slate-200 flex items-center gap-1 mt-2">
-                        <Compass size={12} /> Transfer: {typeof stop.arrivalTransfer === 'string' ? stop.arrivalTransfer : (stop.arrivalTransfer as any)?.text || ''}
+                    {booking.travelPreferences.interests && (
+                      <div className="p-3 bg-[#FCFBF7] border border-slate-300 rounded-lg">
+                        <span className="text-[9px] font-black uppercase text-slate-400 block">Special Interests</span>
+                        <span className="font-bold text-slate-900">{booking.travelPreferences.interests}</span>
                       </div>
                     )}
                   </div>
                 </div>
-              ))}
+              )}
             </div>
           </section>
         )}
 
-        {/* ── 4. DAY-BY-DAY EXPEDITION ITINERARY ── */}
-        {(() => {
-          const allDays = (pkg?.itineraryCities && pkg.itineraryCities.length > 0)
-            ? pkg.itineraryCities.flatMap(c => c.days || [])
-            : [];
+        {/* ── 4. ACCOMMODATION & STAYS (WHERE YOU'LL STAY) ── */}
+        <section id="where-youll-stay" className="bg-white border-4 border-[#121212] p-6 sm:p-8 shadow-[8px_8px_0px_0px_#121212] space-y-6">
+          <div className="flex items-center gap-3 border-b-2 border-[#121212] pb-4">
+            <div className="p-2.5 bg-[#121212] text-[#F4BF4B] rounded-lg">
+              <Building size={20} />
+            </div>
+            <div>
+              <span className="text-[10px] font-black uppercase text-[#9E1B1D] tracking-widest block">
+                {isCompleted ? 'EXPEDITION ACCOMMODATIONS' : 'CURATED STAYS'}
+              </span>
+              <h3 className="font-brand font-black text-2xl uppercase text-[#121212]">
+                {isCompleted ? 'WHERE YOU STAYED' : "WHERE YOU'LL STAY"}
+              </h3>
+            </div>
+          </div>
 
-          if (!pkg || allDays.length === 0) {
-            return (
-              <section className="bg-amber-50 border-4 border-amber-300 p-8 rounded-2xl text-center space-y-3">
-                <AlertCircle size={40} className="mx-auto text-amber-800" />
-                <h4 className="font-brand font-black text-xl uppercase text-amber-950">
-                  ITINERARY DAY SCHEDULE UNAVAILABLE
-                </h4>
-                <p className="text-xs font-medium text-amber-800 max-w-md mx-auto leading-relaxed">
-                  Your booking is valid and confirmed. The detailed day-by-day itinerary content is currently being finalized by our curation team.
-                </p>
-              </section>
+          {(() => {
+            const hotelsList = (pkg?.itineraryDays || [])
+              .map((day) => day.hotel)
+              .filter((h): h is NonNullable<typeof h> => !!h && !!h.name);
+
+            const uniqueHotels = Array.from(
+              new Map(hotelsList.map((h) => [h.name, h])).values()
             );
-          }
 
-          return (
-            <section className="bg-white border-4 border-[#121212] p-6 sm:p-8 shadow-[8px_8px_0px_0px_#121212] space-y-8">
-              <div className="border-b-2 border-[#121212] pb-4">
-                <span className="text-[10px] font-black uppercase text-[#9E1B1D] tracking-widest block mb-1">
-                  DAY-BY-DAY SCHEDULE
+            if (uniqueHotels.length === 0) {
+              return (
+                <div className="p-6 bg-slate-50 border border-slate-200 rounded-xl text-center text-xs font-bold text-slate-500">
+                  {isCompleted
+                    ? 'Accommodation archive is stored securely with your travel records.'
+                    : 'Your accommodation details are being finalized by our travel team.'}
+                </div>
+              );
+            }
+
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {uniqueHotels.map((hotel, idx) => (
+                  <HotelCard
+                    key={`${hotel.name}-${idx}`}
+                    hotel={hotel}
+                    onOpenGallery={handleOpenHotelGallery}
+                  />
+                ))}
+              </div>
+            );
+          })()}
+        </section>
+
+        {/* ── 5. TRAVEL DOCUMENTS CENTER (PERMANENT RETENTION) ── */}
+        <section id="travel-documents" className="bg-[#121212] text-white p-8 border-4 border-[#121212] rounded-2xl space-y-6 shadow-[8px_8px_0px_0px_#F4BF4B]">
+          <div className="flex items-center justify-between border-b border-white/20 pb-4 flex-wrap gap-3">
+            <div className="flex items-center gap-3">
+              <Download size={28} className="text-[#F4BF4B]" />
+              <div>
+                <h3 className="font-brand font-black text-2xl uppercase text-white">
+                  TRAVEL DOCUMENTS
+                </h3>
+                <p className="text-xs font-medium text-slate-300">
+                  Official itinerary PDFs, vouchers, and confirmed travel passes (permanently retained).
+                </p>
+              </div>
+            </div>
+
+            <span className="px-3 py-1 rounded bg-[#F4BF4B] text-[#121212] font-black text-[10px] uppercase tracking-widest">
+              {allTravellerDocs.length > 0 ? `${allTravellerDocs.length} DOCUMENT(S) ARCHIVED` : 'NO DOCUMENTS'}
+            </span>
+          </div>
+
+          {allTravellerDocs.length === 0 ? (
+            <div className="p-8 bg-white/5 border border-white/10 rounded-xl text-center space-y-2">
+              <FileText size={32} className="mx-auto text-slate-400" />
+              <p className="text-xs font-bold text-slate-300">
+                {isCompleted ? 'No documents were uploaded for this trip.' : 'Your travel documents are being prepared by our team.'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {allTravellerDocs.map((docItem) => (
+                <div
+                  key={docItem.id}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white/10 border border-white/20 rounded-xl gap-4 hover:bg-white/15 transition-colors"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="size-10 bg-[#F4BF4B] rounded-lg flex items-center justify-center shrink-0">
+                      <FileText size={18} className="text-[#121212]" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-black text-sm text-white uppercase tracking-wide truncate">
+                        {docItem.title}
+                      </p>
+                      <p className="text-[10px] text-slate-400">
+                        {DOC_CATEGORY_LABELS[docItem.category] || docItem.category || 'Travel Document'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => setPreviewDoc(docItem)}
+                      className="px-3 py-1.5 bg-white/10 text-[#F4BF4B] border border-white/20 rounded-lg font-bold text-xs uppercase hover:bg-white/20 transition-colors flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Eye size={13} /> Preview
+                    </button>
+
+                    <a
+                      href={docItem.fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3.5 py-1.5 bg-[#F4BF4B] text-[#121212] rounded-lg font-black text-xs uppercase hover:bg-white transition-colors flex items-center gap-1.5"
+                    >
+                      <Download size={13} /> Download
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* ── 6. HOW WAS YOUR JOURNEY? (FEEDBACK & REVIEW - E46) ── */}
+        {isCompleted && (
+          <section id="feedback-review" className="bg-white border-4 border-[#121212] p-6 sm:p-8 shadow-[8px_8px_0px_0px_#121212] space-y-6">
+            <div className="flex items-center gap-3 border-b-2 border-[#121212] pb-4">
+              <div className="p-2.5 bg-[#121212] text-[#F4BF4B] rounded-lg">
+                <MessageSquare size={20} />
+              </div>
+              <div>
+                <span className="text-[10px] font-black uppercase text-[#9E1B1D] tracking-widest block">
+                  EXPEDITION REFLECTIONS
                 </span>
-                <h3 className="font-brand font-black text-3xl sm:text-4xl uppercase text-[#121212]">
-                  EXPEDITION ITINERARY ({allDays.length} DAYS)
+                <h3 className="font-brand font-black text-2xl uppercase text-[#121212]">
+                  HOW WAS YOUR JOURNEY?
                 </h3>
               </div>
-
-              <div className="space-y-8">
-                {allDays.map((day, idx) => (
-                <div
-                  key={day.day || idx}
-                  className="p-6 border-3 border-[#121212] bg-[#FCFBF7] rounded-2xl space-y-6 shadow-[6px_6px_0px_0px_#121212]"
-                >
-                  {/* Day Header */}
-                  <div className="space-y-2 border-b border-slate-200 pb-4">
-                    <div className="flex flex-wrap items-center gap-3">
-                      <span className="font-brand font-black text-xs uppercase tracking-[0.25em] text-white bg-[#9E1B1D] px-3 py-1 rounded border border-[#9E1B1D]">
-                        DAY {String(day.day).padStart(2, '0')}
-                      </span>
-                      {day.location && (
-                        <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-[#121212] bg-[#F4BF4B] border border-[#121212] px-2.5 py-0.5 rounded-full">
-                          <MapPin size={10} /> {day.location}
-                        </span>
-                      )}
-                      {day.transfer && (
-                        <span className="flex items-center gap-1 text-[10px] font-bold text-slate-700 bg-slate-100 border border-slate-300 px-2.5 py-0.5 rounded-full">
-                          <Compass size={10} /> {day.transfer}
-                        </span>
-                      )}
-                    </div>
-
-                    <h4 className="font-brand font-black text-2xl sm:text-3xl uppercase tracking-tighter text-[#121212]">
-                      {day.title}
-                    </h4>
-                  </div>
-
-                  {/* Day Description */}
-                  {day.description && (
-                    <p className="text-sm font-medium text-slate-800 leading-relaxed whitespace-pre-line">
-                      {day.description}
-                    </p>
-                  )}
-
-                  {/* Highlights */}
-                  {day.highlights && day.highlights.length > 0 && (
-                    <div className="space-y-2 p-4 bg-white border-2 border-[#121212] rounded-xl">
-                      <span className="text-[10px] font-black uppercase text-[#9E1B1D] tracking-widest block">
-                        TODAY'S HIGHLIGHTS
-                      </span>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {day.highlights.map((hl, hIdx) => (
-                          <div key={hIdx} className="flex items-center gap-2 text-xs font-semibold text-slate-800">
-                            <CheckCircle size={14} className="text-emerald-600 shrink-0" />
-                            <span>{hl}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Curated Experiences & Activities */}
-                  {((day.experiences && day.experiences.length > 0) || (day.activities && day.activities.length > 0)) && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {day.experiences && day.experiences.length > 0 && (
-                        <div className="p-4 bg-amber-50/80 border-2 border-amber-300 rounded-xl space-y-2">
-                          <span className="text-[10px] font-black uppercase text-amber-900 tracking-widest flex items-center gap-1">
-                            <Sparkles size={12} /> CURATED EXPERIENCES
-                          </span>
-                          <ul className="space-y-1 text-xs font-bold text-slate-900">
-                            {day.experiences.map((exp, eIdx) => (
-                              <li key={eIdx} className="flex items-center gap-2">
-                                <span className="text-[#9E1B1D]">•</span> {exp}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-
-                      {day.activities && day.activities.length > 0 && (
-                        <div className="p-4 bg-white border-2 border-[#121212] rounded-xl space-y-2">
-                          <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest block">
-                            SCHEDULED ACTIVITIES
-                          </span>
-                          <ul className="space-y-1 text-xs font-medium text-slate-800">
-                            {day.activities.map((act, aIdx) => (
-                              <li key={aIdx} className="flex items-center gap-2">
-                                <span className="text-[#F4BF4B] font-bold">✓</span> {act}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Meals */}
-                  {day.meals && day.meals.length > 0 && (
-                    <div className="flex items-center gap-2 text-xs font-bold text-slate-700 bg-white p-3 border border-slate-300 rounded-lg">
-                      <Utensils size={14} className="text-[#9E1B1D]" />
-                      <span className="text-[10px] font-black uppercase text-slate-400">INCLUDED MEALS:</span>
-                      <span className="uppercase tracking-wider font-extrabold text-[#121212]">
-                        {day.meals.join(' • ')}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Hotel Accommodation Card */}
-                  {day.hotel && (
-                    <div className="pt-2">
-                      <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest block mb-2">
-                        ACCOMMODATION & STAY
-                      </span>
-                      <HotelCard
-                        hotel={day.hotel}
-                        onOpenGallery={handleOpenHotelGallery}
-                      />
-                    </div>
-                  )}
-                </div>
-              ))}
             </div>
-          </section>
-        );
-      })()}
 
-        {/* ── 5. TRAVEL DOCUMENTS (E12) ── */}
-        {(() => {
-          const travDocs = (booking.documents || []).filter((d: BookingDocument) => d.visibleToTraveller);
-          const hasItineraryDoc = travDocs.some((d: BookingDocument) => d.category === 'ITINERARY');
-          const showPkgFallback = !hasItineraryDoc && !!pkg?.itineraryPDF;
-
-          const DOC_LABELS: Record<string, string> = {
-            ITINERARY: 'Itinerary PDF',
-            BOOKING_CONFIRMATION: 'Booking Confirmation',
-            TRAVEL_VOUCHER: 'Travel Voucher',
-            ADDITIONAL: 'Additional Document',
-          };
-
-          const hasDocs = travDocs.length > 0 || showPkgFallback;
-
-          return (
-            <section className="bg-[#121212] text-white p-8 border-4 border-[#121212] rounded-2xl space-y-6 shadow-[8px_8px_0px_0px_#F4BF4B]">
-              <div className="flex items-center gap-3">
-                <Download size={32} className="text-[#F4BF4B]" />
-                <div>
-                  <h3 className="font-brand font-black text-2xl uppercase text-white">
-                    TRAVEL DOCUMENTS
-                  </h3>
-                  <p className="text-xs font-medium text-slate-300">
-                    Shared by your expedition team. Download for offline access.
+            {booking.feedback?.submitted ? (
+              <div className="p-6 bg-[#FCFBF7] border-2 border-slate-200 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded font-black text-[9px] uppercase tracking-wider bg-emerald-100 text-emerald-900 border border-emerald-300">
+                      FEEDBACK SHARED
+                    </span>
+                    <div className="flex items-center gap-0.5 text-amber-500">
+                      {Array.from({ length: booking.feedback.overallRating || 5 }).map((_, i) => (
+                        <Star key={i} size={14} className="fill-amber-400 text-amber-400" />
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-xs font-bold text-slate-800">
+                    Thank you for sharing your reflections with NO FIXED ADDRESS.
+                  </p>
+                  <p className="text-[10px] text-slate-500 font-medium">
+                    Submitted on {booking.feedback.submittedAt ? new Date(booking.feedback.submittedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Recently'}
                   </p>
                 </div>
+
+                <button
+                  onClick={() => setIsFeedbackModalOpen(true)}
+                  className="px-4 py-2 bg-white border border-slate-300 rounded-lg text-xs font-bold uppercase hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  View / Update Feedback
+                </button>
+              </div>
+            ) : (
+              <div className="p-6 bg-[#FCFBF7] border-2 border-[#121212] rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="space-y-1 max-w-lg">
+                  <h4 className="font-brand font-black text-base uppercase text-slate-900">
+                    We'd love to hear how your journey with NO FIXED ADDRESS went.
+                  </h4>
+                  <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                    Your reflections help us celebrate our local expedition leaders and continually refine our private routes.
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setIsFeedbackModalOpen(true)}
+                  className="px-6 py-3 bg-[#121212] text-[#F4BF4B] font-black text-xs uppercase tracking-widest rounded-xl hover:bg-[#9E1B1D] hover:text-white transition-colors cursor-pointer shadow-sm shrink-0 flex items-center gap-2"
+                >
+                  <Sparkles size={14} /> SHARE YOUR EXPERIENCE
+                </button>
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* ── 7. WHERE COULD YOU GO NEXT? (COMPLETED TRIPS DISCOVERY - E44) ── */}
+        {isCompleted && (
+          <section id="discover-next" className="bg-white border-4 border-[#121212] p-6 sm:p-8 shadow-[8px_8px_0px_0px_#F4BF4B] space-y-8">
+            <div className="border-b-2 border-[#121212] pb-4 flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <span className="text-[10px] font-black uppercase text-[#9E1B1D] tracking-widest block">
+                  FUTURE EXPEDITIONS
+                </span>
+                <h3 className="font-brand font-black text-2xl sm:text-3xl uppercase text-[#121212]">
+                  WHERE COULD YOU GO NEXT?
+                </h3>
+              </div>
+              <Link
+                to="/packages"
+                className="text-xs font-black uppercase tracking-wider text-[#9E1B1D] hover:underline flex items-center gap-1"
+              >
+                Explore All Journeys &rarr;
+              </Link>
+            </div>
+
+            {/* Related Journeys */}
+            {relatedPackages.length > 0 && (
+              <div className="space-y-4">
+                <h4 className="font-brand font-black text-sm uppercase tracking-wider text-slate-800 flex items-center gap-2">
+                  <Compass size={16} className="text-[#9E1B1D]" /> CURATED EXPEDITIONS FOR RETURNING TRAVELLERS
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {relatedPackages.map((rp) => (
+                    <PackageJourneyCard key={rp.id} pkg={rp} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Related Destinations */}
+            {relatedDestinations.length > 0 && (
+              <div className="space-y-4 pt-4 border-t border-slate-200">
+                <h4 className="font-brand font-black text-sm uppercase tracking-wider text-slate-800 flex items-center gap-2">
+                  <Globe size={16} className="text-[#9E1B1D]" /> BREATHTAKING DESTINATIONS
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {relatedDestinations.map((dest) => (
+                    <Link
+                      key={dest.id}
+                      to={`/destinations/${dest.slug}`}
+                      className="group p-4 bg-[#FCFBF7] border-2 border-[#121212] rounded-xl hover:shadow-[4px_4px_0px_0px_#121212] transition-all flex flex-col justify-between"
+                    >
+                      <div className="space-y-2">
+                        {dest.heroImage && (
+                          <div className="h-32 rounded-lg overflow-hidden border border-slate-200">
+                            <img
+                              src={dest.heroImage}
+                              alt={dest.name}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
+                          </div>
+                        )}
+                        <span className="text-[9px] font-black uppercase text-slate-400 block">
+                          {dest.country || 'Destination'}
+                        </span>
+                        <h5 className="font-brand font-black text-lg uppercase text-slate-900 group-hover:text-[#9E1B1D] transition-colors">
+                          {dest.name}
+                        </h5>
+                      </div>
+                      <span className="text-[10px] font-black uppercase text-[#9E1B1D] tracking-wider pt-3 block">
+                        Explore Destination &rarr;
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* ── 7. POST-TRIP CTA: PLAN ANOTHER JOURNEY (E44) ── */}
+        {isCompleted && (
+          <section className="bg-[#121212] text-white p-8 border-4 border-[#121212] rounded-2xl shadow-[8px_8px_0px_0px_#9E1B1D] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+            <div className="space-y-2 max-w-xl">
+              <span className="font-brand font-black text-xs uppercase tracking-widest text-[#F4BF4B] block">
+                RETURNING TRAVELLER PRIVILEGES
+              </span>
+              <h3 className="font-brand font-black text-2xl sm:text-3xl uppercase text-white leading-tight">
+                PLAN YOUR NEXT JOURNEY
+              </h3>
+              <p className="text-xs text-slate-300 leading-relaxed font-medium">
+                Ready to discover somewhere new? Tell us what you're thinking and our specialists will help shape your next custom journey.
+              </p>
+            </div>
+
+            <button
+              onClick={handlePlanAnotherJourney}
+              className="px-8 py-4 bg-[#F4BF4B] text-[#121212] font-black text-xs uppercase tracking-widest rounded-xl hover:bg-white transition-all shadow-[4px_4px_0px_0px_#9E1B1D] shrink-0 cursor-pointer flex items-center gap-2"
+            >
+              <Compass size={16} /> PLAN ANOTHER JOURNEY
+            </button>
+          </section>
+        )}
+
+        {/* ── 8. STATUS-AWARE TRAVELLER SUPPORT & ASSISTANCE (E43) ── */}
+        <section id="support-assistance" className="bg-white border-4 border-[#121212] p-6 sm:p-8 shadow-[8px_8px_0px_0px_#121212] space-y-6">
+          <div className="flex items-center gap-3 border-b-2 border-[#121212] pb-4">
+            <div className="p-2.5 bg-[#121212] text-[#F4BF4B] rounded-lg">
+              <HelpCircle size={20} />
+            </div>
+            <div>
+              <span className="text-[10px] font-black uppercase text-[#9E1B1D] tracking-widest block">
+                {isTravellingNow
+                  ? 'IN-TRIP ASSISTANCE'
+                  : isCompleted
+                  ? 'EXPEDITION MEMORIES & SUPPORT'
+                  : 'PRE-DEPARTURE SUPPORT'}
+              </span>
+              <h3 className="font-brand font-black text-2xl uppercase text-[#121212]">
+                {isTravellingNow
+                  ? 'TRAVELLING NOW?'
+                  : isCompleted
+                  ? 'HOW WAS YOUR JOURNEY?'
+                  : 'NEED HELP WITH YOUR JOURNEY?'}
+              </h3>
+            </div>
+          </div>
+
+          <p className="text-xs text-slate-600 leading-relaxed font-medium">
+            {isTravellingNow
+              ? "We're here if you need help during your journey. Your dedicated expedition team is standing by on WhatsApp and phone for immediate assistance."
+              : isCompleted
+              ? 'We hope you had a wonderful expedition with NO FIXED ADDRESS. Your travel history and travel documents remain permanently accessible here for future reference.'
+              : 'Our travel team is here to help with questions about your journey, travel arrangements, documents, or arrival plans.'}
+          </p>
+
+          <div className="flex flex-wrap items-center gap-4 pt-2">
+            {!isCompleted ? (
+              <>
+                <a
+                  href={buildWhatsAppHandoffUrl()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-6 py-3.5 bg-emerald-600 text-white font-black text-xs uppercase tracking-widest rounded-xl hover:bg-emerald-500 transition-colors flex items-center gap-2 shadow-sm"
+                >
+                  <MessageSquare size={16} /> CONTINUE ON WHATSAPP
+                </a>
+
+                <a
+                  href="tel:+919876543210"
+                  className="px-6 py-3.5 bg-[#121212] text-[#F4BF4B] font-black text-xs uppercase tracking-widest rounded-xl hover:bg-[#9E1B1D] hover:text-white transition-colors flex items-center gap-2"
+                >
+                  <Phone size={16} /> CALL TRAVEL TEAM
+                </a>
+              </>
+            ) : (
+              <>
+                <Link
+                  to="/dashboard"
+                  className="px-6 py-3.5 bg-[#121212] text-[#F4BF4B] font-black text-xs uppercase tracking-widest rounded-xl hover:bg-[#9E1B1D] hover:text-white transition-colors flex items-center gap-2"
+                >
+                  <ArrowLeft size={16} /> VIEW TRAVEL HISTORY
+                </Link>
+
+                {relatedStory && relatedStory.status === 'PUBLISHED' && (
+                  <Link
+                    to={`/stories/${relatedStory.slug}`}
+                    className="px-6 py-3.5 bg-amber-100 text-amber-900 border border-amber-300 font-black text-xs uppercase tracking-widest rounded-xl hover:bg-amber-200 transition-colors flex items-center gap-2"
+                  >
+                    <BookOpen size={16} /> READ YOUR TRAVEL STORY
+                  </Link>
+                )}
+              </>
+            )}
+          </div>
+        </section>
+      </main>
+
+      {/* ── IN-BROWSER PDF PREVIEW MODAL ── */}
+      {previewDoc && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-xs">
+          <div className="bg-white border-4 border-[#121212] rounded-2xl w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden shadow-[12px_12px_0px_0px_#F4BF4B]">
+            {/* Modal Header */}
+            <div className="p-4 bg-[#121212] text-white flex items-center justify-between">
+              <div className="flex items-center gap-2 min-w-0">
+                <FileText size={18} className="text-[#F4BF4B] shrink-0" />
+                <span className="font-brand font-black text-sm uppercase truncate">
+                  {previewDoc.title}
+                </span>
               </div>
 
-              {!hasDocs ? (
-                <div className="p-4 bg-white/10 border border-white/20 rounded-lg text-xs font-bold text-slate-300 text-center">
-                  Your travel documents will appear here once your booking is confirmed.
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {/* Booking-level docs */}
-                  {travDocs.map((d: BookingDocument) => (
-                    <a
-                      key={d.id}
-                      href={d.fileUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-between p-4 bg-white/10 border border-white/20 hover:bg-[#F4BF4B]/10 hover:border-[#F4BF4B]/50 rounded-xl transition-colors group"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="size-10 bg-[#F4BF4B] rounded-lg flex items-center justify-center shrink-0">
-                          <FileText size={18} className="text-[#121212]" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-black text-sm text-white uppercase tracking-wide truncate group-hover:text-[#F4BF4B] transition-colors">{d.title}</p>
-                          <p className="text-[10px] text-slate-400">{DOC_LABELS[d.category] || d.category}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0 ml-3">
-                        <span className="text-[10px] font-bold text-[#F4BF4B] uppercase hidden sm:block">Download</span>
-                        <Download size={16} className="text-[#F4BF4B]" />
-                      </div>
-                    </a>
-                  ))}
+              <div className="flex items-center gap-2">
+                <a
+                  href={previewDoc.fileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1 bg-[#F4BF4B] text-[#121212] font-black text-xs uppercase rounded hover:bg-white transition-colors flex items-center gap-1"
+                >
+                  <Download size={12} /> Download
+                </a>
+                <button
+                  onClick={() => setPreviewDoc(null)}
+                  className="p-1 text-slate-400 hover:text-white rounded cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
 
-                  {/* Package PDF fallback */}
-                  {showPkgFallback && (
-                    <a
-                      href={pkg!.itineraryPDF}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-between p-4 bg-white/10 border border-white/20 hover:bg-[#F4BF4B]/10 hover:border-[#F4BF4B]/50 rounded-xl transition-colors group"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="size-10 bg-[#F4BF4B] rounded-lg flex items-center justify-center shrink-0">
-                          <FileText size={18} className="text-[#121212]" />
-                        </div>
-                        <div>
-                          <p className="font-black text-sm text-white uppercase tracking-wide group-hover:text-[#F4BF4B] transition-colors">Official Itinerary PDF</p>
-                          <p className="text-[10px] text-slate-400">Complete day-by-day journey plan</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0 ml-3">
-                        <span className="text-[10px] font-bold text-[#F4BF4B] uppercase hidden sm:block">Download</span>
-                        <Download size={16} className="text-[#F4BF4B]" />
-                      </div>
-                    </a>
-                  )}
-                </div>
-              )}
-            </section>
-          );
-        })()}
-      </main>
+            {/* Modal Body / Iframe Embed */}
+            <div className="flex-1 bg-slate-100 p-2 overflow-hidden">
+              <iframe
+                src={previewDoc.fileUrl}
+                title={previewDoc.title}
+                className="w-full h-full rounded border border-slate-300"
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── HOTEL GALLERY LIGHTBOX MODAL (B5) ── */}
       <HotelGallery
@@ -768,6 +1198,15 @@ export const MyJourneyView: React.FC = () => {
         hotelName={hotelGalleryState.hotelName}
         location={hotelGalleryState.location}
       />
+
+      {/* ── TRAVELLER FEEDBACK MODAL (E46) ── */}
+      {booking && (
+        <TravellerFeedbackModal
+          isOpen={isFeedbackModalOpen}
+          onClose={() => setIsFeedbackModalOpen(false)}
+          booking={booking}
+        />
+      )}
     </div>
   );
 };

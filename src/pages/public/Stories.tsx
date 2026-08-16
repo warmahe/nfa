@@ -4,6 +4,8 @@ import { BookOpen, Search, Sparkles, Loader2, ArrowRight } from 'lucide-react';
 import { subscribeToPublishedCustomerStories } from '../../services/firebaseService';
 import { CustomerStory } from '../../types/database';
 import { CustomerStoryCard } from '../../components/stories/CustomerStoryCard';
+import { SeoHead } from '../../components/shared/SeoHead';
+import { resolveStaticPageSEO } from '../../utils/seo';
 
 export const Stories = () => {
   const [stories, setStories] = useState<CustomerStory[]>([]);
@@ -62,6 +64,8 @@ export const Stories = () => {
 
   return (
     <div className="min-h-screen bg-[#FCFBF7] pt-24 md:pt-32 pb-24 nfa-texture selection:bg-[#F4BF4B] selection:text-[#121212]">
+      <SeoHead metadata={resolveStaticPageSEO('stories')} />
+
       {/* ── 1. EDITORIAL HEADER ── */}
       <section className="max-w-[1440px] mx-auto px-[clamp(1rem,4vw,3rem)] mb-16 border-b-4 border-[#121212] pb-12">
         <div className="flex items-center gap-3 text-[#9E1B1D] mb-6">

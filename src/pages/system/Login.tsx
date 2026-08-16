@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loginAdmin } from '../../services/firebaseService';
 import { Lock, ArrowRight } from 'lucide-react';
+import { SeoHead } from '../../components/shared/SeoHead';
+import { resolveStaticPageSEO } from '../../utils/seo';
 
 export const Login = () => {
   const [email, setEmail] = useState('');
@@ -21,6 +23,7 @@ export const Login = () => {
 
   return (
     <div className="min-h-screen bg-[#FCFBF7] flex items-center justify-center p-6 nfa-texture">
+      <SeoHead metadata={resolveStaticPageSEO('login')} />
       <div className="w-full max-w-md bg-white border-[4px] border-[#121212] p-8 md:p-12 shadow-[12px_12px_0_0_#121212]">
         <div className="flex flex-col items-center mb-10 text-center">
           <div className="bg-[#121212] text-[#F4BF4B] p-4 mb-6 rotate-45 border-2 border-[#121212]">

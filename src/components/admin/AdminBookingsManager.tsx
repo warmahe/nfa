@@ -48,6 +48,7 @@ import {
   Plus,
   Save,
   Loader2,
+  Star,
 } from 'lucide-react';
 import {
   db,
@@ -65,11 +66,13 @@ import { BookingDocument, BookingDocumentCategory } from '../../types/database';
 interface AdminBookingsManagerProps {
   onOpenEnquiry?: (enquiryId: string) => void;
   onOpenCustomer?: (customerId: string) => void;
+  onOpenCommunication?: () => void;
 }
 
 export const AdminBookingsManager: React.FC<AdminBookingsManagerProps> = ({
   onOpenEnquiry,
   onOpenCustomer,
+  onOpenCommunication,
 }) => {
   const { user } = useAuth();
   const currentAdminName = user?.displayName || user?.email?.split('@')[0] || 'Admin Staff';
@@ -3534,7 +3537,61 @@ export const AdminBookingsManager: React.FC<AdminBookingsManagerProps> = ({
               })()}
             </div>
 
-            {/* 5. LINKED ENQUIRY SECTION */}
+            {/* 5. TRAVELLER FEEDBACK & REVIEW (E46) */}
+            {selectedBooking.feedback?.submitted ? (
+              <div className="space-y-3 p-5 bg-[#FCFBF7] rounded-xl border-2 border-slate-900 shadow-xs">
+                <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                  <div>
+                    <span className="text-[9px] font-black uppercase text-[#9E1B1D] tracking-widest block">
+                      POST-TRIP EXPERIENCE
+                    </span>
+                    <h4 className="font-brand font-black text-sm uppercase text-slate-900 flex items-center gap-1.5">
+                      <Star size={14} className="fill-[#F4BF4B] text-[#F4BF4B]" /> TRAVELLER FEEDBACK
+                    </h4>
+                  </div>
+                  <span className="px-2.5 py-0.5 rounded font-black text-[9px] uppercase tracking-wider bg-emerald-100 text-emerald-900 border border-emerald-300">
+                    {selectedBooking.feedback.status || 'SUBMITTED'}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star
+                        key={i}
+                        size={16}
+                        className={
+                          i < selectedBooking.feedback!.overallRating
+                            ? 'fill-[#F4BF4B] text-[#F4BF4B]'
+                            : 'text-slate-200'
+                        }
+                      />
+                    ))}
+                    <span className="font-bold text-xs text-slate-900 ml-1.5">
+                      {selectedBooking.feedback.overallRating} / 5 Stars
+                    </span>
+                  </div>
+
+                  <span className="text-[10px] text-slate-400 font-medium">
+                    Submitted {selectedBooking.feedback.submittedAt ? new Date(selectedBooking.feedback.submittedAt).toLocaleDateString('en-GB') : ''}
+                  </span>
+                </div>
+
+                {selectedBooking.feedback.likedMost && (
+                  <div className="p-3 bg-white border border-slate-200 rounded-lg text-xs space-y-1">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase block">What they enjoyed:</span>
+                    <p className="text-slate-700 italic">"{selectedBooking.feedback.likedMost}"</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
+                <span className="text-slate-500 font-medium">Traveller Feedback</span>
+                <span className="text-slate-400 font-bold uppercase text-[10px]">NOT SHARED</span>
+              </div>
+            )}
+
+            {/* 6. LINKED ENQUIRY SECTION */}
             {selectedBooking.enquiryId && (
               <div className="space-y-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
                 <div className="flex items-center justify-between border-b border-slate-200 pb-2">

@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { Calendar, CheckCircle2, Download, Mail, ChevronUp, ChevronDown, Sparkles, ShieldCheck, FileText, ArrowRight } from 'lucide-react';
+import { Calendar, CheckCircle2, Download, Mail, ChevronUp, ChevronDown, Sparkles, ShieldCheck, FileText, ArrowRight, Bookmark } from 'lucide-react';
 import { Package } from '../../types/database';
 import { useEnquiry } from '../../context/EnquiryContext';
+import { JourneyShortlistButton } from '../discovery/JourneyShortlistButton';
 
 export interface StickyPriceCardProps {
   pkg: Package;
@@ -181,6 +181,15 @@ export const StickyPriceCard: React.FC<StickyPriceCardProps> = ({ pkg, onEnquire
         >
           <Mail size={16} /> ENQUIRE NOW
         </button>
+
+        {/* Shortlist Action Button (E49) */}
+        <JourneyShortlistButton
+          packageId={pkg.id}
+          slug={pkg.slug}
+          title={pkg.title}
+          variant="full"
+          className="w-full mb-3"
+        />
 
         {/* Secondary CTA: DOWNLOAD ITINERARY */}
         {pkg.itineraryPDF ? (
@@ -365,13 +374,22 @@ export const StickyPriceCard: React.FC<StickyPriceCardProps> = ({ pkg, onEnquire
             </div>
           </button>
 
-          <button
-            onClick={(e) => handleEnquireClick(e, 'MOBILE_STICKY')}
-            aria-label="Enquire about this itinerary"
-            className="bg-[#F4BF4B] text-[#121212] px-5 py-2.5 font-black text-xs uppercase tracking-widest flex items-center gap-1.5 active:scale-95 transition-transform shrink-0 border-2 border-[#F4BF4B] cursor-pointer"
-          >
-            Enquire <ArrowRight size={14} />
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <JourneyShortlistButton
+              packageId={pkg.id}
+              slug={pkg.slug}
+              title={pkg.title}
+              variant="icon"
+            />
+
+            <button
+              onClick={(e) => handleEnquireClick(e, 'MOBILE_STICKY')}
+              aria-label="Enquire about this itinerary"
+              className="bg-[#F4BF4B] text-[#121212] px-5 py-2.5 font-black text-xs uppercase tracking-widest flex items-center gap-1.5 active:scale-95 transition-transform border-2 border-[#F4BF4B] cursor-pointer"
+            >
+              ENQUIRE NOW <ArrowRight size={14} />
+            </button>
+          </div>
         </div>
       </div>
     </>

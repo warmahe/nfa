@@ -92,6 +92,27 @@ export interface Review extends BaseDocument {
   avatar?: string;
   approved: boolean;
   featured?: boolean;
+  displayOrder?: number;
+
+  // E47 Public Social Proof & Relationships
+  bookingId?: string;
+  bookingReference?: string;
+  customerId?: string;
+  itineraryId?: string;
+  itineraryTitle?: string;
+  itinerarySlug?: string;
+  destination?: string;
+  destinationSlug?: string;
+  travelDate?: string;
+  travelYear?: number | string;
+  status?: 'PUBLISHED' | 'ARCHIVED';
+  publishedAt?: string | Timestamp;
+  coverImage?: string;
+  source?: 'TRAVELLER_FEEDBACK' | 'MANUAL';
+  verifiedPurchase?: boolean;
+  isAnonymous?: boolean;
+  helpfulCount?: number;
+  unhelpfulCount?: number;
 }
 
 export interface PricingTier {
@@ -130,6 +151,48 @@ export interface PackageRating {
 export interface PackageAvailability {
   maxSlots: number; // 12 max travelers per batch
   bookings: number; // AUTO: total bookings for this package
+}
+
+// E50 Departure Dates, Availability & Travel Windows
+export type DepartureAvailabilityStatus =
+  | 'AVAILABLE'
+  | 'LIMITED'
+  | 'ON_REQUEST'
+  | 'CLOSED';
+
+export type DepartureType =
+  | 'FIXED_DEPARTURE'
+  | 'PRIVATE_FLEXIBLE'
+  | 'SEASONAL'
+  | 'CUSTOM';
+
+export interface JourneyDepartureDate {
+  id: string;
+  date: string;
+  status: DepartureAvailabilityStatus;
+  type?: DepartureType;
+  remainingSpaces?: number;
+  maxTravellers?: number;
+  minTravellers?: number;
+  note?: string;
+}
+
+export interface JourneyTravelWindow {
+  id: string;
+  label: string;
+  from: string;
+  to: string;
+  status: DepartureAvailabilityStatus;
+  note?: string;
+}
+
+export interface JourneyAvailability {
+  mode?: 'FIXED_DEPARTURES' | 'PRIVATE_FLEXIBLE' | 'BOTH';
+  departures?: JourneyDepartureDate[];
+  travelWindows?: JourneyTravelWindow[];
+  bookingLeadTimeDays?: number;
+  availabilityNote?: string;
+  enquiryGuidance?: string;
 }
 
 export interface HotelInfo {
@@ -253,6 +316,17 @@ export interface HomepageWhyUsFeature {
   icon?: string;
 }
 
+export interface ContentSEO {
+  title?: string;
+  description?: string;
+  keywords?: string[];
+  socialTitle?: string;
+  socialDescription?: string;
+  socialImage?: string;
+  canonicalUrl?: string;
+  noIndex?: boolean; // false: Index (default), true: Noindex (Hide from search)
+}
+
 export interface HomepageSettings {
   heroImage: string;
   featuredDropZones: string[];
@@ -267,6 +341,7 @@ export interface HomepageSettings {
   featuredDestinations?: HomepageSectionConfig & { destinationIds?: string[] };
   experiences?: HomepageSectionConfig & { categories?: HomepageExperienceCategory[] };
   customerStories?: HomepageSectionConfig & { storyIds?: string[] };
+  reviews?: HomepageSectionConfig & { reviewIds?: string[]; featuredOnly?: boolean; count?: number };
   whyUs?: HomepageSectionConfig & { features?: HomepageWhyUsFeature[] };
   planningCta?: {
     enabled?: boolean;
@@ -275,6 +350,9 @@ export interface HomepageSettings {
     primaryBtnLabel?: string;
     secondaryBtnLabel?: string;
   };
+
+  // E34 SEO Settings
+  seo?: ContentSEO;
 
   updatedAt?: Timestamp;
 }
@@ -307,6 +385,10 @@ export interface Package extends BaseDocument {
   bestFor?: string[];
   bestTime?: string;
   editorialHighlights?: string[];
+  // E34 SEO & Public Discovery
+  seo?: ContentSEO;
+  // E50 Departure Dates & Travel Windows Availability
+  availability?: JourneyAvailability;
 }
 
 // ============================================================================
@@ -711,8 +793,47 @@ export interface Booking extends BaseDocument {
   // E12 Booking Travel Documents (Admin-managed, customer-safe)
   documents?: BookingDocument[];
 
+  // E46 Traveller Feedback, Review & Post-Trip Insight Center
+  feedback?: BookingFeedback;
+
   // Check-in date
   checkinDate: Timestamp;
+}
+
+export type FeedbackStatus =
+  | 'NOT_SUBMITTED'
+  | 'SUBMITTED'
+  | 'REVIEWED'
+  | 'PUBLISHED'
+  | 'ARCHIVED';
+
+export interface BookingFeedback {
+  submitted?: boolean;
+  submittedAt?: string;
+
+  overallRating: number; // 1–5 (required)
+
+  journeyRating?: number; // 1–5
+  accommodationRating?: number; // 1–5
+  experienceRating?: number; // 1–5
+  travelTeamRating?: number; // 1–5
+
+  likedMost?: string;
+  improvements?: string;
+
+  wouldRecommend?: 'YES' | 'NOT_SURE' | 'NO' | boolean;
+
+  testimonialText?: string;
+
+  publicConsent?: boolean;
+  publicDisplayName?: string; // 'Full Name' | 'First Name' | 'Anonymous'
+
+  status?: FeedbackStatus;
+
+  reviewedAt?: string;
+  reviewedBy?: string;
+  internalNotes?: string;
+  publishedReviewId?: string;
 }
 
 // ============================================================================
@@ -861,9 +982,14 @@ export interface Destination extends BaseDocument {
   languageSpoken?: string[];
   visaRequirements?: string;
   bestDaysDuration?: string;
-  distanceFromAirport?: string;
   rainfall?: number;
   averageTemperature?: DestinationClimate;
+  // Legacy / Direct SEO fields
+  seoTitle?: string;
+  seoDescription?: string;
+  seoKeywords?: string[];
+  // E34 SEO & Public Discovery
+  seo?: ContentSEO;
 }
 
 // ============================================================================
@@ -1216,5 +1342,12 @@ export interface CustomerStory {
   updatedAt?: Timestamp;
   createdBy?: string;
   updatedBy?: string;
+
+  // Legacy / Direct SEO fields
+  seoTitle?: string;
+  seoDescription?: string;
+  seoKeywords?: string[];
+  // E34 SEO & Public Discovery
+  seo?: ContentSEO;
 }
 

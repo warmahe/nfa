@@ -5,13 +5,14 @@ import {
   Settings, HelpCircle, ChevronRight, SlidersHorizontal, RefreshCw,
   TrendingUp, CheckCircle2, Clock, DollarSign, Layers, ShieldCheck,
   User, ArrowUpRight, ArrowDownRight, Volume2, VolumeX, Plus, Check, Zap,
-  Compass, Mail, BookOpen,
+  Compass, Mail, BookOpen, GitPullRequest, Star,
   type LucideIcon 
 } from 'lucide-react';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../services/firebaseService';
 import { AdminHomepageManager } from '../../components/admin/AdminHomepageManager';
 import { AdminReviewsManager } from '../../components/admin/AdminReviewsManager';
+import { AdminFeedbackManager } from '../../components/admin/AdminFeedbackManager';
 import { AdminGalleryManager } from '../../components/admin/AdminGalleryManager';
 import { AdminPackagesManager } from '../../components/admin/AdminPackagesManager';
 import { AdminBookingsManager } from '../../components/admin/AdminBookingsManager';
@@ -21,8 +22,13 @@ import { AdminDestinationManager } from '../../components/admin/AdminDestination
 import { AdminEnquiriesManager } from '../../components/admin/AdminEnquiriesManager';
 import { AdminCustomersManager } from '../../components/admin/AdminCustomersManager';
 import { AdminCustomerStoriesManager } from '../../components/admin/AdminCustomerStoriesManager';
+import { AdminCommunicationManager } from '../../components/admin/AdminCommunicationManager';
+import { AdminWorkflowManager } from '../../components/admin/AdminWorkflowManager';
+import { AdminTripPreparationManager } from '../../components/admin/AdminTripPreparationManager';
 import { AdminOverviewManager } from '../../components/admin/AdminOverviewManager';
 import { AdminGlobalSearchModal } from '../../components/admin/AdminGlobalSearchModal';
+import { SeoHead } from '../../components/shared/SeoHead';
+import { resolveStaticPageSEO } from '../../utils/seo';
 import { AdminNotificationsManager } from '../../components/admin/AdminNotificationsManager';
 import { AdminNotificationDropdown } from '../../components/admin/AdminNotificationDropdown';
 import { logoutUser, subscribeToCustomers } from '../../services/firebaseService';
@@ -50,6 +56,12 @@ export const Admin = () => {
   const [showNotificationsMenu, setShowNotificationsMenu] = useState(false);
   const [showMetricsBanner, setShowMetricsBanner] = useState(true);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
+  const [searchSelectedCustomerId, setSearchSelectedCustomerId] = useState<string | undefined>(undefined);
+  const [communicationFilter, setCommunicationFilter] = useState<string>('ALL');
+  const [workflowFilter, setWorkflowFilter] = useState<string>('ALL');
+  const [tripPrepFilter, setTripPrepFilter] = useState<string>('ALL');
+  const [customerFilter, setCustomerFilter] = useState<string>('ALL');
+  const [feedbackFilter, setFeedbackFilter] = useState<string>('ALL');
   const [readNotifIds, setReadNotifIds] = useState<string[]>(() => {
     try {
       return JSON.parse(localStorage.getItem('nfa_admin_read_notifs') || '[]');
@@ -129,9 +141,32 @@ export const Admin = () => {
     section: 'menu' | 'content' | 'general';
   };
 
+  const followUpsDueCount = enquiries.filter((e) => {
+    if (!e.followUpAt || e.status === 'CLOSED' || e.status === 'CONVERTED') return false;
+    let dStr = '';
+    if (typeof e.followUpAt === 'string') dStr = e.followUpAt.split('T')[0];
+    else if ((e.followUpAt as any)?.toDate) dStr = (e.followUpAt as any).toDate().toISOString().split('T')[0];
+    const today = new Date().toISOString().split('T')[0];
+    return dStr && dStr <= today;
+  }).length;
+
+  const tripsToPrepareCount = bookings.filter((b) => {
+    const bStatus = b.status || (b.bookingStatus === 'confirmed' ? 'CONFIRMED' : 'PENDING_CONFIRMATION');
+    if (bStatus === 'CANCELLED' || b.bookingStatus === 'cancelled' || bStatus === 'COMPLETED' || b.bookingStatus === 'completed') return false;
+    return b.operationalStatus !== 'READY' && b.operationalStatus !== 'TRAVELLER_BRIEFED' && b.operationalStatus !== 'TRIP_COMPLETED';
+  }).length;
+
+  const feedbackToReviewCount = bookings.filter(
+    (b) => !!b.feedback?.submitted && (b.feedback.status === 'SUBMITTED' || !b.feedback.status)
+  ).length;
+
   const primaryRailItems = [
     { id: 'DASHBOARD', label: 'Dashboard', icon: LayoutTemplate },
+    { id: 'WORKFLOW', label: 'Traveller Workflow', icon: GitPullRequest },
+    { id: 'TRIP_PREPARATION', label: 'Trip Preparation', icon: Compass },
+    { id: 'COMMUNICATIONS', label: 'Communications', icon: MessageSquare },
     { id: 'NOTIFICATIONS', label: 'Notifications', icon: Bell },
+    { id: 'FEEDBACK', label: 'Feedback & Reviews', icon: Star },
     { id: 'BOOKINGS', label: 'Bookings & Leads', icon: Calendar },
     { id: 'CUSTOMERS', label: 'Customers', icon: User },
     { id: 'CUSTOMER_STORIES', label: 'Customer Stories', icon: BookOpen },
@@ -144,7 +179,11 @@ export const Admin = () => {
 
   const menuItems: SidebarItem[] = [
     { id: 'DASHBOARD', label: 'Overview', icon: LayoutTemplate, section: 'menu' },
-    { id: 'NOTIFICATIONS', label: 'Notifications & Follow-ups', icon: Bell, section: 'menu' },
+    { id: 'WORKFLOW', label: 'Traveller Workflow', icon: GitPullRequest, section: 'menu' },
+    { id: 'TRIP_PREPARATION', label: 'Trip Preparation', icon: Compass, badge: tripsToPrepareCount > 0 ? tripsToPrepareCount : undefined, section: 'menu' },
+    { id: 'COMMUNICATIONS', label: 'Communications & Follow-ups', icon: MessageSquare, badge: followUpsDueCount > 0 ? followUpsDueCount : undefined, section: 'menu' },
+    { id: 'NOTIFICATIONS', label: 'Notifications & Alerts', icon: Bell, section: 'menu' },
+    { id: 'FEEDBACK', label: 'Traveller Feedback', icon: Star, badge: feedbackToReviewCount > 0 ? feedbackToReviewCount : undefined, section: 'menu' },
     { id: 'BOOKINGS', label: 'Bookings & Leads', icon: Calendar, badge: bookings.length + enquiries.filter(e => e.status === 'NEW').length, section: 'menu' },
     { id: 'CUSTOMERS', label: 'Customers', icon: User, badge: customers.length, section: 'menu' },
     { id: 'CUSTOMER_STORIES', label: 'Customer Stories', icon: BookOpen, section: 'menu' },
@@ -168,8 +207,26 @@ export const Admin = () => {
     return allTabs.find(t => t.id === activeTab)?.label || 'Dashboard';
   };
 
-  const handleTabChange = (tabId: string) => {
+  const handleTabChange = (tabId: string, filterOptions?: any) => {
     setActiveTab(tabId);
+    if (filterOptions?.customerFilter) {
+      setCustomerFilter(filterOptions.customerFilter);
+    }
+    if (filterOptions?.filter) {
+      setCommunicationFilter(filterOptions.filter);
+    }
+    if (filterOptions?.workflowFilter) {
+      setWorkflowFilter(filterOptions.workflowFilter);
+    }
+    if (filterOptions?.tripPrepFilter) {
+      setTripPrepFilter(filterOptions.tripPrepFilter);
+    }
+    if (filterOptions?.feedbackFilter) {
+      setFeedbackFilter(filterOptions.feedbackFilter);
+    }
+    if (filterOptions?.customerId) {
+      setSearchSelectedCustomerId(filterOptions.customerId);
+    }
     setShowFilterDrawer(false);
     setShowQuickActionsMenu(false);
     setShowNotificationsMenu(false);
@@ -503,7 +560,7 @@ export const Admin = () => {
             packages={packages}
             destinations={destinations}
             stories={[]}
-            onNavigateTab={(tabId) => setActiveTab(tabId)}
+            onNavigateTab={(tabId, filterOptions) => handleTabChange(tabId, filterOptions)}
           />
         </div>
       );
@@ -513,6 +570,52 @@ export const Admin = () => {
       <div className="space-y-4">
         {/* Section Card Shell wrapping the sub-manager components */}
         <div className="saas-card bg-white p-5 lg:p-6 border-slate-200/80 shadow-xs">
+          {activeTab === 'WORKFLOW' && (
+            <AdminWorkflowManager
+              enquiries={enquiries}
+              bookings={bookings}
+              customers={customers}
+              packages={packages}
+              initialFilter={workflowFilter}
+              onOpenCustomer={(cId) => {
+                setSearchSelectedCustomerId(cId);
+                setActiveTab('CUSTOMERS');
+              }}
+              onOpenEnquiry={() => setActiveTab('BOOKINGS')}
+              onOpenBooking={() => setActiveTab('BOOKINGS')}
+              onOpenPreparation={() => setActiveTab('TRIP_PREPARATION')}
+              onOpenCommunication={() => setActiveTab('COMMUNICATIONS')}
+            />
+          )}
+          {activeTab === 'TRIP_PREPARATION' && (
+            <AdminTripPreparationManager
+              bookings={bookings}
+              customers={customers}
+              packages={packages}
+              initialFilter={tripPrepFilter}
+              onOpenBooking={() => setActiveTab('BOOKINGS')}
+              onOpenCustomer={(cId) => {
+                setSearchSelectedCustomerId(cId);
+                setActiveTab('CUSTOMERS');
+              }}
+              onOpenPackage={() => setActiveTab('PACKAGES')}
+              onOpenCommunication={() => setActiveTab('COMMUNICATIONS')}
+            />
+          )}
+          {activeTab === 'COMMUNICATIONS' && (
+            <AdminCommunicationManager
+              enquiries={enquiries}
+              bookings={bookings}
+              customers={customers}
+              initialFilter={communicationFilter}
+              onOpenCustomer={(cId) => {
+                setSearchSelectedCustomerId(cId);
+                setActiveTab('CUSTOMERS');
+              }}
+              onOpenEnquiry={() => setActiveTab('BOOKINGS')}
+              onOpenBooking={() => setActiveTab('BOOKINGS')}
+            />
+          )}
           {activeTab === 'NOTIFICATIONS' && (
             <AdminNotificationsManager
               bookings={bookings}
@@ -524,9 +627,31 @@ export const Admin = () => {
               onNavigateTab={(tabId) => setActiveTab(tabId)}
             />
           )}
-          {activeTab === 'BOOKINGS' && <AdminBookingsManager />}
+          {activeTab === 'BOOKINGS' && (
+            <AdminBookingsManager
+              onOpenCommunication={() => setActiveTab('COMMUNICATIONS')}
+            />
+          )}
           {activeTab === 'CUSTOMERS' && (
-            <AdminCustomersManager onOpenEnquiry={() => setActiveTab('BOOKINGS')} />
+            <AdminCustomersManager
+              initialSelectedCustomerId={searchSelectedCustomerId}
+              initialStatusFilter={customerFilter}
+              onOpenEnquiry={() => setActiveTab('BOOKINGS')}
+              onOpenBooking={() => setActiveTab('BOOKINGS')}
+              onOpenPreparation={() => setActiveTab('TRIP_PREPARATION')}
+              onOpenStory={() => setActiveTab('CUSTOMER_STORIES')}
+              onOpenCommunication={() => setActiveTab('COMMUNICATIONS')}
+            />
+          )}
+          {activeTab === 'FEEDBACK' && (
+            <AdminFeedbackManager
+              bookings={bookings}
+              customers={customers}
+              packages={packages}
+              destinations={destinations}
+              initialFilter={feedbackFilter}
+              onNavigateTab={(tabId, params) => handleTabChange(tabId, params)}
+            />
           )}
           {activeTab === 'CUSTOMER_STORIES' && <AdminCustomerStoriesManager />}
           {activeTab === 'HOMEPAGE' && <AdminHomepageManager />}
@@ -543,6 +668,8 @@ export const Admin = () => {
 
   return (
     <div className="h-screen overflow-hidden bg-[#FCFBF7] text-slate-900 flex flex-col font-sans selection:bg-[#F4BF4B]">
+      {/* Protected Admin Route — noindex, nofollow */}
+      <SeoHead metadata={resolveStaticPageSEO('admin')} />
       
       {/* GLOBAL ENTERPRISE SHELL CONTAINER */}
       <div className="flex-1 flex overflow-hidden min-w-0">
@@ -1060,6 +1187,7 @@ export const Admin = () => {
         stories={[]}
         onSelectResult={(result) => {
           if (result.category === 'CUSTOMER') {
+            setSearchSelectedCustomerId(result.id);
             setActiveTab('CUSTOMERS');
           } else if (result.category === 'ENQUIRY' || result.category === 'BOOKING') {
             setActiveTab('BOOKINGS');
