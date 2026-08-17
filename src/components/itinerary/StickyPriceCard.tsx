@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import { Calendar, CheckCircle2, Download, Mail, ChevronUp, ChevronDown, Sparkles, ShieldCheck, FileText, ArrowRight, Bookmark } from 'lucide-react';
 import { Package } from '../../types/database';
 import { useEnquiry } from '../../context/EnquiryContext';

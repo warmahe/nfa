@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Clock, MapPin, ArrowRight, Heart, Star, Sparkles, Compass, Calendar } from 'lucide-react';
 import { Package } from '../../types/database';

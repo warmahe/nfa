@@ -35,6 +35,7 @@ import {
   History,
   AlertTriangle,
   CheckSquare,
+  SlidersHorizontal,
 } from 'lucide-react';
 import {
   db,
@@ -1866,8 +1867,9 @@ export const AdminEnquiriesManager: React.FC = () => {
                     </div>
                   </div>
                 </div>
-              );
-            })()}
+              </div>
+            );
+          })()}
 
             {/* TAB CONTENT 2: INTERNAL NOTES (C2) */}
             {activeDrawerTab === 'notes' && (

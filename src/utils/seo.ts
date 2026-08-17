@@ -18,6 +18,13 @@ export const SEO_CONFIG = {
   },
 };
 
+export const SITE_CONFIG = {
+  baseUrl: SEO_CONFIG.site.url,
+  siteName: SEO_CONFIG.site.name,
+  defaultTitle: SEO_CONFIG.site.title,
+  defaultDescription: SEO_CONFIG.site.description,
+};
+
 export interface SeoMetadata {
   title: string;
   description: string;
@@ -29,6 +36,7 @@ export interface SeoMetadata {
   robots?: string;
   canonicalUrl?: string;
   structuredData?: any[];
+  breadcrumbs?: Array<{ name: string; url: string }>;
 }
 
 /**

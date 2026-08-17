@@ -529,6 +529,12 @@ export interface EnquiryActivity {
     channel?: string;
     assignedToName?: string;
     nextAction?: string;
+    reason?: string;
+    details?: string;
+    priority?: string;
+    intent?: string;
+    estValue?: string;
+    [key: string]: any;
   };
   createdAt: Timestamp;
 }
