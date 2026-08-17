@@ -1,5 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import MainLayout from "./layouts/MainLayout";
+import { EnquiryProvider } from "./context/EnquiryContext";
+import { EnquiryModal } from "./components/enquiry/EnquiryModal";
 
 // PUBLIC PAGES
 import { Home } from "./pages/public/Home";
@@ -14,8 +16,6 @@ import { Stories } from "./pages/public/Stories";
 import { StoryDetail } from "./pages/public/StoryDetail";
 import { ItineraryDetail } from "./pages/public/ItineraryDetail";
 import { FAQ } from "./pages/public/FAQ";
-import { Reviews } from "./pages/public/Reviews";
-import { Testimonials } from "./pages/public/Testimonials";
 import { Explore } from "./pages/public/Explore";
 import { Shortlist } from "./pages/public/Shortlist";
 import { CompareJourneys } from "./pages/public/CompareJourneys";
@@ -35,71 +35,74 @@ import { ErrorBoundary } from "./components/shared/ErrorBoundary";
 export default function App() {
   return (
     <ErrorBoundary>
-      <Router>
-        <Routes>
-          <Route path="/" element={<MainLayout />}>
-            {/* Main Public Flow */}
-            <Route index element={<Home />} />
-            <Route path="about" element={<About />} />
-            <Route path="explore" element={<Explore />} />
-            <Route path="packages" element={<Packages />} />
-            <Route path="destinations" element={<Destinations />} />
-            <Route path="destinations/:slug" element={<DestinationDetail />} />
-            <Route path="itinerary/:id" element={<ItineraryDetail />} />
-            <Route path="itineraries/:id" element={<ItineraryDetail />} />
-            <Route path="contact" element={<Contact />} />
-            <Route path="gallery" element={<Gallery />} />
-            <Route path="gallery/:id" element={<EditorialGallery />} />
+      <EnquiryProvider>
+        <Router>
+          <Routes>
+            <Route path="/" element={<MainLayout />}>
+              {/* Main Public Flow */}
+              <Route index element={<Home />} />
+              <Route path="about" element={<About />} />
+              <Route path="explore" element={<Explore />} />
+              <Route path="packages" element={<Packages />} />
+              <Route path="destinations" element={<Destinations />} />
+              <Route path="destinations/:slug" element={<DestinationDetail />} />
+              <Route path="itinerary/:id" element={<ItineraryDetail />} />
+              <Route path="itineraries/:id" element={<ItineraryDetail />} />
+              <Route path="contact" element={<Contact />} />
+              <Route path="gallery" element={<Gallery />} />
+              <Route path="gallery/:id" element={<EditorialGallery />} />
 
-            {/* E13 Customer Stories */}
-            <Route path="stories" element={<Stories />} />
-            <Route path="stories/:slug" element={<StoryDetail />} />
-            <Route path="blog" element={<Navigate to="/stories" replace />} />
-            <Route path="blog/:slug" element={<Navigate to="/stories" replace />} />
-            <Route path="faq" element={<FAQ />} />
-            <Route path="reviews" element={<Reviews />} />
-            <Route path="testimonials" element={<Testimonials />} />
-            <Route path="shortlist" element={<Shortlist />} />
-            <Route path="compare" element={<CompareJourneys />} />
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="wishlist" element={<Wishlist />} />
+              {/* E13 Customer Stories */}
+              <Route path="stories" element={<Stories />} />
+              <Route path="stories/:slug" element={<StoryDetail />} />
+              <Route path="blog" element={<Navigate to="/stories" replace />} />
+              <Route path="blog/:slug" element={<Navigate to="/stories" replace />} />
+              <Route path="faq" element={<FAQ />} />
+              <Route path="reviews" element={<Navigate to="/stories" replace />} />
+              <Route path="testimonials" element={<Navigate to="/stories" replace />} />
+              <Route path="shortlist" element={<Shortlist />} />
+              <Route path="compare" element={<CompareJourneys />} />
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="wishlist" element={<Wishlist />} />
 
-            {/* E9 Booked Customer Journey View */}
+              {/* E9 Booked Customer Journey View */}
+              <Route
+                path="my-journey/:bookingId"
+                element={
+                  <ProtectedRoute>
+                    <MyJourneyView />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Legal Pages */}
+              <Route path="privacy" element={<Privacy />} />
+              <Route path="terms" element={<Terms />} />
+
+              {/* Authentication */}
+              <Route path="login" element={<Login />} />
+
+              {/* Fallback - 404 */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Route>
+
+            {/* Admin Dashboard — outside MainLayout (no header/footer) */}
             <Route
-              path="my-journey/:bookingId"
+              path="/admin"
               element={
-                <ProtectedRoute>
-                  <MyJourneyView />
-                </ProtectedRoute>
+                <ErrorBoundary fallbackTitle="Admin Workspace Diagnostics">
+                  <ProtectedRoute>
+                    <AdminDialogProvider>
+                      <Admin />
+                    </AdminDialogProvider>
+                  </ProtectedRoute>
+                </ErrorBoundary>
               }
             />
-
-            {/* Legal Pages */}
-            <Route path="privacy" element={<Privacy />} />
-            <Route path="terms" element={<Terms />} />
-
-            {/* Authentication */}
-            <Route path="login" element={<Login />} />
-
-            {/* Fallback - 404 */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Route>
-
-          {/* Admin Dashboard — outside MainLayout (no header/footer) */}
-          <Route
-            path="/admin"
-            element={
-              <ErrorBoundary fallbackTitle="Admin Workspace Diagnostics">
-                <ProtectedRoute>
-                  <AdminDialogProvider>
-                    <Admin />
-                  </AdminDialogProvider>
-                </ProtectedRoute>
-              </ErrorBoundary>
-            }
-          />
-        </Routes>
-      </Router>
+          </Routes>
+          <EnquiryModal />
+        </Router>
+      </EnquiryProvider>
     </ErrorBoundary>
   );
 }

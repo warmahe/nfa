@@ -2,10 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../services/firebaseService';
-import { Destination, Review, CustomerStory, Package } from '../../types/database';
+import { Destination, CustomerStory, Package } from '../../types/database';
 import { useDestinations } from '../../hooks/useDestinations';
 import { PackageJourneyCard } from '../../components/packages/PackageJourneyCard';
-import { TravellerReviewCard } from '../../components/reviews/TravellerReviewCard';
 import { RelatedDestinations } from '../../components/discovery/RelatedDestinations';
 import { RelatedStories } from '../../components/discovery/RelatedStories';
 import { useEnquiry } from '../../context/EnquiryContext';
@@ -49,8 +48,6 @@ export const DestinationDetail = () => {
     return () => unsub();
   }, [slug]);
 
-  // Realtime global reviews dataset for this destination
-  const [destinationReviews, setDestinationReviews] = useState<Review[]>([]);
   const [allDestinations, setAllDestinations] = useState<Destination[]>([]);
   const [allStories, setAllStories] = useState<CustomerStory[]>([]);
 
@@ -66,28 +63,6 @@ export const DestinationDetail = () => {
       unsubAllStories();
     };
   }, []);
-
-  useEffect(() => {
-    if (!destination) return;
-    const unsub = onSnapshot(
-      collection(db, 'global_reviews'),
-      (snapshot) => {
-        const all = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Review));
-        const destName = destination.name.toLowerCase();
-        const destSlug = (destination.slug || '').toLowerCase();
-        const matching = all.filter((r) => {
-          if (r.approved === false || r.status === 'ARCHIVED') return false;
-          if (!r.content && !(r as any).testimonial) return false;
-          const rDest = (r.destination || '').toLowerCase();
-          const rDestSlug = (r.destinationSlug || '').toLowerCase();
-          return rDest === destName || rDestSlug === destSlug || rDest.includes(destName);
-        });
-        setDestinationReviews(matching);
-      },
-      (err) => console.error('Error fetching destination reviews:', err)
-    );
-    return () => unsub();
-  }, [destination]);
 
   // Match packages that include this destination in destinations[] or itineraryCities[]
   const relatedPackages = useMemo(() => {
@@ -426,34 +401,6 @@ export const DestinationDetail = () => {
             </div>
           )}
         </div>
-
-        {/* ── 5.5 TRAVELLER EXPERIENCES & SOCIAL PROOF (E47) ── */}
-        {destinationReviews.length > 0 && (
-          <div className="space-y-8 pt-8 border-t-4 border-[#121212]">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
-              <div>
-                <span className="flex items-center gap-2 font-black text-[10px] uppercase tracking-[0.3em] text-[#9E1B1D] mb-1">
-                  <ShieldCheck size={14} /> Verified Reflections
-                </span>
-                <h2 className="font-brand font-black text-3xl uppercase tracking-tighter text-[#121212]">
-                  TRAVELLER EXPERIENCES IN {destination.name.toUpperCase()}
-                </h2>
-              </div>
-              <Link
-                to={`/reviews?destination=${encodeURIComponent(destination.name)}`}
-                className="text-xs font-bold uppercase tracking-widest text-[#9E1B1D] hover:underline flex items-center gap-1"
-              >
-                Read All Reviews ({destinationReviews.length}) →
-              </Link>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-              {destinationReviews.slice(0, 3).map((review) => (
-                <TravellerReviewCard key={review.id} review={review} />
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* ── 5.6 RELATED CUSTOMER STORIES (E48 Discovery) ── */}
         <RelatedStories

@@ -30,18 +30,6 @@ export const AboutTrip: React.FC<AboutTripProps> = ({ pkg }) => {
             {/* Accent box */}
             <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-[#9E1B1D] border-4 border-[#121212] z-[-1]" />
           </div>
-
-          {/* Floating stat */}
-          {pkg?.rating?.totalReviews > 0 && (
-            <div className="absolute top-6 -right-4 md:-right-8 bg-[#121212] border-2 border-[#F4BF4B] text-white px-5 py-4 text-center shadow-lg">
-              <span className="block font-brand font-black text-4xl text-[#F4BF4B] leading-none">
-                {pkg.rating.average.toFixed(1)}
-              </span>
-              <span className="block text-[9px] font-black uppercase tracking-widest opacity-60 mt-1">
-                Avg Rating
-              </span>
-            </div>
-          )}
         </div>
 
         {/* Right: Content */}

@@ -31,7 +31,6 @@ import {
   Star,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { TravellerFeedbackModal } from '../../components/user/TravellerFeedbackModal';
 import { SeoHead } from '../../components/shared/SeoHead';
 import { resolveStaticPageSEO } from '../../utils/seo';
 import {
@@ -84,7 +83,6 @@ export const Dashboard = () => {
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [selectedEnquiry, setSelectedEnquiry] = useState<EnquiryDocument | null>(null);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
-  const [feedbackBooking, setFeedbackBooking] = useState<Booking | null>(null);
 
   // Redirect unauthenticated visitors to login
   useEffect(() => {
@@ -764,21 +762,6 @@ export const Dashboard = () => {
                               <BookOpen size={12} /> READ YOUR TRAVEL STORY
                             </Link>
                           )}
-                          {trip.feedback?.submitted ? (
-                            <button
-                              onClick={() => setFeedbackBooking(trip)}
-                              className="bg-emerald-50 text-emerald-900 border border-emerald-300 px-3 py-2 font-black text-[9px] uppercase tracking-widest hover:bg-emerald-100 transition-colors flex items-center gap-1.5 cursor-pointer"
-                            >
-                              <Star size={11} className="fill-amber-400 text-amber-400" /> FEEDBACK SHARED ({trip.feedback.overallRating}★)
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => setFeedbackBooking(trip)}
-                              className="bg-amber-50 text-amber-900 border border-amber-300 px-3 py-2 font-black text-[9px] uppercase tracking-widest hover:bg-amber-100 transition-colors flex items-center gap-1.5 cursor-pointer"
-                            >
-                              <Sparkles size={11} className="text-amber-600" /> SHARE EXPERIENCE
-                            </button>
-                          )}
                           <button
                             onClick={() => navigate(`/my-journey/${trip.id}`)}
                             className="bg-[#121212] text-[#F4BF4B] px-4 py-2 border border-[#121212] font-black text-[9px] uppercase tracking-widest hover:bg-[#9E1B1D] hover:text-white transition-colors cursor-pointer"
@@ -950,7 +933,9 @@ export const Dashboard = () => {
                       Travel Style
                     </span>
                     <p className="text-sm font-bold text-slate-900">
-                      {customer?.preferences?.preferredTravelStyle?.join(', ') || 'Flexible'}
+                      {Array.isArray(customer?.preferences?.preferredTravelStyle)
+                        ? customer.preferences.preferredTravelStyle.join(', ')
+                        : (customer?.preferences?.preferredTravelStyle || (Array.isArray(customer?.preferences?.travelStyle) ? customer.preferences.travelStyle.join(', ') : customer?.preferences?.travelStyle) || 'Flexible')}
                     </p>
                   </div>
                   <div>
@@ -1243,15 +1228,6 @@ export const Dashboard = () => {
             </div>
           </div>
         </div>
-      )}
-
-      {/* Traveller Feedback Modal (E46) */}
-      {feedbackBooking && (
-        <TravellerFeedbackModal
-          isOpen={!!feedbackBooking}
-          onClose={() => setFeedbackBooking(null)}
-          booking={feedbackBooking}
-        />
       )}
     </div>
   );

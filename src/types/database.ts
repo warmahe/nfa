@@ -8,6 +8,8 @@ export interface BaseDocument {
   id: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+  createdBy?: string;
+  updatedBy?: string;
 }
 
 export interface BaseTimestamp {
@@ -113,6 +115,8 @@ export interface Review extends BaseDocument {
   isAnonymous?: boolean;
   helpfulCount?: number;
   unhelpfulCount?: number;
+  email?: string;
+  userId?: string;
 }
 
 export interface PricingTier {
@@ -133,6 +137,10 @@ export interface PackagePricing {
   basePrice: number;
   currency: string;
   discount?: number;
+  discountedPrice?: number;
+  dates?: any;
+  seasonalPricing?: PricingTier[];
+  groupPricing?: any;
 }
 
 export interface PackageMedia {
@@ -190,6 +198,8 @@ export interface JourneyAvailability {
   mode?: 'FIXED_DEPARTURES' | 'PRIVATE_FLEXIBLE' | 'BOTH';
   departures?: JourneyDepartureDate[];
   travelWindows?: JourneyTravelWindow[];
+  maxSlots?: number;
+  bookings?: number;
   bookingLeadTimeDays?: number;
   availabilityNote?: string;
   enquiryGuidance?: string;
@@ -382,9 +392,37 @@ export interface Package extends BaseDocument {
   // E1 Editorial Package Fields
   editorialIntro?: string;
   travelStyle?: string[];
+  style?: string;
+  tripStyle?: string;
+  destination?: string;
+  interests?: string[];
+  tags?: string[];
+  durationDays?: number;
+  region?: string;
+  country?: string;
+  startLocation?: string;
+  maxTravelers?: number;
+  groupSize?: string;
+  accommodation?: string;
+  accommodationStyle?: string;
+  hotels?: any[];
+  accommodations?: any[];
+  guideType?: string;
+  relatedTripIds?: string[];
+  tagline?: string;
+  rating?: { average: number; totalReviews: number; manualOverride?: number; autoCalculated?: number };
+  pricingDates?: any;
+  departureDate?: any;
+  limitedSeats?: any;
   bestFor?: string[];
   bestTime?: string;
   editorialHighlights?: string[];
+  coverImage?: string;
+  joiningPointCount?: number;
+  activitiesIncludedCount?: number;
+  activitiesOptionalCount?: number;
+  reviewsCount?: number;
+  faqsCount?: number;
   // E34 SEO & Public Discovery
   seo?: ContentSEO;
   // E50 Departure Dates & Travel Windows Availability
@@ -398,12 +436,16 @@ export interface Package extends BaseDocument {
 export interface EnquiryDocument {
   id?: string;
   enquiryId: string; // Customer facing reference e.g. "NFA-89201"
+  enquiryReference?: string;
   customerId?: string; // Customer profile reference e.g. "NFA-C-10492" or userId
   itineraryId?: string;
   itineraryTitle?: string;
   itinerarySlug?: string;
+  travelDate?: string;
   destination?: string;
   duration?: string;
+  tripSummary?: any;
+  groupSize?: string | number;
   pricing?: {
     basePrice?: number;
     currency?: string;
@@ -440,8 +482,8 @@ export interface EnquiryDocument {
   };
 
   status: 'NEW' | 'CONTACTED' | 'IN_DISCUSSION' | 'CUSTOMIZATION' | 'PROPOSAL_SENT' | 'READY_TO_BOOK' | 'CONVERTED' | 'CLOSED';
-  source: 'ITINERARY' | 'CONTACT_PAGE' | 'DIRECT';
-  entryPoint?: 'HERO' | 'STICKY_CARD' | 'MOBILE_STICKY' | 'CONTACT_PAGE' | 'DIRECT';
+  source: 'ITINERARY' | 'CONTACT_PAGE' | 'DIRECT' | string;
+  entryPoint?: 'HERO' | 'STICKY_CARD' | 'MOBILE_STICKY' | 'CONTACT_PAGE' | 'DIRECT' | string;
   sourceUrl?: string;
 
   marketingConsent?: boolean;
@@ -544,10 +586,15 @@ export interface EnquiryActivity {
 // ============================================================================
 
 export interface CustomerPreferences {
-  travelStyle?: string;
+  travelStyle?: string | string[];
+  preferredTravelStyle?: string | string[];
   preferredDestinations?: string[];
   preferredAccommodation?: string[];
+  accommodationPreference?: string;
+  accommodationType?: string;
   dietaryPreferences?: string[];
+  dietary?: string;
+  accessibility?: string;
   interests?: string[];
   notes?: string;
 }
@@ -572,6 +619,7 @@ export interface CustomerDocument {
 
   marketingConsent?: boolean;
   emailStatus?: 'unsubscribed' | 'subscribed';
+  isReturning?: boolean;
 
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -668,8 +716,12 @@ export interface Traveler {
 export interface PrimaryTraveler {
   firstName: string;
   lastName: string;
+  name?: string;
   email: string;
   phone: string;
+  city?: string;
+  country?: string;
+  address?: string;
 }
 
 export interface SelectedActivity {
@@ -704,6 +756,8 @@ export interface BookingPricing {
 export interface PaymentInfo {
   status: 'pending' | 'completed' | 'failed' | 'refunded';
   method: 'credit_card' | 'paypal' | 'bank_transfer' | 'upi';
+  amount?: number;
+  currency?: string;
   lastFourDigits?: string;
   cardBrand?: string; // "Visa", "Mastercard"
   transactionId: string;
@@ -725,11 +779,13 @@ export interface Booking extends BaseDocument {
   itinerarySlug?: string;
   destination?: string;
   travelDate?: string;
+  checkinDate?: string | Timestamp;
+  checkoutDate?: string | Timestamp;
   duration?: string;
   agreedPrice?: number;
 
   // E6 Status Lifecycle
-  status?: 'DRAFT' | 'PENDING_CONFIRMATION' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
+  status?: 'DRAFT' | 'PENDING_CONFIRMATION' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED' | 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'no_show';
 
   // Selections
   selectedJoiningPointId?: string;
@@ -750,7 +806,7 @@ export interface Booking extends BaseDocument {
   bookingType?: 'meeting' | 'reserve' | 'book'; // meeting=consultation, reserve=partial pay, book=full pay
 
   // Booking Status
-  bookingStatus: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'no_show';
+  bookingStatus?: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'no_show' | 'PENDING_CONFIRMATION' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
   cancellationReason?: string;
 
   // Confirmations
@@ -801,9 +857,6 @@ export interface Booking extends BaseDocument {
 
   // E46 Traveller Feedback, Review & Post-Trip Insight Center
   feedback?: BookingFeedback;
-
-  // Check-in date
-  checkinDate: Timestamp;
 }
 
 export type FeedbackStatus =
@@ -970,8 +1023,11 @@ export interface Destination extends BaseDocument {
   name: string;
   country: string;
   continent?: string;
+  region?: string;
   description: string;
   coverImage: string;
+  heroImage?: string;
+  overview?: string;
   gallery?: string[];
   slug: string;
   active: boolean;
@@ -988,6 +1044,10 @@ export interface Destination extends BaseDocument {
   languageSpoken?: string[];
   visaRequirements?: string;
   bestDaysDuration?: string;
+  idealDuration?: string;
+  distanceFromAirport?: string;
+  tagline?: string;
+  mapCoordinates?: { latitude: number; longitude: number };
   rainfall?: number;
   averageTemperature?: DestinationClimate;
   // Legacy / Direct SEO fields
@@ -1337,6 +1397,7 @@ export interface CustomerStory {
   highlights?: string[];
   experiences?: string[];
   authorLabel?: string;
+  author?: any;
 
   // Publishing Controls
   status: CustomerStoryStatus;

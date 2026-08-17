@@ -413,52 +413,52 @@ export const AdminFeedbackManager: React.FC<AdminFeedbackManagerProps> = ({
   // Action: Unpublish / Archive Review
   const handleUnpublishReview = async () => {
     if (!selectedBooking || !selectedBooking.feedback) return;
-    const ok = await confirm({
+    confirm({
       title: 'Unpublish / Archive Review',
       message:
-        'This will immediately remove this review from all public pages (Reviews, Itineraries, Destinations, and Homepage). Are you sure?',
+        'This will immediately remove this review from all public pages. Are you sure?',
       confirmText: 'Unpublish Review',
-      isDestructive: true,
-    });
-    if (!ok) return;
-
-    setSavingAction(true);
-    try {
-      if (selectedBooking.feedback.publishedReviewId) {
-        await updateDoc(
-          doc(db, 'global_reviews', selectedBooking.feedback.publishedReviewId),
-          {
-            status: 'ARCHIVED',
-            approved: false,
-            updatedAt: serverTimestamp(),
+      type: 'danger',
+      onConfirm: async () => {
+        setSavingAction(true);
+        try {
+          if (selectedBooking.feedback?.publishedReviewId) {
+            await updateDoc(
+              doc(db, 'global_reviews', selectedBooking.feedback.publishedReviewId),
+              {
+                status: 'ARCHIVED',
+                approved: false,
+                updatedAt: serverTimestamp(),
+              }
+            );
           }
-        );
-      }
 
-      const updatedFeedback: BookingFeedback = {
-        ...selectedBooking.feedback,
-        status: 'ARCHIVED',
-        reviewedAt: new Date().toISOString(),
-        reviewedBy: 'Admin',
-        internalNotes: adminNotes,
-      };
+          const updatedFeedback: BookingFeedback = {
+            ...selectedBooking.feedback!,
+            status: 'ARCHIVED',
+            reviewedAt: new Date().toISOString(),
+            reviewedBy: 'Admin',
+            internalNotes: adminNotes,
+          };
 
-      await updateDoc(doc(db, 'bookings', selectedBooking.id), {
-        feedback: updatedFeedback,
-        updatedAt: serverTimestamp(),
-      });
+          await updateDoc(doc(db, 'bookings', selectedBooking.id), {
+            feedback: updatedFeedback,
+            updatedAt: serverTimestamp(),
+          });
 
-      toast('Review unpublished and moved to archived status.', 'success');
-      setSelectedBooking({
-        ...selectedBooking,
-        feedback: updatedFeedback,
-      });
-    } catch (err: any) {
-      console.error(err);
-      toast('Failed to unpublish review: ' + err.message, 'error');
-    } finally {
-      setSavingAction(false);
-    }
+          toast('Review unpublished and moved to archived status.', 'success');
+          setSelectedBooking({
+            ...selectedBooking,
+            feedback: updatedFeedback,
+          });
+        } catch (err) {
+          console.error('Error archiving review:', err);
+          toast('Failed to archive review.', 'error');
+        } finally {
+          setSavingAction(false);
+        }
+      },
+    });
   };
 
   // Open Preview Modal

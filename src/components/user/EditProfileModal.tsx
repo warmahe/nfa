@@ -37,8 +37,13 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
       setPhone(customer.phone || '');
       setAddress(customer.address || '');
       setPreferredTravelStyle(
-        customer.preferences?.preferredTravelStyle ||
-        (Array.isArray(customer.preferences?.travelStyle) ? customer.preferences.travelStyle : [])
+        Array.isArray(customer.preferences?.preferredTravelStyle)
+          ? customer.preferences.preferredTravelStyle
+          : Array.isArray(customer.preferences?.travelStyle)
+          ? customer.preferences.travelStyle
+          : customer.preferences?.preferredTravelStyle
+          ? [customer.preferences.preferredTravelStyle]
+          : []
       );
       setAccommodationPreference(customer.preferences?.accommodationPreference || customer.preferences?.accommodationType || '');
       setDietaryPreferences(

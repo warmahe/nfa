@@ -46,7 +46,6 @@ import { normalizeItinerary } from '../../utils/itineraryNormalizer';
 import { HotelCard } from '../../components/itinerary/HotelCard';
 import { HotelGallery } from '../../components/itinerary/HotelGallery';
 import { PackageJourneyCard } from '../../components/packages/PackageJourneyCard';
-import { TravellerFeedbackModal } from '../../components/user/TravellerFeedbackModal';
 import { useEnquiry } from '../../context/EnquiryContext';
 import { SeoHead } from '../../components/shared/SeoHead';
 import { resolveStaticPageSEO } from '../../utils/seo';
@@ -81,9 +80,6 @@ export const MyJourneyView: React.FC = () => {
 
   // Document Preview Modal State
   const [previewDoc, setPreviewDoc] = useState<BookingDocument | { title: string; fileUrl: string; category?: string } | null>(null);
-
-  // Feedback Modal State (E46)
-  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
 
   // Hotel Gallery State
   const [hotelGalleryState, setHotelGalleryState] = useState<{
@@ -248,8 +244,9 @@ export const MyJourneyView: React.FC = () => {
   const relatedPackages = useMemo(() => {
     if (!allPackages.length) return [];
     const currentPkgId = booking?.itineraryId || booking?.packageId;
-    const currentDest = booking?.destination?.toLowerCase() || '';
-    const currentStyle = (pkg?.travelStyle || booking?.travelPreferences?.accommodation || '').toLowerCase();
+    const currentDest = (booking?.destination || '').toLowerCase();
+    const styleVal = Array.isArray(pkg?.travelStyle) ? pkg?.travelStyle.join(' ') : (pkg?.travelStyle || booking?.travelPreferences?.accommodation || '');
+    const currentStyle = (styleVal || '').toLowerCase();
 
     const candidates = allPackages.filter((p) => {
       const isPublished = (p as any).published !== false && (p as any).status !== 'DRAFT';
@@ -260,12 +257,16 @@ export const MyJourneyView: React.FC = () => {
 
     return candidates
       .sort((a, b) => {
-        const aSameDest = a.destination?.toLowerCase().includes(currentDest) ? 1 : 0;
-        const bSameDest = b.destination?.toLowerCase().includes(currentDest) ? 1 : 0;
+        const aDest = (a.destinations?.[0] || a.destination || '').toLowerCase();
+        const bDest = (b.destinations?.[0] || b.destination || '').toLowerCase();
+        const aSameDest = aDest.includes(currentDest) ? 1 : 0;
+        const bSameDest = bDest.includes(currentDest) ? 1 : 0;
         if (aSameDest !== bSameDest) return bSameDest - aSameDest;
 
-        const aSameStyle = a.travelStyle?.toLowerCase().includes(currentStyle) ? 1 : 0;
-        const bSameStyle = b.travelStyle?.toLowerCase().includes(currentStyle) ? 1 : 0;
+        const aStyle = (Array.isArray(a.travelStyle) ? a.travelStyle.join(' ') : a.travelStyle || a.style || '').toLowerCase();
+        const bStyle = (Array.isArray(b.travelStyle) ? b.travelStyle.join(' ') : b.travelStyle || b.style || '').toLowerCase();
+        const aSameStyle = aStyle.includes(currentStyle) ? 1 : 0;
+        const bSameStyle = bStyle.includes(currentStyle) ? 1 : 0;
         return bSameStyle - aSameStyle;
       })
       .slice(0, 3);
@@ -906,73 +907,6 @@ export const MyJourneyView: React.FC = () => {
           )}
         </section>
 
-        {/* ── 6. HOW WAS YOUR JOURNEY? (FEEDBACK & REVIEW - E46) ── */}
-        {isCompleted && (
-          <section id="feedback-review" className="bg-white border-4 border-[#121212] p-6 sm:p-8 shadow-[8px_8px_0px_0px_#121212] space-y-6">
-            <div className="flex items-center gap-3 border-b-2 border-[#121212] pb-4">
-              <div className="p-2.5 bg-[#121212] text-[#F4BF4B] rounded-lg">
-                <MessageSquare size={20} />
-              </div>
-              <div>
-                <span className="text-[10px] font-black uppercase text-[#9E1B1D] tracking-widest block">
-                  EXPEDITION REFLECTIONS
-                </span>
-                <h3 className="font-brand font-black text-2xl uppercase text-[#121212]">
-                  HOW WAS YOUR JOURNEY?
-                </h3>
-              </div>
-            </div>
-
-            {booking.feedback?.submitted ? (
-              <div className="p-6 bg-[#FCFBF7] border-2 border-slate-200 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-0.5 rounded font-black text-[9px] uppercase tracking-wider bg-emerald-100 text-emerald-900 border border-emerald-300">
-                      FEEDBACK SHARED
-                    </span>
-                    <div className="flex items-center gap-0.5 text-amber-500">
-                      {Array.from({ length: booking.feedback.overallRating || 5 }).map((_, i) => (
-                        <Star key={i} size={14} className="fill-amber-400 text-amber-400" />
-                      ))}
-                    </div>
-                  </div>
-                  <p className="text-xs font-bold text-slate-800">
-                    Thank you for sharing your reflections with NO FIXED ADDRESS.
-                  </p>
-                  <p className="text-[10px] text-slate-500 font-medium">
-                    Submitted on {booking.feedback.submittedAt ? new Date(booking.feedback.submittedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Recently'}
-                  </p>
-                </div>
-
-                <button
-                  onClick={() => setIsFeedbackModalOpen(true)}
-                  className="px-4 py-2 bg-white border border-slate-300 rounded-lg text-xs font-bold uppercase hover:bg-slate-50 transition-colors cursor-pointer"
-                >
-                  View / Update Feedback
-                </button>
-              </div>
-            ) : (
-              <div className="p-6 bg-[#FCFBF7] border-2 border-[#121212] rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div className="space-y-1 max-w-lg">
-                  <h4 className="font-brand font-black text-base uppercase text-slate-900">
-                    We'd love to hear how your journey with NO FIXED ADDRESS went.
-                  </h4>
-                  <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                    Your reflections help us celebrate our local expedition leaders and continually refine our private routes.
-                  </p>
-                </div>
-
-                <button
-                  onClick={() => setIsFeedbackModalOpen(true)}
-                  className="px-6 py-3 bg-[#121212] text-[#F4BF4B] font-black text-xs uppercase tracking-widest rounded-xl hover:bg-[#9E1B1D] hover:text-white transition-colors cursor-pointer shadow-sm shrink-0 flex items-center gap-2"
-                >
-                  <Sparkles size={14} /> SHARE YOUR EXPERIENCE
-                </button>
-              </div>
-            )}
-          </section>
-        )}
-
         {/* ── 7. WHERE COULD YOU GO NEXT? (COMPLETED TRIPS DISCOVERY - E44) ── */}
         {isCompleted && (
           <section id="discover-next" className="bg-white border-4 border-[#121212] p-6 sm:p-8 shadow-[8px_8px_0px_0px_#F4BF4B] space-y-8">
@@ -1198,15 +1132,6 @@ export const MyJourneyView: React.FC = () => {
         hotelName={hotelGalleryState.hotelName}
         location={hotelGalleryState.location}
       />
-
-      {/* ── TRAVELLER FEEDBACK MODAL (E46) ── */}
-      {booking && (
-        <TravellerFeedbackModal
-          isOpen={isFeedbackModalOpen}
-          onClose={() => setIsFeedbackModalOpen(false)}
-          booking={booking}
-        />
-      )}
     </div>
   );
 };

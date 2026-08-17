@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { collection, onSnapshot, Timestamp } from 'firebase/firestore';
 import { Destination } from '../../types/database';
 import {
   db,
@@ -460,7 +460,7 @@ export const AdminDestinationManager: React.FC<AdminDestinationManagerProps> = (
         shortDescription: formState.shortDescription || '',
         whyVisit: formState.whyVisit || '',
         accommodation: formState.accommodation || '',
-        updatedAt: new Date(),
+        updatedAt: Timestamp.now(),
       };
 
       if (editingId) {

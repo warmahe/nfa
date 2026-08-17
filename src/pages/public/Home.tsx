@@ -4,7 +4,6 @@ import { BannerBlank } from '../../components/home/BannerBlank';
 import { AboutBrand } from '../../components/home/AboutBrand';
 import { ExpeditionGrid } from '../../components/home/ExpeditionGrid';
 import { StoriesFromRoad } from '../../components/home/StoriesFromRoad';
-import { Testimonials } from '../../components/home/Testimonials';
 import { WhyNFA } from '../../components/home/WhyNFA';
 import { NewsletterSignup } from '../../components/home/NewsletterSignup';
 import { useHomepageContent } from '../../hooks/useHomepageContent';
@@ -13,19 +12,19 @@ import { ArrowRight, MapPin, Sparkles } from 'lucide-react';
 import { useEnquiry } from '../../context/EnquiryContext';
 import { SeoHead } from '../../components/shared/SeoHead';
 import { resolveHomepageSEO } from '../../utils/seo';
+import { HomepageSettings } from '../../types/database';
 
 export const Home = () => {
   const { data, loading } = useHomepageContent();
   const { openEnquiryModal } = useEnquiry();
 
-  const settings = data?.settings || {};
-  const heroImage = settings.hero?.heroImage || settings.heroImage;
+  const settings: Partial<HomepageSettings> = data?.settings || {};
+  const heroImage = settings.hero?.heroImage || (settings as any).heroImage;
   const heroEnabled = settings.hero?.enabled !== false;
 
   const featuredPackages = data?.featuredPackages || [];
   const featuredDestinations = data?.featuredDestinations || [];
   const featuredStories = data?.featuredStories || [];
-  const featuredReviews = data?.featuredReviews || [];
 
   return (
     <div className="w-full overflow-hidden">
@@ -75,8 +74,8 @@ export const Home = () => {
                   className="group block border-4 border-[#121212] bg-white shadow-[8px_8px_0px_0px_#121212] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all overflow-hidden"
                 >
                   <div className="aspect-16/10 bg-[#121212] relative overflow-hidden border-b-4 border-[#121212]">
-                    {dest.heroImage ? (
-                      <img src={dest.heroImage} alt={dest.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 filter grayscale-[20%] group-hover:grayscale-0" />
+                    {dest.heroImage || dest.coverImage ? (
+                      <img src={dest.heroImage || dest.coverImage} alt={dest.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 filter grayscale-[20%] group-hover:grayscale-0" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center font-brand font-black text-xl text-[#F4BF4B] uppercase">
                         {dest.name}
@@ -118,15 +117,6 @@ export const Home = () => {
             quote: s.customerQuote || s.storyContent?.slice(0, 150) || s.title,
             timeframe: s.travelDate || 'Recent Journey',
           }))}
-        />
-      )}
-
-      {/* 6.5. Traveller Reviews Section (E47 Social Proof) */}
-      {settings.reviews?.enabled !== false && featuredReviews.length > 0 && (
-        <Testimonials
-          customReviews={featuredReviews}
-          heading={settings.reviews?.heading}
-          sectionLabel={settings.reviews?.sectionLabel}
         />
       )}
 

@@ -19,6 +19,7 @@ import {
   AlertCircle,
   X,
   RotateCcw,
+  Calendar,
 } from 'lucide-react';
 
 export const Shortlist: React.FC = () => {
@@ -211,7 +212,7 @@ export const Shortlist: React.FC = () => {
                   (pkg.media?.gallery && pkg.media.gallery[0]) ||
                   'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&q=80';
 
-                const destination = (pkg.destinations && pkg.destinations[0]) || pkg.destination || 'Expedition';
+                const destination = (pkg.destinations && pkg.destinations[0]) || (pkg as any).destination || 'Expedition';
                 const price = pkg.pricing?.basePrice;
                 const currency = pkg.pricing?.currency || 'INR';
 

@@ -11,8 +11,6 @@ import {
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../services/firebaseService';
 import { AdminHomepageManager } from '../../components/admin/AdminHomepageManager';
-import { AdminReviewsManager } from '../../components/admin/AdminReviewsManager';
-import { AdminFeedbackManager } from '../../components/admin/AdminFeedbackManager';
 import { AdminGalleryManager } from '../../components/admin/AdminGalleryManager';
 import { AdminPackagesManager } from '../../components/admin/AdminPackagesManager';
 import { AdminBookingsManager } from '../../components/admin/AdminBookingsManager';
@@ -61,7 +59,6 @@ export const Admin = () => {
   const [workflowFilter, setWorkflowFilter] = useState<string>('ALL');
   const [tripPrepFilter, setTripPrepFilter] = useState<string>('ALL');
   const [customerFilter, setCustomerFilter] = useState<string>('ALL');
-  const [feedbackFilter, setFeedbackFilter] = useState<string>('ALL');
   const [readNotifIds, setReadNotifIds] = useState<string[]>(() => {
     try {
       return JSON.parse(localStorage.getItem('nfa_admin_read_notifs') || '[]');
@@ -156,24 +153,18 @@ export const Admin = () => {
     return b.operationalStatus !== 'READY' && b.operationalStatus !== 'TRAVELLER_BRIEFED' && b.operationalStatus !== 'TRIP_COMPLETED';
   }).length;
 
-  const feedbackToReviewCount = bookings.filter(
-    (b) => !!b.feedback?.submitted && (b.feedback.status === 'SUBMITTED' || !b.feedback.status)
-  ).length;
-
   const primaryRailItems = [
     { id: 'DASHBOARD', label: 'Dashboard', icon: LayoutTemplate },
     { id: 'WORKFLOW', label: 'Traveller Workflow', icon: GitPullRequest },
     { id: 'TRIP_PREPARATION', label: 'Trip Preparation', icon: Compass },
     { id: 'COMMUNICATIONS', label: 'Communications', icon: MessageSquare },
     { id: 'NOTIFICATIONS', label: 'Notifications', icon: Bell },
-    { id: 'FEEDBACK', label: 'Feedback & Reviews', icon: Star },
     { id: 'BOOKINGS', label: 'Bookings & Leads', icon: Calendar },
     { id: 'CUSTOMERS', label: 'Customers', icon: User },
     { id: 'CUSTOMER_STORIES', label: 'Customer Stories', icon: BookOpen },
     { id: 'PACKAGES', label: 'Packages', icon: Package },
     { id: 'HOMEPAGE', label: 'Site Content', icon: Layers },
     { id: 'DESTINATIONS', label: 'Destinations', icon: Map },
-    { id: 'REVIEWS', label: 'Reviews', icon: MessageSquare },
     { id: 'GALLERY', label: 'Gallery', icon: ImageIcon },
   ];
 
@@ -183,12 +174,10 @@ export const Admin = () => {
     { id: 'TRIP_PREPARATION', label: 'Trip Preparation', icon: Compass, badge: tripsToPrepareCount > 0 ? tripsToPrepareCount : undefined, section: 'menu' },
     { id: 'COMMUNICATIONS', label: 'Communications & Follow-ups', icon: MessageSquare, badge: followUpsDueCount > 0 ? followUpsDueCount : undefined, section: 'menu' },
     { id: 'NOTIFICATIONS', label: 'Notifications & Alerts', icon: Bell, section: 'menu' },
-    { id: 'FEEDBACK', label: 'Traveller Feedback', icon: Star, badge: feedbackToReviewCount > 0 ? feedbackToReviewCount : undefined, section: 'menu' },
     { id: 'BOOKINGS', label: 'Bookings & Leads', icon: Calendar, badge: bookings.length + enquiries.filter(e => e.status === 'NEW').length, section: 'menu' },
     { id: 'CUSTOMERS', label: 'Customers', icon: User, badge: customers.length, section: 'menu' },
     { id: 'CUSTOMER_STORIES', label: 'Customer Stories', icon: BookOpen, section: 'menu' },
     { id: 'PACKAGES', label: 'Packages', icon: Package, badge: packages.length, section: 'menu' },
-    { id: 'REVIEWS', label: 'Reviews', icon: MessageSquare, section: 'menu' },
     { id: 'GALLERY', label: 'Gallery', icon: ImageIcon, section: 'menu' }
   ];
 
@@ -643,21 +632,10 @@ export const Admin = () => {
               onOpenCommunication={() => setActiveTab('COMMUNICATIONS')}
             />
           )}
-          {activeTab === 'FEEDBACK' && (
-            <AdminFeedbackManager
-              bookings={bookings}
-              customers={customers}
-              packages={packages}
-              destinations={destinations}
-              initialFilter={feedbackFilter}
-              onNavigateTab={(tabId, params) => handleTabChange(tabId, params)}
-            />
-          )}
           {activeTab === 'CUSTOMER_STORIES' && <AdminCustomerStoriesManager />}
           {activeTab === 'HOMEPAGE' && <AdminHomepageManager />}
           {activeTab === 'PACKAGES' && <AdminPackagesManager />}
           {activeTab === 'DESTINATIONS' && <AdminDestinationManager />}
-          {activeTab === 'REVIEWS' && <AdminReviewsManager />}
           {activeTab === 'GALLERY' && <AdminGalleryManager />}
           {activeTab === 'FAQS' && <AdminFAQsManager type="website" />}
           {activeTab === 'SETTINGS' && <AdminSettingsManager />}

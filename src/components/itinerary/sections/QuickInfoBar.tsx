@@ -50,7 +50,7 @@ const getDynamicGridClass = (count: number) => {
 };
 
 export const QuickInfoBar: React.FC<QuickInfoBarProps> = ({ pkg }) => {
-  const departureDateLabel = pkg?.departureDate
+  const departureDateLabel = (pkg?.departureDate instanceof Date || typeof pkg?.departureDate === 'string' || typeof pkg?.departureDate === 'number')
     ? new Date(pkg.departureDate).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })
     : 'Multiple Dates';
 

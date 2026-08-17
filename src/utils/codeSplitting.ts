@@ -55,12 +55,10 @@ export const routeSplitting = {
   booking: () => import('../pages/public/Home').then(m => ({ default: m.Home })),
   
   // Detail pages
-  itinerary: () => import('../pages/public/ItineraryDetail').then(m => ({ default: m.default })),
-  blogpost: () => import('../pages/public/BlogPost').then(m => ({ default: m.BlogPost })),
+  itinerary: () => import('../pages/public/ItineraryDetail').then(m => ({ default: m.ItineraryDetail })),
   
   // Feature pages
   wishlist: () => import('../pages/user/Wishlist').then(m => ({ default: m.Wishlist })),
-  pricealerts: () => import('../pages/user/PriceAlerts').then(m => ({ default: m.PriceAlerts })),
 };
 
 /**
@@ -68,12 +66,8 @@ export const routeSplitting = {
  * Heavy components loaded on demand
  */
 export const componentSplitting = {
-  // Admin components
   // Image components
   lazyImage: () => import('../components/shared/LazyImage').then(m => m),
-  
-  // Review components
-  reviewSubmission: () => import('../components/shared/ReviewSubmission').then(m => ({ default: m.ReviewSubmission })),
   
   // SEO components
   seoHead: () => import('../components/shared/SeoHead').then(m => ({ default: m.SeoHead })),

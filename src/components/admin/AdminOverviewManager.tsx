@@ -168,10 +168,6 @@ export const AdminOverviewManager: React.FC<AdminOverviewManagerProps> = ({
       });
     }).length;
 
-    const feedbackToReviewCount = bookings.filter(
-      (b) => !!b.feedback?.submitted && (b.feedback.status === 'SUBMITTED' || !b.feedback.status)
-    ).length;
-
     return {
       newEnquiriesCount,
       followUpsDueCount,
@@ -180,7 +176,6 @@ export const AdminOverviewManager: React.FC<AdminOverviewManagerProps> = ({
       activeLeadsCount,
       confirmedBookingsCount,
       returningTravellersCount,
-      feedbackToReviewCount,
     };
   }, [enquiries, bookings, customers, tripDateRange]);
 
@@ -373,7 +368,7 @@ export const AdminOverviewManager: React.FC<AdminOverviewManagerProps> = ({
       </div>
 
       {/* ── 1. TODAY'S OVERVIEW KPI CARDS ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
         <button
           onClick={() => onNavigateTab('BOOKINGS', { filter: 'NEW' })}
           className="p-4 bg-white border border-slate-200/80 rounded-xl hover:border-slate-400 transition-all text-left group cursor-pointer shadow-xs"
@@ -456,18 +451,6 @@ export const AdminOverviewManager: React.FC<AdminOverviewManagerProps> = ({
           </div>
           <p className="font-black text-2xl text-purple-900 mt-1">{kpiData.returningTravellersCount}</p>
           <p className="text-[10px] font-semibold text-slate-500 mt-0.5">Completed &ge; 1 trip</p>
-        </button>
-
-        <button
-          onClick={() => onNavigateTab('FEEDBACK', { feedbackFilter: 'AWAITING_REVIEW' })}
-          className="p-4 bg-white border border-slate-200/80 rounded-xl hover:border-slate-400 transition-all text-left group cursor-pointer shadow-xs"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800">Feedback Review</span>
-            <Star size={16} className="text-amber-500 group-hover:scale-110 transition-transform" />
-          </div>
-          <p className="font-black text-2xl text-amber-900 mt-1">{kpiData.feedbackToReviewCount}</p>
-          <p className="text-[10px] font-semibold text-slate-500 mt-0.5">Awaiting review</p>
         </button>
       </div>
 

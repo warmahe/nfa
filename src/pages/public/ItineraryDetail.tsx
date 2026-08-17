@@ -16,7 +16,6 @@ import { ItineraryCities } from '../../components/itinerary/sections/ItineraryCi
 import { InclusionsExclusions } from '../../components/itinerary/sections/InclusionsExclusions';
 import { DownloadCTA } from '../../components/itinerary/sections/DownloadCTA';
 import { PricingDates } from '../../components/itinerary/sections/PricingDates';
-import { ReviewsSection } from '../../components/itinerary/sections/ReviewsSection';
 import { FAQSection } from '../../components/itinerary/sections/FAQSection';
 import { RelatedTrips } from '../../components/itinerary/sections/RelatedTrips';
 import { RelatedJourneys } from '../../components/discovery/RelatedJourneys';
@@ -320,10 +319,7 @@ export const ItineraryDetail = () => {
       {/* ── 9. DATES & PRICING ── */}
       <PricingDates pkg={pkg} />
 
-      {/* ── 10. REVIEWS ── */}
-      <ReviewsSection pkg={pkg} />
-
-      {/* ── 11. WHAT HAPPENS AFTER YOU ENQUIRE (Trust & Decision Support) ── */}
+      {/* ── 10. WHAT HAPPENS AFTER YOU ENQUIRE (Trust & Decision Support) ── */}
       <WhatHappensNext pkg={pkg} />
 
       {/* ── 12. FAQs ── */}
@@ -337,7 +333,7 @@ export const ItineraryDetail = () => {
         context={{
           journeyId: pkg.id,
           journeySlug: pkg.slug,
-          destination: pkg.destinations?.[0] || pkg.destination,
+          destination: pkg.destinations?.[0] || (pkg as any).destination,
         }}
         allStories={allStories}
         limit={3}

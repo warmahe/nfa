@@ -440,7 +440,7 @@ export const AdminPackagesManager = () => {
         thumbnail: 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=1600&q=80',
         gallery: []
       }
-    });
+    } as any);
 
     setActivePackage(newPkg);
     setOriginalSlug(newPkg.slug);

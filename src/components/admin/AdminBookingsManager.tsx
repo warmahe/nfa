@@ -62,7 +62,14 @@ import {
   uploadBookingDocument,
   deleteBookingDocumentFile,
 } from '../../services/firebaseService';
-import { BookingDocument, BookingDocumentCategory } from '../../types/database';
+import {
+  Booking,
+  EnquiryDocument,
+  InternalNote,
+  EnquiryActivity,
+  BookingDocument,
+  BookingDocumentCategory,
+} from '../../types/database';
 interface AdminBookingsManagerProps {
   onOpenEnquiry?: (enquiryId: string) => void;
   onOpenCustomer?: (customerId: string) => void;

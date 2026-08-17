@@ -18,11 +18,10 @@ import {
 } from 'lucide-react';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { subscribeToCustomerStoryBySlug, db } from '../../services/firebaseService';
-import { CustomerStory, Package, Review } from '../../types/database';
+import { CustomerStory, Package } from '../../types/database';
 import { getPublicCustomerDisplayName } from '../../components/stories/CustomerStoryCard';
 import { RelatedStories } from '../../components/discovery/RelatedStories';
 import { RelatedJourneys } from '../../components/discovery/RelatedJourneys';
-import { RelatedReviews } from '../../components/discovery/RelatedReviews';
 import { useEnquiry } from '../../context/EnquiryContext';
 import { HotelGallery } from '../../components/itinerary/HotelGallery';
 import { SeoHead } from '../../components/shared/SeoHead';
@@ -39,7 +38,6 @@ export const StoryDetail = () => {
   // E48 Public Discovery datasets
   const [allStories, setAllStories] = useState<CustomerStory[]>([]);
   const [allPackages, setAllPackages] = useState<Package[]>([]);
-  const [allReviews, setAllReviews] = useState<Review[]>([]);
 
   useEffect(() => {
     const unsubStories = onSnapshot(collection(db, 'customerStories'), (snap) => {
@@ -48,17 +46,9 @@ export const StoryDetail = () => {
     const unsubPkgs = onSnapshot(collection(db, 'packages'), (snap) => {
       setAllPackages(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Package)));
     });
-    const unsubRevs = onSnapshot(collection(db, 'global_reviews'), (snap) => {
-      setAllReviews(
-        snap.docs
-          .map((d) => ({ id: d.id, ...d.data() } as Review))
-          .filter((r) => r.approved !== false && r.status !== 'ARCHIVED')
-      );
-    });
     return () => {
       unsubStories();
       unsubPkgs();
-      unsubRevs();
     };
   }, []);
 
@@ -408,19 +398,6 @@ export const StoryDetail = () => {
           allJourneys={allPackages}
           title="EXPEDITIONS YOU MAY EXPLORE"
           subtitle="INSPIRED BY THIS JOURNEY"
-          limit={3}
-        />
-
-        {/* ── 7.7 RELATED TRAVELLER REVIEWS (E48 Discovery) ── */}
-        <RelatedReviews
-          context={{
-            journeyId: story.itineraryId,
-            journeySlug: story.itinerarySlug,
-            destination: story.destination,
-            destinationSlug: story.destinationSlug,
-          }}
-          allReviews={allReviews}
-          title="WHAT TRAVELLERS SAY"
           limit={3}
         />
 

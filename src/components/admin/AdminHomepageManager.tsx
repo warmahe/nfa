@@ -7,7 +7,7 @@ import {
 import { doc, onSnapshot, setDoc, collection } from 'firebase/firestore';
 import { db } from '../../services/firebaseService';
 import {
-  HomepageSettings, Package, Destination, CustomerStory, Review,
+  HomepageSettings, Package, Destination, CustomerStory,
   HomepageExperienceCategory, HomepageWhyUsFeature
 } from '../../types/database';
 import { ImageInput } from './ImageInput';
@@ -21,7 +21,6 @@ type SectionTab =
   | 'DESTINATIONS'
   | 'EXPERIENCES'
   | 'STORIES'
-  | 'REVIEWS'
   | 'WHY_US'
   | 'PLANNING_CTA'
   | 'SEO';
@@ -33,7 +32,6 @@ export const AdminHomepageManager: React.FC = () => {
   const [packages, setPackages] = useState<Package[]>([]);
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [stories, setStories] = useState<CustomerStory[]>([]);
-  const [globalReviews, setGlobalReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
@@ -174,20 +172,11 @@ export const AdminHomepageManager: React.FC = () => {
       setStories(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<CustomerStory, 'id'>) })));
     });
 
-    const unsubReviews = onSnapshot(collection(db, 'global_reviews'), (snap) => {
-      setGlobalReviews(
-        snap.docs
-          .map((d) => ({ id: d.id, ...(d.data() as Omit<Review, 'id'>) }))
-          .filter((r) => r.approved !== false && r.status !== 'ARCHIVED')
-      );
-    });
-
     return () => {
       unsubSettings();
       unsubPackages();
       unsubDestinations();
       unsubStories();
-      unsubReviews();
     };
   }, []);
 
@@ -306,10 +295,9 @@ export const AdminHomepageManager: React.FC = () => {
             { id: 'DESTINATIONS', label: '4. Destinations', icon: Compass },
             { id: 'EXPERIENCES', label: '5. Experiences', icon: Sparkles },
             { id: 'STORIES', label: '6. Customer Stories', icon: BookOpen },
-            { id: 'REVIEWS', label: '7. Traveller Reviews', icon: Star },
-            { id: 'WHY_US', label: '8. Why Choose Us', icon: Shield },
-            { id: 'PLANNING_CTA', label: '9. Planning CTA', icon: CheckCircle },
-            { id: 'SEO', label: '10. SEO & Visibility', icon: Search },
+            { id: 'WHY_US', label: '7. Why Choose Us', icon: Shield },
+            { id: 'PLANNING_CTA', label: '8. Planning CTA', icon: CheckCircle },
+            { id: 'SEO', label: '9. SEO & Visibility', icon: Search },
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -730,162 +718,6 @@ export const AdminHomepageManager: React.FC = () => {
                       </div>
                     );
                   })}
-              </div>
-            </div>
-          )}
-
-          {/* Section 6.5: TRAVELLER REVIEWS (E47) */}
-          {activeTab === 'REVIEWS' && (
-            <div className="space-y-6">
-              {/* Visibility Toggle */}
-              <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl">
-                <div>
-                  <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                    TRAVELLER REVIEWS SECTION VISIBILITY
-                  </h4>
-                  <p className="text-xs text-slate-500 font-medium mt-0.5">
-                    Display short-form traveller testimonials on the homepage (distinct from long-form customer stories).
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleFieldChange(
-                      'reviews',
-                      'enabled',
-                      settings.reviews?.enabled === false ? true : false
-                    )
-                  }
-                  className={`px-4 py-2 font-black text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
-                    settings.reviews?.enabled !== false
-                      ? 'bg-emerald-600 text-white'
-                      : 'bg-slate-200 text-slate-700'
-                  }`}
-                >
-                  {settings.reviews?.enabled !== false ? 'SECTION VISIBLE' : 'SECTION HIDDEN'}
-                </button>
-              </div>
-
-              {/* Headings */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className={labelClass}>Section Label</label>
-                  <input
-                    type="text"
-                    value={settings.reviews?.sectionLabel || ''}
-                    onChange={(e) => handleFieldChange('reviews', 'sectionLabel', e.target.value)}
-                    placeholder="VERIFIED SOCIAL PROOF"
-                    className={inputClass}
-                  />
-                </div>
-
-                <div>
-                  <label className={labelClass}>Section Heading</label>
-                  <input
-                    type="text"
-                    value={settings.reviews?.heading || ''}
-                    onChange={(e) => handleFieldChange('reviews', 'heading', e.target.value)}
-                    placeholder="FIELD REPORTS"
-                    className={inputClass}
-                  />
-                </div>
-              </div>
-
-              {/* Placement Options: Featured-only & Count */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-                  <label className={labelClass}>Review Filter Mode</label>
-                  <label className="flex items-center gap-2 cursor-pointer pt-1">
-                    <input
-                      type="checkbox"
-                      checked={settings.reviews?.featuredOnly !== false}
-                      onChange={(e) => handleFieldChange('reviews', 'featuredOnly', e.target.checked)}
-                      className="size-4 accent-[#9E1B1D] rounded cursor-pointer"
-                    />
-                    <span className="text-xs font-bold text-slate-800">
-                      Show Featured Reviews Only
-                    </span>
-                  </label>
-                  <p className="text-[10px] text-slate-500">
-                    Prioritizes reviews marked as 'Featured' in the Admin Feedback workspace.
-                  </p>
-                </div>
-
-                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-                  <label className={labelClass}>Number of Reviews to Display</label>
-                  <select
-                    value={settings.reviews?.count || 3}
-                    onChange={(e) => handleFieldChange('reviews', 'count', parseInt(e.target.value, 10))}
-                    className={inputClass}
-                  >
-                    <option value={3}>3 Reviews (1 Hero + 2 Secondary)</option>
-                    <option value={4}>4 Reviews</option>
-                    <option value={6}>6 Reviews</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Published Reviews Picker */}
-              <div className="space-y-2">
-                <label className={labelClass}>
-                  Select / Pin Specific Published Reviews (Optional)
-                </label>
-                <p className="text-xs text-slate-500 font-medium">
-                  Select specific reviews to pin to the homepage, or leave empty to automatically display the top featured reviews by display order.
-                </p>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-72 overflow-y-auto border border-slate-200 rounded-xl p-3 bg-slate-50">
-                  {globalReviews.map((rev) => {
-                    const currentIds = settings.reviews?.reviewIds || [];
-                    const isSelected = currentIds.includes(rev.id);
-                    return (
-                      <div
-                        key={rev.id}
-                        onClick={() => {
-                          const next = isSelected
-                            ? currentIds.filter((id) => id !== rev.id)
-                            : [...currentIds, rev.id];
-                          handleFieldChange('reviews', 'reviewIds', next);
-                        }}
-                        className={`p-3 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-between ${
-                          isSelected
-                            ? 'bg-white border-[#121212] shadow-sm'
-                            : 'bg-white border-slate-200 hover:border-slate-300'
-                        }`}
-                      >
-                        <div className="space-y-0.5">
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-brand font-black text-xs text-slate-900">
-                              {rev.travelerName || 'Verified Explorer'}
-                            </span>
-                            <span className="text-[10px] font-bold text-[#9E1B1D]">
-                              {rev.rating || 5}★
-                            </span>
-                            {rev.featured && (
-                              <span className="text-[8px] font-black uppercase bg-amber-100 text-amber-900 px-1.5 py-0.2 rounded">
-                                FEATURED
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[11px] text-slate-600 italic line-clamp-1">
-                            "{rev.content || (rev as any).testimonial}"
-                          </p>
-                          <p className="text-[10px] text-slate-400">
-                            {rev.itineraryTitle || rev.destination || 'Expedition'}
-                          </p>
-                        </div>
-
-                        <span
-                          className={`size-6 rounded-md flex items-center justify-center font-black text-xs shrink-0 ${
-                            isSelected ? 'bg-[#121212] text-[#F4BF4B]' : 'border border-slate-300 text-slate-400'
-                          }`}
-                        >
-                          {isSelected ? '✓' : '+'}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
               </div>
             </div>
           )}

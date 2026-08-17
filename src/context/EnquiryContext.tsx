@@ -62,7 +62,14 @@ export const EnquiryProvider: React.FC<{ children: React.ReactNode }> = ({ child
 export const useEnquiry = () => {
   const context = useContext(EnquiryContext);
   if (!context) {
-    throw new Error('useEnquiry must be used within an EnquiryProvider');
+    console.warn('useEnquiry was used outside an EnquiryProvider; fallback no-op context provided.');
+    return {
+      isOpen: false,
+      target: null,
+      openEnquiry: () => {},
+      openEnquiryModal: () => {},
+      closeEnquiry: () => {},
+    };
   }
   return context;
 };

@@ -20,7 +20,8 @@ import {
   CustomerStoryDisplayMode,
   CustomerStoryStatus,
   Package,
-  Destination
+  Destination,
+  ContentSEO
 } from '../../types/database';
 import { ImageInput } from './ImageInput';
 import { GalleryManager } from './GalleryManager';

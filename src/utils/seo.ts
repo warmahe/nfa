@@ -323,7 +323,7 @@ export const resolveCustomerStorySEO = (
  * Resolves SEO metadata for the Homepage.
  */
 export const resolveHomepageSEO = (
-  settings?: HomepageSettings | null,
+  settings?: Partial<HomepageSettings> | null,
   siteUrl = SEO_CONFIG.site.url
 ): SeoMetadata => {
   const customSeo: ContentSEO = settings?.seo || {};
@@ -446,12 +446,6 @@ export const staticPageMetadata: Record<string, SeoMetadata> = {
     type: 'website',
     robots: 'index, follow',
   },
-  reviews: {
-    title: 'Traveller Reviews | NO FIXED ADDRESS',
-    description: 'Real travel experiences shared by travellers who journeyed with NO FIXED ADDRESS.',
-    type: 'website',
-    robots: 'index, follow',
-  },
   shortlist: {
     title: 'Your Journey Shortlist | NO FIXED ADDRESS',
     description: "Keep and compare the journeys you're considering with NO FIXED ADDRESS.",
@@ -463,12 +457,6 @@ export const staticPageMetadata: Record<string, SeoMetadata> = {
     description: 'Compare bespoke travel journeys and explore the details before planning your journey.',
     type: 'website',
     robots: 'noindex, nofollow',
-  },
-  testimonials: {
-    title: 'Testimonials | NO FIXED ADDRESS',
-    description: 'Personal accounts and endorsements from our bespoke expedition travellers.',
-    type: 'website',
-    robots: 'index, follow',
   },
   privacy: {
     title: 'Privacy Policy | NO FIXED ADDRESS',

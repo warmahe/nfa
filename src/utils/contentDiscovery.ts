@@ -27,8 +27,8 @@ export const getJourneyDiscoveryScore = (
   }
 
   // 2. Shared Travel Style (+20)
-  const candidateStyle = (candidate.travelStyle || candidate.style || '').toLowerCase();
-  const sourceStyle = (source.travelStyle || source.style || '').toLowerCase();
+  const candidateStyle = (Array.isArray(candidate.travelStyle) ? candidate.travelStyle.join(' ') : candidate.travelStyle || candidate.style || '').toLowerCase();
+  const sourceStyle = (Array.isArray(source.travelStyle) ? source.travelStyle.join(' ') : source.travelStyle || source.style || '').toLowerCase();
   if (candidateStyle && sourceStyle && (candidateStyle === sourceStyle || candidateStyle.includes(sourceStyle) || sourceStyle.includes(candidateStyle))) {
     score += 20;
   }
@@ -53,8 +53,8 @@ export const getJourneyDiscoveryScore = (
   });
 
   // 4. Similar Duration (+10)
-  const candidateDuration = candidate.durationDays || candidate.duration || 0;
-  const sourceDuration = source.durationDays || source.duration || 0;
+  const candidateDuration = typeof candidate.durationDays === 'number' ? candidate.durationDays : parseInt(String(candidate.duration || 0), 10) || 0;
+  const sourceDuration = typeof source.durationDays === 'number' ? source.durationDays : parseInt(String(source.duration || 0), 10) || 0;
   if (candidateDuration > 0 && sourceDuration > 0) {
     const diff = Math.abs(candidateDuration - sourceDuration);
     if (diff <= 3) {
@@ -165,9 +165,13 @@ export const getRelatedDestinations = (
       (j.destinations || []).some((d) => d.toLowerCase() === dest.name.toLowerCase())
     );
 
-    const currentStyles = new Set(currentJourneys.map((j) => (j.travelStyle || j.style || '').toLowerCase()));
+    const currentStyles = new Set(
+      currentJourneys.map((j) =>
+        (Array.isArray(j.travelStyle) ? j.travelStyle.join(' ') : j.travelStyle || j.style || '').toLowerCase()
+      )
+    );
     destJourneys.forEach((j) => {
-      const style = (j.travelStyle || j.style || '').toLowerCase();
+      const style = (Array.isArray(j.travelStyle) ? j.travelStyle.join(' ') : j.travelStyle || j.style || '').toLowerCase();
       if (style && currentStyles.has(style)) {
         score += 15;
       }

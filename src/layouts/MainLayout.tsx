@@ -2,8 +2,6 @@ import React, { useState, useEffect } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X, Bookmark } from "lucide-react";
 
-import { EnquiryProvider } from "../context/EnquiryContext";
-import { EnquiryModal } from "../components/enquiry/EnquiryModal";
 import { useJourneyShortlist } from "../hooks/useJourneyShortlist";
 
 const MainLayout = () => {
@@ -30,15 +28,13 @@ const MainLayout = () => {
     { label: "ITINERARIES", href: "/packages" },
     { label: "DESTINATIONS", href: "/destinations" },
     { label: "STORIES", href: "/stories" },
-    { label: "REVIEWS", href: "/reviews" },
     { label: "ABOUT", href: "/about" },
     { label: "CONTACT", href: "/contact" },
     { label: "MY ACCOUNT", href: "/dashboard" }
   ];
 
   return (
-    <EnquiryProvider>
-      <div className="relative min-h-[100dvh] flex flex-col bg-[#FCFBF7] font-sans nfa-texture selection:bg-[#F4BF4B] selection:text-[#121212] isolate w-full">
+    <div className="relative min-h-[100dvh] flex flex-col bg-[#FCFBF7] font-sans nfa-texture selection:bg-[#F4BF4B] selection:text-[#121212] isolate w-full">
         <header className="fixed top-0 left-0 right-0 z-[999] w-full">
           <nav className="relative h-20 w-full bg-[#121212] border-b-[4px] border-[#9E1B1D] px-[clamp(1rem,4vw,3rem)] flex justify-between items-center z-[60] shadow-md">
             <button onClick={handleLogoClick} className="flex items-center group text-left cursor-pointer outline-none">
@@ -148,11 +144,7 @@ const MainLayout = () => {
             <p>&copy; 2026 NO FIXED ADDRESS INC. ALL RIGHTS RESERVED.</p>
           </div>
         </footer>
-
-        {/* Global Enquiry Modal */}
-        <EnquiryModal />
       </div>
-    </EnquiryProvider>
   );
 };
 

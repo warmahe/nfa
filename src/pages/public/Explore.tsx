@@ -2,10 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../services/firebaseService';
-import { Package, Destination, CustomerStory, Review } from '../../types/database';
+import { Package, Destination, CustomerStory } from '../../types/database';
 import { PackageJourneyCard } from '../../components/packages/PackageJourneyCard';
 import { CustomerStoryCard } from '../../components/stories/CustomerStoryCard';
-import { TravellerReviewCard } from '../../components/reviews/TravellerReviewCard';
 import { useEnquiry } from '../../context/EnquiryContext';
 import { SeoHead } from '../../components/shared/SeoHead';
 import { resolveExploreSEO } from '../../utils/seo';
@@ -13,7 +12,6 @@ import {
   Compass,
   MapPin,
   BookOpen,
-  Star,
   Search,
   SlidersHorizontal,
   ArrowUpDown,
@@ -30,7 +28,7 @@ import {
 } from 'lucide-react';
 import { useJourneyShortlist } from '../../hooks/useJourneyShortlist';
 
-type ExploreTab = 'journeys' | 'destinations' | 'stories' | 'reviews';
+type ExploreTab = 'journeys' | 'destinations' | 'stories';
 
 export const Explore: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -44,7 +42,6 @@ export const Explore: React.FC = () => {
   const [packages, setPackages] = useState<Package[]>([]);
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [stories, setStories] = useState<CustomerStory[]>([]);
-  const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Subscriptions to canonical collections
@@ -74,26 +71,10 @@ export const Explore: React.FC = () => {
       (snap) => {
         const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as CustomerStory));
         setStories(list.filter((s) => s.status === 'PUBLISHED'));
-      },
-      (err) => console.error('Error fetching stories in Explore:', err)
-    );
-
-    const unsubReviews = onSnapshot(
-      collection(db, 'global_reviews'),
-      (snap) => {
-        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Review));
-        setReviews(
-          list.filter(
-            (r) =>
-              r.approved !== false &&
-              r.status !== 'ARCHIVED' &&
-              (Boolean(r.content) || Boolean((r as any).testimonial))
-          )
-        );
         setLoading(false);
       },
       (err) => {
-        console.error('Error fetching reviews in Explore:', err);
+        console.error('Error fetching stories in Explore:', err);
         setLoading(false);
       }
     );
@@ -102,7 +83,6 @@ export const Explore: React.FC = () => {
       unsubPackages();
       unsubDestinations();
       unsubStories();
-      unsubReviews();
     };
   }, []);
 
@@ -151,7 +131,11 @@ export const Explore: React.FC = () => {
   const styleOptions = useMemo(() => {
     const set = new Set<string>();
     packages.forEach((p) => {
-      if (p.travelStyle) set.add(p.travelStyle);
+      if (Array.isArray(p.travelStyle)) {
+        p.travelStyle.forEach((s) => set.add(s));
+      } else if (p.travelStyle) {
+        set.add(p.travelStyle);
+      }
       if (p.style) set.add(p.style);
     });
     return Array.from(set).sort();
@@ -186,7 +170,8 @@ export const Explore: React.FC = () => {
           const matchTitle = (pkg.title || '').toLowerCase().includes(q);
           const matchDesc = (pkg.description || pkg.tagline || '').toLowerCase().includes(q);
           const matchDest = (pkg.destinations || []).some((d) => d.toLowerCase().includes(q));
-          const matchStyle = (pkg.travelStyle || pkg.style || '').toLowerCase().includes(q);
+          const pkgStyle = (Array.isArray(pkg.travelStyle) ? pkg.travelStyle.join(' ') : pkg.travelStyle || pkg.style || '').toLowerCase();
+          const matchStyle = pkgStyle.includes(q);
           const matchInterests = (pkg.interests || []).some((i) => i.toLowerCase().includes(q));
           if (!matchTitle && !matchDesc && !matchDest && !matchStyle && !matchInterests) {
             return false;
@@ -203,8 +188,8 @@ export const Explore: React.FC = () => {
 
         // Travel Style Filter
         if (selectedStyle !== 'ALL') {
-          const style = (pkg.travelStyle || pkg.style || '').toLowerCase();
-          if (style !== selectedStyle.toLowerCase()) return false;
+          const style = (Array.isArray(pkg.travelStyle) ? pkg.travelStyle.join(' ') : pkg.travelStyle || pkg.style || '').toLowerCase();
+          if (!style.includes(selectedStyle.toLowerCase())) return false;
         }
 
         // Difficulty Filter
@@ -215,7 +200,7 @@ export const Explore: React.FC = () => {
 
         // Duration Filter
         if (selectedDuration !== 'ALL') {
-          const days = pkg.durationDays || pkg.duration || 0;
+          const days = typeof pkg.durationDays === 'number' ? pkg.durationDays : parseInt(String(pkg.duration || 0), 10) || 0;
           if (selectedDuration === 'UNDER_7' && days >= 7) return false;
           if (selectedDuration === '7_10' && (days < 7 || days > 10)) return false;
           if (selectedDuration === '11_14' && (days < 11 || days > 14)) return false;
@@ -232,28 +217,21 @@ export const Explore: React.FC = () => {
           return (b.pricing?.basePrice || 0) - (a.pricing?.basePrice || 0);
         }
         if (sortBy === 'DURATION_ASC') {
-          return (a.durationDays || a.duration || 0) - (b.durationDays || b.duration || 0);
+          const aDays = typeof a.durationDays === 'number' ? a.durationDays : parseInt(String(a.duration || 0), 10) || 0;
+          const bDays = typeof b.durationDays === 'number' ? b.durationDays : parseInt(String(b.duration || 0), 10) || 0;
+          return aDays - bDays;
         }
         if (sortBy === 'DURATION_DESC') {
-          return (b.durationDays || b.duration || 0) - (a.durationDays || a.duration || 0);
+          const aDays = typeof a.durationDays === 'number' ? a.durationDays : parseInt(String(a.duration || 0), 10) || 0;
+          const bDays = typeof b.durationDays === 'number' ? b.durationDays : parseInt(String(b.duration || 0), 10) || 0;
+          return bDays - aDays;
         }
         if (sortBy === 'NEWEST') {
           return (b.createdAt as any) - (a.createdAt as any);
         }
-        // Default RECOMMENDED: featured/popular, then rating desc
-        const ratingB = b.rating?.average || 5;
-        const ratingA = a.rating?.average || 5;
-        return ratingB - ratingA;
+        return 0;
       });
-  }, [
-    packages,
-    searchQuery,
-    selectedDestination,
-    selectedStyle,
-    selectedDifficulty,
-    selectedDuration,
-    sortBy,
-  ]);
+  }, [packages, searchQuery, selectedDestination, selectedStyle, selectedDifficulty, selectedDuration, sortBy]);
 
   // 2. Filtered Destinations
   const filteredDestinations = useMemo(() => {
@@ -315,48 +293,12 @@ export const Explore: React.FC = () => {
       });
   }, [stories, searchQuery, selectedDestination, sortBy]);
 
-  // 4. Filtered Reviews
-  const filteredReviews = useMemo(() => {
-    return reviews
-      .filter((rev) => {
-        if (searchQuery.trim()) {
-          const q = searchQuery.toLowerCase();
-          const matchName = (rev.travelerName || '').toLowerCase().includes(q);
-          const matchContent = (rev.content || (rev as any).testimonial || '').toLowerCase().includes(q);
-          const matchDest = (rev.destination || '').toLowerCase().includes(q);
-          const matchJourney = (rev.itineraryTitle || '').toLowerCase().includes(q);
-          if (!matchName && !matchContent && !matchDest && !matchJourney) return false;
-        }
-
-        if (selectedDestination !== 'ALL') {
-          const dest = (rev.destination || '').toLowerCase();
-          if (dest !== selectedDestination.toLowerCase() && !dest.includes(selectedDestination.toLowerCase())) {
-            return false;
-          }
-        }
-
-        if (selectedRating !== 'ALL') {
-          const target = parseInt(selectedRating, 10);
-          if (rev.rating !== target) return false;
-        }
-
-        return true;
-      })
-      .sort((a, b) => {
-        if (sortBy === 'NEWEST') return (b.publishedAt || b.createdAt ? 1 : -1);
-        // Default: HIGHEST RATED
-        return (b.rating || 5) - (a.rating || 5);
-      });
-  }, [reviews, searchQuery, selectedDestination, selectedRating, sortBy]);
-
   const activeCount =
     activeTab === 'journeys'
       ? filteredJourneys.length
       : activeTab === 'destinations'
       ? filteredDestinations.length
-      : activeTab === 'stories'
-      ? filteredStories.length
-      : filteredReviews.length;
+      : filteredStories.length;
 
   const hasActiveFilters =
     Boolean(searchQuery) ||
@@ -396,7 +338,6 @@ export const Explore: React.FC = () => {
               { id: 'journeys', label: `JOURNEYS (${packages.length})`, icon: Compass },
               { id: 'destinations', label: `DESTINATIONS (${destinations.length})`, icon: MapPin },
               { id: 'stories', label: `STORIES (${stories.length})`, icon: BookOpen },
-              { id: 'reviews', label: `REVIEWS (${reviews.length})`, icon: Star },
             ].map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -512,20 +453,6 @@ export const Explore: React.FC = () => {
                 </select>
               )}
 
-              {/* Rating Filter (Reviews Tab) */}
-              {activeTab === 'reviews' && (
-                <select
-                  value={selectedRating}
-                  onChange={(e) => updateParam('rating', e.target.value)}
-                  className="px-3 py-2.5 bg-[#FCFBF7] border-2 border-[#121212] text-xs font-bold uppercase text-[#121212] outline-none cursor-pointer"
-                >
-                  <option value="ALL">All Ratings</option>
-                  <option value="5">5 Stars</option>
-                  <option value="4">4 Stars</option>
-                  <option value="3">3 Stars</option>
-                </select>
-              )}
-
               {/* Sort Order Selector */}
               <div className="flex items-center gap-1">
                 <span className="text-[10px] font-black uppercase text-slate-500 hidden sm:inline">
@@ -558,12 +485,6 @@ export const Explore: React.FC = () => {
                       <option value="FEATURED">Featured Stories</option>
                       <option value="NEWEST">Newest</option>
                       <option value="A_Z">A – Z</option>
-                    </>
-                  )}
-                  {activeTab === 'reviews' && (
-                    <>
-                      <option value="RECOMMENDED">Highest Rated</option>
-                      <option value="NEWEST">Newest Published</option>
                     </>
                   )}
                 </select>
@@ -608,7 +529,6 @@ export const Explore: React.FC = () => {
               {activeTab === 'journeys' && 'No journeys match these filters.'}
               {activeTab === 'destinations' && 'No destinations match your search.'}
               {activeTab === 'stories' && 'No traveller stories match your selection.'}
-              {activeTab === 'reviews' && 'No reviews match your selection.'}
             </h3>
             <p className="text-xs text-slate-600 max-w-sm mx-auto">
               Try adjusting your search criteria or resetting filters to discover more expeditions.
@@ -688,14 +608,6 @@ export const Explore: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
                 {filteredStories.map((story) => (
                   <CustomerStoryCard key={story.id || story.slug} story={story} />
-                ))}
-              </div>
-            )}
-
-            {activeTab === 'reviews' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-                {filteredReviews.map((review) => (
-                  <TravellerReviewCard key={review.id} review={review} />
                 ))}
               </div>
             )}

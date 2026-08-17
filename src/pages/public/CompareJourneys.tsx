@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../services/firebaseService';
-import { Package, Review } from '../../types/database';
+import { Package } from '../../types/database';
 import { useJourneyShortlist } from '../../hooks/useJourneyShortlist';
 import { useEnquiry } from '../../context/EnquiryContext';
 import { SeoHead } from '../../components/shared/SeoHead';
@@ -40,11 +40,10 @@ export const CompareJourneys: React.FC = () => {
   const comparedIds = useMemo(() => Array.from(new Set(rawIds)).slice(0, 3), [rawIds]);
 
   const [allPackages, setAllPackages] = useState<Package[]>([]);
-  const [allReviews, setAllReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [mobileActiveTab, setMobileActiveTab] = useState<number>(0);
 
-  // Realtime subscription to packages and reviews
+  // Realtime subscription to packages
   useEffect(() => {
     setLoading(true);
 
@@ -53,26 +52,16 @@ export const CompareJourneys: React.FC = () => {
       (snap) => {
         const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Package));
         setAllPackages(list.filter((p) => p.status !== 'draft' && (p as any).active !== false));
-      },
-      (err) => console.error('Error fetching packages in Compare:', err)
-    );
-
-    const unsubRevs = onSnapshot(
-      collection(db, 'global_reviews'),
-      (snap) => {
-        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Review));
-        setAllReviews(list.filter((r) => r.approved !== false && r.status !== 'ARCHIVED'));
         setLoading(false);
       },
       (err) => {
-        console.error('Error fetching reviews in Compare:', err);
+        console.error('Error fetching packages in Compare:', err);
         setLoading(false);
       }
     );
 
     return () => {
       unsubPkgs();
-      unsubRevs();
     };
   }, []);
 
@@ -670,51 +659,6 @@ export const CompareJourneys: React.FC = () => {
                         <p className="text-[10px] text-slate-500 font-medium italic">
                           * Indicative per-person bespoke tier. Includes private guides, luxury stays & transfers.
                         </p>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* ── 7. SECTION: TRAVELLER REVIEWS (E47) ── */}
-              <div>
-                <div className="bg-[#121212] text-[#F4BF4B] px-6 py-2.5 font-black text-xs uppercase tracking-[0.25em] flex items-center gap-2">
-                  <Star size={14} className="fill-[#F4BF4B]" /> 6. TRAVELLER SOCIAL PROOF
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-4">
-                  <div className="p-4 bg-slate-50 font-black text-xs uppercase tracking-wider text-slate-600 border-r-0 lg:border-r-4 border-[#121212] flex items-center">
-                    Reputation
-                  </div>
-                  {comparedPackages.map((pkg, idx) => {
-                    const pkgReviews = allReviews.filter(
-                      (r) =>
-                        r.itineraryId === pkg.id ||
-                        r.itinerarySlug === pkg.slug ||
-                        (r.itineraryTitle && pkg.title && r.itineraryTitle.toLowerCase() === pkg.title.toLowerCase())
-                    );
-
-                    const avg =
-                      pkgReviews.length > 0
-                        ? (pkgReviews.reduce((sum, r) => sum + (r.rating || 5), 0) / pkgReviews.length).toFixed(1)
-                        : (pkg.rating?.average || 5.0).toFixed(1);
-
-                    return (
-                      <div
-                        key={pkg.id}
-                        className={`p-4 flex items-center gap-3 ${
-                          idx < comparedPackages.length - 1 ? 'lg:border-r-4 border-[#121212]' : ''
-                        } ${mobileActiveTab !== idx ? 'hidden lg:block' : 'block'}`}
-                      >
-                        <div className="flex items-center gap-1 text-[#F4BF4B]">
-                          <Star size={16} className="fill-[#F4BF4B] text-[#121212]" />
-                          <span className="font-brand font-black text-lg text-slate-900">{avg}</span>
-                        </div>
-                        <span className="text-[11px] font-bold text-slate-500">
-                          {pkgReviews.length > 0
-                            ? `(${pkgReviews.length} verified reviews)`
-                            : '(Bespoke Expedition)'}
-                        </span>
                       </div>
                     );
                   })}

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   MessageSquare,
   Phone,
@@ -22,9 +22,13 @@ import {
   Send,
   MessageCircle,
   ExternalLink,
+  Users,
+  CalendarPlus,
+  CheckCheck,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { doc, updateDoc, serverTimestamp, arrayUnion, Timestamp } from 'firebase/firestore';
-import { db } from '../../services/firebaseService';
+import { db, addEnquiryActivity } from '../../services/firebaseService';
 import {
   EnquiryDocument,
   Booking,
@@ -33,7 +37,6 @@ import {
 } from '../../types/database';
 import {
   ENQUIRY_STATUS_LABELS,
-  BOOKING_STATUS_LABELS,
 } from '../../utils/statusLabels';
 
 interface AdminCommunicationManagerProps {
@@ -60,6 +63,7 @@ const COMMON_NEXT_ACTIONS = [
   'Confirm booking details',
   'Conduct traveller briefing',
   'Review travel documents',
+  'Send packing list & logistics',
   'Other',
 ];
 
@@ -98,6 +102,13 @@ export const AdminCommunicationManager: React.FC<AdminCommunicationManagerProps>
   const [stageFilter, setStageFilter] = useState<StageFilter>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<string>('ALL');
+
+  // Sync external initialFilter changes
+  useEffect(() => {
+    if (initialFilter && ['ALL', 'DUE_TODAY', 'OVERDUE', 'UPCOMING', 'NO_FOLLOWUP'].includes(initialFilter)) {
+      setFollowUpFilter(initialFilter as FollowUpFilter);
+    }
+  }, [initialFilter]);
 
   // ── Record Contact Modal State ──
   const [recordingTarget, setRecordingTarget] = useState<EnquiryDocument | null>(null);
@@ -284,13 +295,15 @@ export const AdminCommunicationManager: React.FC<AdminCommunicationManagerProps>
           const custRef = (item.customer?.customerReference || '').toLowerCase();
           const dest = (item.enquiry.destination || '').toLowerCase();
           const title = (item.enquiry.itineraryTitle || '').toLowerCase();
+          const nextAct = (item.enquiry.nextAction || '').toLowerCase();
 
           if (
             !name.includes(q) &&
             !ref.includes(q) &&
             !custRef.includes(q) &&
             !dest.includes(q) &&
-            !title.includes(q)
+            !title.includes(q) &&
+            !nextAct.includes(q)
           ) {
             return false;
           }
@@ -333,12 +346,13 @@ export const AdminCommunicationManager: React.FC<AdminCommunicationManagerProps>
       if (Array.isArray((e as any).activityHistory)) {
         (e as any).activityHistory.forEach((act: EnquiryActivity) => {
           if (
-            act.type === 'TRAVELLER_CONTACTED' ||
             act.type === 'CONTACTED' ||
             act.type === 'WHATSAPP_OPENED' ||
             act.type === 'PHONE_INITIATED' ||
             act.type === 'EMAIL_OPENED' ||
-            act.type === 'FOLLOW_UP_SET'
+            act.type === 'FOLLOW_UP_SET' ||
+            act.type === 'NOTE_ADDED' ||
+            act.type === 'TRAVELLER_BRIEFED'
           ) {
             const time = (act.createdAt as any)?.toMillis
               ? (act.createdAt as any).toMillis()
@@ -349,7 +363,7 @@ export const AdminCommunicationManager: React.FC<AdminCommunicationManagerProps>
       }
     });
 
-    return list.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 10);
+    return list.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 15);
   }, [enquiries]);
 
   // WhatsApp Action: Manual trigger with safe prefilled message
@@ -362,12 +376,42 @@ export const AdminCommunicationManager: React.FC<AdminCommunicationManagerProps>
 
     const name = enq.traveller?.name?.split(' ')[0] || 'there';
     const dest = enq.itineraryTitle || enq.destination || 'your journey';
-    const date = enq.trip?.travelDate || 'your upcoming travel';
+    const date = enq.trip?.travelDate || (enq as any).travelDate || 'your upcoming travel';
     const ref = enq.enquiryId || enq.id;
 
     const message = `Hello ${name}, this is the NO FIXED ADDRESS travel team regarding your ${dest} plans (${ref}). We wanted to follow up with you on your preferred dates (${date}). How can we assist you today?`;
 
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+  };
+
+  // Quick Reschedule Follow-up (+1 day, +3 days, +1 week, clear)
+  const handleQuickFollowUp = async (enquiryId: string, daysOffset: number | null) => {
+    try {
+      let nextDateStr: string | null = null;
+      if (daysOffset !== null) {
+        const target = new Date();
+        target.setDate(target.getDate() + daysOffset);
+        nextDateStr = target.toISOString().split('T')[0];
+      }
+
+      const docRef = doc(db, 'Enquiries', enquiryId);
+      await updateDoc(docRef, {
+        followUpAt: nextDateStr,
+        updatedAt: serverTimestamp(),
+      });
+
+      const label = daysOffset === null
+        ? 'Follow-up cleared'
+        : daysOffset === 0
+        ? 'Follow-up set to Today'
+        : `Follow-up set to ${nextDateStr}`;
+
+      setActionSuccess(label);
+      setTimeout(() => setActionSuccess(null), 3000);
+    } catch (err: any) {
+      console.error('Error updating follow up:', err);
+      alert('Failed to update follow up.');
+    }
   };
 
   // Open Record Contact Modal
@@ -419,7 +463,7 @@ export const AdminCommunicationManager: React.FC<AdminCommunicationManagerProps>
 
       const activityEntry: EnquiryActivity = {
         enquiryId: recordingTarget.id,
-        type: 'TRAVELLER_CONTACTED',
+        type: 'CONTACTED',
         actorId: 'admin',
         actorName: 'Travel Team Specialist',
         metadata: {
@@ -432,6 +476,13 @@ export const AdminCommunicationManager: React.FC<AdminCommunicationManagerProps>
         },
         createdAt: Timestamp.now(),
       };
+
+      // Dual write: subcollection audit trail + doc array
+      try {
+        await addEnquiryActivity(recordingTarget.id, activityEntry);
+      } catch (e) {
+        console.warn('Subcollection activity write warning:', e);
+      }
 
       const docRef = doc(db, 'Enquiries', recordingTarget.id);
       await updateDoc(docRef, {
@@ -459,12 +510,12 @@ export const AdminCommunicationManager: React.FC<AdminCommunicationManagerProps>
     <div className="space-y-6 text-left selection:bg-[#F4BF4B] selection:text-[#121212]">
       {/* Toast Alert */}
       {actionSuccess && (
-        <div className="p-3.5 bg-emerald-50 border-2 border-emerald-400 text-emerald-900 text-xs font-bold flex items-center justify-between rounded-lg">
+        <div className="p-3.5 bg-emerald-50 border-2 border-emerald-400 text-emerald-900 text-xs font-bold flex items-center justify-between rounded-xl shadow-sm">
           <div className="flex items-center gap-2">
             <CheckCircle2 size={16} className="text-emerald-700" />
             <span>{actionSuccess}</span>
           </div>
-          <button onClick={() => setActionSuccess(null)} className="text-emerald-700">
+          <button onClick={() => setActionSuccess(null)} className="text-emerald-700 hover:text-emerald-900 cursor-pointer">
             <X size={14} />
           </button>
         </div>
@@ -482,7 +533,7 @@ export const AdminCommunicationManager: React.FC<AdminCommunicationManagerProps>
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Manage traveller contact queues, conversation logs, follow-up scheduling, and next actions
+            Manage traveller contact queues, conversation logs, follow-up scheduling, and next actions.
           </p>
         </div>
       </div>
@@ -578,13 +629,13 @@ export const AdminCommunicationManager: React.FC<AdminCommunicationManagerProps>
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by Traveller name, reference, destination..."
+                  placeholder="Search by traveller name, email, phone, reference, destination..."
                   className="w-full pl-10 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-slate-400 transition-all"
                 />
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
                   >
                     <X size={14} />
                   </button>
@@ -712,13 +763,48 @@ export const AdminCommunicationManager: React.FC<AdminCommunicationManagerProps>
                       </button>
                     </div>
 
-                    {/* Action Bar (One-click contact triggers) */}
-                    <div className="flex items-center justify-between flex-wrap gap-2 pt-1">
+                    {/* Quick Follow-Up Actions Row */}
+                    <div className="flex items-center justify-between flex-wrap gap-2 pt-1 border-t border-slate-100">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[9px] font-black uppercase text-slate-400 mr-1">Quick Reschedule:</span>
+                        <button
+                          onClick={() => handleQuickFollowUp(enq.id || '', 0)}
+                          className="px-2 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded text-[9px] font-bold text-slate-700 cursor-pointer"
+                        >
+                          Today
+                        </button>
+                        <button
+                          onClick={() => handleQuickFollowUp(enq.id || '', 1)}
+                          className="px-2 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded text-[9px] font-bold text-slate-700 cursor-pointer"
+                        >
+                          +1 Day
+                        </button>
+                        <button
+                          onClick={() => handleQuickFollowUp(enq.id || '', 3)}
+                          className="px-2 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded text-[9px] font-bold text-slate-700 cursor-pointer"
+                        >
+                          +3 Days
+                        </button>
+                        <button
+                          onClick={() => handleQuickFollowUp(enq.id || '', 7)}
+                          className="px-2 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded text-[9px] font-bold text-slate-700 cursor-pointer"
+                        >
+                          +1 Week
+                        </button>
+                        <button
+                          onClick={() => handleQuickFollowUp(enq.id || '', null)}
+                          className="px-2 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded text-[9px] font-bold text-slate-500 hover:text-rose-600 cursor-pointer"
+                        >
+                          Clear
+                        </button>
+                      </div>
+
+                      {/* Contact Action Triggers */}
                       <div className="flex items-center gap-2">
                         {enq.traveller?.phone ? (
                           <button
                             onClick={() => handleWhatsAppAction(enq)}
-                            className="px-3 py-1.5 bg-[#25D366] text-white rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 hover:bg-[#20bd5a] transition-colors cursor-pointer"
+                            className="px-3 py-1 bg-[#25D366] text-white rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 hover:bg-[#20bd5a] transition-colors cursor-pointer shadow-xs"
                           >
                             <MessageSquare size={13} /> WhatsApp
                           </button>
@@ -727,7 +813,7 @@ export const AdminCommunicationManager: React.FC<AdminCommunicationManagerProps>
                         {enq.traveller?.phone ? (
                           <a
                             href={`tel:${enq.traveller.phone}`}
-                            className="px-3 py-1.5 bg-slate-100 text-slate-800 border border-slate-300 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 hover:bg-slate-200 transition-colors"
+                            className="px-3 py-1 bg-slate-100 text-slate-800 border border-slate-300 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 hover:bg-slate-200 transition-colors"
                           >
                             <Phone size={13} /> Call
                           </a>
@@ -738,42 +824,42 @@ export const AdminCommunicationManager: React.FC<AdminCommunicationManagerProps>
                             href={`mailto:${enq.traveller.email}?subject=${encodeURIComponent(
                               `NO FIXED ADDRESS — ${enq.itineraryTitle || enq.destination || 'Expedition'} (${enq.enquiryId || enq.id})`
                             )}`}
-                            className="px-3 py-1.5 bg-slate-100 text-slate-800 border border-slate-300 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 hover:bg-slate-200 transition-colors"
+                            className="px-3 py-1 bg-slate-100 text-slate-800 border border-slate-300 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 hover:bg-slate-200 transition-colors"
                           >
                             <Mail size={13} /> Email
                           </a>
                         ) : null}
                       </div>
+                    </div>
 
-                      {/* Workspace Jump Links */}
-                      <div className="flex items-center gap-2 text-xs">
-                        {customer && onOpenCustomer ? (
-                          <button
-                            onClick={() => onOpenCustomer(customer.id || customer.customerId)}
-                            className="font-bold text-slate-600 hover:text-slate-900 underline text-[10px] uppercase cursor-pointer"
-                          >
-                            Customer 360 &rarr;
-                          </button>
-                        ) : null}
+                    {/* Workspace Navigation Links */}
+                    <div className="flex items-center justify-end gap-3 text-xs pt-1 border-t border-slate-100/60">
+                      {customer && onOpenCustomer ? (
+                        <button
+                          onClick={() => onOpenCustomer(customer.id || customer.customerId)}
+                          className="font-bold text-slate-600 hover:text-slate-900 underline text-[10px] uppercase cursor-pointer"
+                        >
+                          Customer 360 &rarr;
+                        </button>
+                      ) : null}
 
-                        {onOpenEnquiry ? (
-                          <button
-                            onClick={() => onOpenEnquiry(enq)}
-                            className="font-bold text-slate-600 hover:text-slate-900 underline text-[10px] uppercase cursor-pointer"
-                          >
-                            Lead Workspace &rarr;
-                          </button>
-                        ) : null}
+                      {onOpenEnquiry ? (
+                        <button
+                          onClick={() => onOpenEnquiry(enq)}
+                          className="font-bold text-slate-600 hover:text-slate-900 underline text-[10px] uppercase cursor-pointer"
+                        >
+                          Lead Workspace &rarr;
+                        </button>
+                      ) : null}
 
-                        {booking && onOpenBooking ? (
-                          <button
-                            onClick={() => onOpenBooking(booking)}
-                            className="font-bold text-[#9E1B1D] hover:underline text-[10px] uppercase cursor-pointer"
-                          >
-                            Booking Workspace &rarr;
-                          </button>
-                        ) : null}
-                      </div>
+                      {booking && onOpenBooking ? (
+                        <button
+                          onClick={() => onOpenBooking(booking)}
+                          className="font-bold text-[#9E1B1D] hover:underline text-[10px] uppercase cursor-pointer"
+                        >
+                          Booking Workspace &rarr;
+                        </button>
+                      ) : null}
                     </div>
                   </div>
                 );
@@ -808,7 +894,7 @@ export const AdminCommunicationManager: React.FC<AdminCommunicationManagerProps>
                       <span className="font-bold text-slate-900">
                         {enq.traveller?.name || 'Traveller'}
                       </span>
-                      <span className="text-[10px] text-slate-400">
+                      <span className="text-[10px] text-slate-400 font-mono">
                         {date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
                       </span>
                     </div>
@@ -816,7 +902,7 @@ export const AdminCommunicationManager: React.FC<AdminCommunicationManagerProps>
                     <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-bold uppercase">
                       <span>{act.metadata?.channel || 'Contact'}</span>
                       <span>&bull;</span>
-                      <span className="text-[#9E1B1D]">{enq.enquiryId || enq.id}</span>
+                      <span className="text-[#9E1B1D] font-mono">{enq.enquiryId || enq.id}</span>
                     </div>
 
                     {act.metadata?.noteSnippet && (

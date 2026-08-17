@@ -40,6 +40,7 @@ import {
   Star,
   ThumbsUp,
   ThumbsDown,
+  Eye,
 } from 'lucide-react';
 import { db, subscribeToCustomers, updateCustomerProfile } from '../../services/firebaseService';
 import {
@@ -241,7 +242,13 @@ export const AdminCustomersManager: React.FC<AdminCustomersManagerProps> = ({
         name: selectedCustomer.name || '',
         phone: selectedCustomer.phone || '',
         address: selectedCustomer.address || '',
-        preferredTravelStyle: selectedCustomer.preferences?.preferredTravelStyle || [],
+        preferredTravelStyle: Array.isArray(selectedCustomer.preferences?.preferredTravelStyle)
+          ? selectedCustomer.preferences.preferredTravelStyle
+          : Array.isArray(selectedCustomer.preferences?.travelStyle)
+          ? selectedCustomer.preferences.travelStyle
+          : selectedCustomer.preferences?.preferredTravelStyle
+          ? [selectedCustomer.preferences.preferredTravelStyle]
+          : [],
         accommodationPreference:
           selectedCustomer.preferences?.accommodationPreference ||
           selectedCustomer.preferences?.accommodationType ||
@@ -543,9 +550,8 @@ export const AdminCustomersManager: React.FC<AdminCustomersManagerProps> = ({
 
     const pastDestinations = completedBookings.map((b) => (b.destination || '').toLowerCase());
     const pastPkgIds = completedBookings.map((b) => b.itineraryId || b.packageId).filter(Boolean);
-    const preferredStyles = (selectedCustomer.preferences?.preferredTravelStyle || []).map((s) =>
-      s.toLowerCase()
-    );
+    const rawPref = selectedCustomer.preferences?.preferredTravelStyle || selectedCustomer.preferences?.travelStyle || [];
+    const preferredStyles = (Array.isArray(rawPref) ? rawPref : [rawPref]).map((s) => String(s).toLowerCase());
 
     const published = packages.filter(
       (p) => (p as any).published !== false && (p as any).status !== 'DRAFT'
@@ -565,16 +571,10 @@ export const AdminCustomersManager: React.FC<AdminCustomersManagerProps> = ({
         if (aDiffDest !== bDiffDest) return bDiffDest - aDiffDest;
 
         // Prioritize style match
-        const aStyleMatch = preferredStyles.some((s) =>
-          (a.travelStyle || '').toLowerCase().includes(s)
-        )
-          ? 1
-          : 0;
-        const bStyleMatch = preferredStyles.some((s) =>
-          (b.travelStyle || '').toLowerCase().includes(s)
-        )
-          ? 1
-          : 0;
+        const aStyleStr = (Array.isArray(a.travelStyle) ? a.travelStyle.join(' ') : a.travelStyle || a.style || '').toLowerCase();
+        const bStyleStr = (Array.isArray(b.travelStyle) ? b.travelStyle.join(' ') : b.travelStyle || b.style || '').toLowerCase();
+        const aStyleMatch = preferredStyles.some((s) => aStyleStr.includes(s)) ? 1 : 0;
+        const bStyleMatch = preferredStyles.some((s) => bStyleStr.includes(s)) ? 1 : 0;
         return bStyleMatch - aStyleMatch;
       })
       .slice(0, 3);
@@ -1395,11 +1395,16 @@ export const AdminCustomersManager: React.FC<AdminCustomersManagerProps> = ({
                     </div>
 
                     <div className="space-y-3">
-                      {selectedCustomer.preferences?.preferredTravelStyle && selectedCustomer.preferences.preferredTravelStyle.length > 0 && (
+                      {Boolean(selectedCustomer.preferences?.preferredTravelStyle || selectedCustomer.preferences?.travelStyle) && (
                         <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
                           <span className="text-[10px] font-bold uppercase text-slate-400 block">Travel Styles</span>
                           <div className="flex flex-wrap gap-2">
-                            {selectedCustomer.preferences.preferredTravelStyle.map((s, idx) => (
+                            {(Array.isArray(selectedCustomer.preferences?.preferredTravelStyle)
+                              ? selectedCustomer.preferences.preferredTravelStyle
+                              : Array.isArray(selectedCustomer.preferences?.travelStyle)
+                              ? selectedCustomer.preferences.travelStyle
+                              : [selectedCustomer.preferences?.preferredTravelStyle || selectedCustomer.preferences?.travelStyle]
+                            ).filter(Boolean).map((s, idx) => (
                               <span key={idx} className="bg-[#121212] text-[#F4BF4B] px-3 py-1 rounded text-xs font-bold">
                                 ✓ {s}
                               </span>
