@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { 
   Calendar, Package, Image as ImageIcon, LayoutTemplate, MessageSquare, 
   LogOut, Map, Menu, X, Search, Bell, Filter, Share2, MoreVertical, 
@@ -273,25 +273,70 @@ export const Admin = () => {
     };
   }, [soundEnabled]);
 
-  // Dynamic Notification List
-  const notificationsList = bookings.slice(0, 8).map(b => {
-    const traveler = b.primaryTraveler?.firstName ? `${b.primaryTraveler.firstName} ${b.primaryTraveler.lastName || ''}` : 'Guest Traveler';
-    const pkgName = packages.find(p => p.id === b.packageId)?.title || b.packageId || 'Expedition Package';
-    return {
-      id: `notif_${b.id}`,
-      title: b.bookingStatus === 'confirmed' ? 'Booking Confirmed' : 'New Booking Request',
-      message: `${traveler} · ${pkgName}`,
-      amount: b.pricing?.total ? `${b.pricing.total.toLocaleString()} ${b.pricing.currency || 'USD'}` : undefined,
-      timestamp: b.createdAt ? new Date((b.createdAt as any).toMillis?.() || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now',
-      read: readNotifIds.includes(`notif_${b.id}`),
-      tab: 'BOOKINGS'
-    };
-  });
+  // Dynamic Notification List across Enquiries & Bookings
+  const notificationsList = useMemo(() => {
+    const items: Array<{
+      id: string;
+      title: string;
+      message: string;
+      read: boolean;
+    }> = [];
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    // 1. Enquiries (New & Follow-ups due)
+    enquiries.forEach((e) => {
+      if (e.status === 'NEW') {
+        const id = `new_enq_${e.id}`;
+        items.push({
+          id,
+          title: 'New Enquiry Received',
+          message: `${e.traveller?.name || 'Traveller'} · ${e.tripSummary?.itineraryTitle || e.tripSummary?.destination || 'Expedition'}`,
+          read: readNotifIds.includes(id),
+        });
+      }
+
+      if (e.followUpAt && e.status !== 'CONVERTED' && e.status !== 'CLOSED') {
+        const fDate = typeof e.followUpAt === 'string' ? e.followUpAt : '';
+        if (fDate && fDate <= todayStr) {
+          const isOverdue = fDate < todayStr;
+          const id = isOverdue ? `fup_overdue_${e.id}` : `fup_due_${e.id}`;
+          items.push({
+            id,
+            title: isOverdue ? 'Follow-up Overdue' : 'Follow-up Due Today',
+            message: `${e.traveller?.name || 'Traveller'} · Follow-up: ${fDate}`,
+            read: readNotifIds.includes(id),
+          });
+        }
+      }
+    });
+
+    // 2. Bookings (Pending confirmation & New)
+    bookings.forEach((b) => {
+      const traveller = b.travelers?.[0]?.firstName 
+        ? `${b.travelers[0].firstName} ${b.travelers[0].lastName || ''}` 
+        : b.primaryTraveler?.firstName 
+        ? `${b.primaryTraveler.firstName} ${b.primaryTraveler.lastName || ''}` 
+        : 'Guest Traveler';
+      const pkgName = packages.find(p => p.id === b.packageId)?.title || b.destination || 'Expedition Booking';
+
+      if (b.bookingStatus === 'PENDING_CONFIRMATION' || b.bookingStatus === 'pending') {
+        const id = `await_confirm_${b.id}`;
+        items.push({
+          id,
+          title: 'Booking Awaiting Confirmation',
+          message: `${traveller} · ${pkgName}`,
+          read: readNotifIds.includes(id),
+        });
+      }
+    });
+
+    return items;
+  }, [enquiries, bookings, packages, readNotifIds]);
 
   const unreadNotifCount = notificationsList.filter(n => !n.read).length;
 
   const markAllNotifsAsRead = () => {
-    const allIds = notificationsList.map(n => n.id);
+    const allIds = Array.from(new Set([...readNotifIds, ...notificationsList.map(n => n.id)]));
     setReadNotifIds(allIds);
     localStorage.setItem('nfa_admin_read_notifs', JSON.stringify(allIds));
   };
@@ -1117,9 +1162,11 @@ export const Admin = () => {
                   aria-label="Notifications"
                 >
                   <Bell size={18} />
-                  <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center animate-pulse">
-                    !
-                  </span>
+                  {unreadNotifCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center">
+                      {unreadNotifCount > 9 ? '9+' : unreadNotifCount}
+                    </span>
+                  )}
                 </button>
 
                 <AdminNotificationDropdown
@@ -1128,9 +1175,12 @@ export const Admin = () => {
                   bookings={bookings}
                   enquiries={enquiries}
                   customers={customers}
-                  readNotifIds={[]}
-                  onMarkAllAsRead={() => {}}
-                  onNavigateTab={(tabId) => setActiveTab(tabId)}
+                  readNotifIds={readNotifIds}
+                  onMarkAllAsRead={markAllNotifsAsRead}
+                  onNavigateTab={(tabId) => {
+                    setActiveTab(tabId);
+                    setShowNotificationsMenu(false);
+                  }}
                 />
               </div>
 
