@@ -99,9 +99,9 @@ export const checkPackageContent = (pkg: Package): ContentCheckResult => {
   const stopsWithNoCity = cities.filter((c) => !hasText(c.city));
   const allStopsHaveCity = stopsWithNoCity.length === 0;
 
-  // ── Pricing state: 0 = "enquiry" which is valid ──
+  // ── Pricing state: optional; if provided, must be >= 0 (empty or 0 = "Price on request") ──
   const basePrice = pkg.pricing?.basePrice;
-  const pricingValid = typeof basePrice === 'number' && !isNaN(basePrice) && basePrice >= 0;
+  const pricingValid = basePrice === undefined || basePrice === null || (typeof basePrice === 'number' && !isNaN(basePrice) && basePrice >= 0);
 
   // ── Overview or description ──
   const hasDescription =

@@ -57,8 +57,9 @@ export const Packages = () => {
         id, destination_id: id,
         name: pkg.title,
         image: pkg.media?.thumbnail || '',
-        destination: pkg.destinations?.[0] || '',
-        price: `₹${pkg.pricing?.basePrice?.toLocaleString() || 0}`,
+        price: Boolean(pkg.pricing?.showPricing || (pkg as any).showPricing) && pkg.pricing?.basePrice && pkg.pricing.basePrice > 0 
+          ? `${pkg.pricing?.currency === 'INR' || !pkg.pricing?.currency ? '₹' : pkg.pricing.currency}${pkg.pricing.basePrice.toLocaleString()}`
+          : 'Price on request',
         rating: 5,
         duration: pkg.duration || '',
         category: 'Package',

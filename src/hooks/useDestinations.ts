@@ -61,9 +61,10 @@ export const useDestinations = () => {
         pkg.overview?.toLowerCase().includes(searchTerm.toLowerCase());
 
       // 4. Budget
-      const basePrice = pkg.pricing?.basePrice || 0;
-      const minBudgetMatch = minBudget === "" || basePrice >= Number(minBudget);
-      const maxBudgetMatch = maxBudget === "" || basePrice <= Number(maxBudget);
+      const isPricingEnabled = Boolean(pkg.pricing?.showPricing || (pkg as any).showPricing);
+      const basePrice = isPricingEnabled ? (pkg.pricing?.basePrice || 0) : 0;
+      const minBudgetMatch = minBudget === "" || (isPricingEnabled && basePrice >= Number(minBudget));
+      const maxBudgetMatch = maxBudget === "" || (isPricingEnabled ? basePrice <= Number(maxBudget) : true);
 
       // 5. Selected Destination (Specific city/country match instead of broad region)
       const destMatch = selectedDestination === "ALL" || 
@@ -74,8 +75,10 @@ export const useDestinations = () => {
 
     // Handle Sorting
     result.sort((a, b) => {
-      const priceA = a.pricing?.basePrice || 0;
-      const priceB = b.pricing?.basePrice || 0;
+      const isPricingEnabledA = Boolean(a.pricing?.showPricing || (a as any).showPricing);
+      const isPricingEnabledB = Boolean(b.pricing?.showPricing || (b as any).showPricing);
+      const priceA = isPricingEnabledA ? (a.pricing?.basePrice || 0) : 0;
+      const priceB = isPricingEnabledB ? (b.pricing?.basePrice || 0) : 0;
 
       if (sortBy === "price_asc") return priceA - priceB;
       if (sortBy === "price_desc") return priceB - priceA;

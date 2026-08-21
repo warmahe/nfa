@@ -4,7 +4,7 @@ import {
   MapPin, Calendar, Clock, Star, Users, Info,
   Layers, CheckCircle, XCircle, HelpCircle, Image as ImageIcon,
   ChevronRight, ChevronUp, ChevronDown, PlusCircle, Trash, X, Download,
-  Sparkles, Eye, Filter, Compass, AlertTriangle, FileText, Lock, Globe, DollarSign,
+  Sparkles, Eye, EyeOff, Filter, Compass, AlertTriangle, FileText, Lock, Globe, DollarSign,
   FileCheck, Shield, Award, Check, ClipboardCheck
 } from 'lucide-react';
 import {
@@ -434,6 +434,7 @@ export const AdminPackagesManager = () => {
       pricing: {
         basePrice: 150000,
         currency: 'INR',
+        showPricing: false,
         dates: []
       },
       media: {
@@ -2194,22 +2195,78 @@ export const AdminPackagesManager = () => {
 
             {/* Tab 8: PRICING */}
             {activeTab === 'PRICING' && (
-              <div className="space-y-4">
-                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">PRICING & COMMERCIALS</h4>
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">PRICING & COMMERCIALS</h4>
+                  <span className="text-[10px] text-slate-500 font-medium italic">Control public price visibility</span>
+                </div>
+
+                {/* Enable / Disable Public Pricing Toggle Card */}
+                <div className="p-4 bg-slate-50 border-2 border-slate-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black uppercase tracking-wider text-slate-900">
+                        Show Pricing To Website Visitors
+                      </span>
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider rounded ${
+                          activePackage.pricing?.showPricing
+                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                            : 'bg-slate-200 text-slate-700 border border-slate-300'
+                        }`}
+                      >
+                        {activePackage.pricing?.showPricing ? (
+                          <>
+                            <Eye size={11} /> Pricing Enabled (Visible)
+                          </>
+                        ) : (
+                          <>
+                            <EyeOff size={11} /> Pricing Disabled ("Price On Request")
+                          </>
+                        )}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 leading-relaxed max-w-2xl">
+                      When turned <strong className="text-emerald-700">ON</strong>, viewers can see the starting price, currency, and discount badge. When turned <strong className="text-slate-700">OFF</strong>, viewers only see "Price on request" across all public cards, comparison tables, and itinerary pages.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={Boolean(activePackage.pricing?.showPricing)}
+                    onClick={() => {
+                      const current = Boolean(activePackage.pricing?.showPricing);
+                      handleNestedChange('pricing', 'showPricing', !current);
+                    }}
+                    className={`relative inline-flex h-6 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#9E1B1D] ${
+                      activePackage.pricing?.showPricing ? 'bg-emerald-600' : 'bg-slate-300'
+                    }`}
+                    title={activePackage.pricing?.showPricing ? 'Disable public pricing' : 'Enable public pricing'}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        activePackage.pricing?.showPricing ? 'translate-x-6' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className={labelClass}>Starting Base Price *</label>
+                    <label className={labelClass}>Starting Base Price (Optional)</label>
                     <input
                       type="number"
-                      value={activePackage.pricing?.basePrice || 0}
+                      value={activePackage.pricing?.basePrice !== undefined && activePackage.pricing?.basePrice !== null ? activePackage.pricing.basePrice : ''}
                       onChange={(e) => {
-                        const val = parseFloat(e.target.value) || 0;
+                        const val = e.target.value === '' ? undefined : (parseFloat(e.target.value) || 0);
                         handleNestedChange('pricing', 'basePrice', val);
                       }}
+                      placeholder="e.g., 150000"
                       className={inputClass}
                       aria-label="Starting Base Price"
                     />
+                    <p className="text-[10px] text-slate-500 mt-1">Starting per-person price (only shown publicly if toggle above is ON).</p>
                   </div>
 
                   <div>
@@ -2228,14 +2285,16 @@ export const AdminPackagesManager = () => {
                     <label className={labelClass}>Discount Price (Optional)</label>
                     <input
                       type="number"
-                      value={activePackage.pricing?.discountedPrice || 0}
+                      value={activePackage.pricing?.discountedPrice !== undefined && activePackage.pricing?.discountedPrice !== null ? activePackage.pricing.discountedPrice : ''}
                       onChange={(e) => {
-                        const val = parseFloat(e.target.value) || 0;
+                        const val = e.target.value === '' ? undefined : (parseFloat(e.target.value) || 0);
                         handleNestedChange('pricing', 'discountedPrice', val);
                       }}
+                      placeholder="e.g., 135000"
                       className={inputClass}
                       aria-label="Discounted Price"
                     />
+                    <p className="text-[10px] text-slate-500 mt-1">Optional special offer / discounted rate.</p>
                   </div>
                 </div>
               </div>
@@ -2760,9 +2819,22 @@ export const AdminPackagesManager = () => {
                         {pkg.duration || 'Flexible'}
                       </td>
 
-                      {/* Starting Price */}
-                      <td className="px-4 py-3.5 font-bold text-slate-900">
-                        {pkg.pricing?.currency || 'INR'} {pkg.pricing?.basePrice ? pkg.pricing.basePrice.toLocaleString('en-IN') : 'Enquiry'}
+                      {/* Starting Price & Visibility Badge */}
+                      <td className="px-4 py-3.5">
+                        <div className="font-bold text-slate-900">
+                          {pkg.pricing?.currency || 'INR'} {pkg.pricing?.basePrice ? pkg.pricing.basePrice.toLocaleString('en-IN') : 'Enquiry'}
+                        </div>
+                        <div className="mt-0.5">
+                          {pkg.pricing?.showPricing ? (
+                            <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                              <Eye size={10} /> Public
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                              <EyeOff size={10} /> Hidden
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Visibility Status */}

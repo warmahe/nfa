@@ -46,10 +46,11 @@ export const PackageJourneyCard: React.FC<PackageJourneyCardProps> = ({
     ? pkg.editorialHighlights.slice(0, 3)
     : (Array.isArray(pkg.highlights) ? pkg.highlights.map(h => h.text).filter(Boolean).slice(0, 3) : []);
 
-  // Price formatting
+  // Price formatting — only show price when admin turned on showPricing
+  const isPricingEnabled = Boolean(pkg.pricing?.showPricing || (pkg as any).showPricing);
   const basePrice = pkg.pricing?.basePrice;
   const currency = pkg.pricing?.currency || '₹';
-  const hasValidPrice = typeof basePrice === 'number' && basePrice > 0;
+  const hasValidPrice = isPricingEnabled && typeof basePrice === 'number' && basePrice > 0;
   const priceDisplay = hasValidPrice
     ? `${currency === 'INR' ? '₹' : currency}${basePrice.toLocaleString()}`
     : 'Price on request';

@@ -213,7 +213,8 @@ export const Shortlist: React.FC = () => {
                   'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&q=80';
 
                 const destination = (pkg.destinations && pkg.destinations[0]) || (pkg as any).destination || 'Expedition';
-                const price = pkg.pricing?.basePrice;
+                const isPricingEnabled = Boolean(pkg.pricing?.showPricing || (pkg as any).showPricing);
+                const price = isPricingEnabled ? pkg.pricing?.basePrice : undefined;
                 const currency = pkg.pricing?.currency || 'INR';
 
                 return (

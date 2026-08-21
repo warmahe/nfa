@@ -34,9 +34,10 @@ export const StickyPriceCard: React.FC<StickyPriceCardProps> = ({ pkg, onEnquire
   const [mobileExpanded, setMobileExpanded] = useState(false);
   const [pdfToast, setPdfToast] = useState(false);
 
+  const isPricingEnabled = Boolean(pkg.pricing?.showPricing || (pkg as any).showPricing);
   const basePrice = pkg.pricing?.basePrice;
   const currency = pkg.pricing?.currency || 'INR';
-  const hasValidPrice = typeof basePrice === 'number' && !isNaN(basePrice) && isFinite(basePrice) && basePrice > 0;
+  const hasValidPrice = isPricingEnabled && typeof basePrice === 'number' && !isNaN(basePrice) && isFinite(basePrice) && basePrice > 0;
   const formattedPrice = hasValidPrice ? formatPrice(basePrice, currency) : '';
 
   const handleEnquireClick = (e: React.MouseEvent, entryPoint: 'STICKY_CARD' | 'MOBILE_STICKY' = 'STICKY_CARD') => {

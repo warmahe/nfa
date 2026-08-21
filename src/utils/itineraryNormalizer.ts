@@ -135,9 +135,11 @@ export const normalizeItinerary = (pkg: Package): Package => {
       videos: Array.isArray(pkg.media?.videos) ? pkg.media.videos.map(v => sanitizeText(v)).filter(Boolean) : []
     },
     pricing: {
-      basePrice: typeof pkg.pricing?.basePrice === 'number' && !isNaN(pkg.pricing.basePrice) ? pkg.pricing.basePrice : 0,
+      showPricing: Boolean(pkg.pricing?.showPricing || (pkg as any).showPricing),
+      basePrice: typeof pkg.pricing?.basePrice === 'number' && !isNaN(pkg.pricing.basePrice) && pkg.pricing.basePrice > 0 ? pkg.pricing.basePrice : undefined,
       currency: sanitizeText(pkg.pricing?.currency, 'INR'),
-      discount: typeof pkg.pricing?.discount === 'number' && !isNaN(pkg.pricing.discount) ? pkg.pricing.discount : undefined
+      discount: typeof pkg.pricing?.discount === 'number' && !isNaN(pkg.pricing.discount) ? pkg.pricing.discount : undefined,
+      discountedPrice: typeof pkg.pricing?.discountedPrice === 'number' && !isNaN(pkg.pricing.discountedPrice) && pkg.pricing.discountedPrice > 0 ? pkg.pricing.discountedPrice : undefined
     },
     itineraryPDF: sanitizeText(pkg.itineraryPDF, ''),
     editorialIntro: sanitizeText(pkg.editorialIntro, ''),

@@ -641,7 +641,8 @@ export const CompareJourneys: React.FC = () => {
                     Starting From
                   </div>
                   {comparedPackages.map((pkg, idx) => {
-                    const price = pkg.pricing?.basePrice;
+                    const isPricingEnabled = Boolean(pkg.pricing?.showPricing || (pkg as any).showPricing);
+                    const price = isPricingEnabled ? pkg.pricing?.basePrice : undefined;
                     const currency = pkg.pricing?.currency || 'INR';
 
                     return (

@@ -134,10 +134,11 @@ export interface GroupPricingTier {
 }
 
 export interface PackagePricing {
-  basePrice: number;
-  currency: string;
+  basePrice?: number;
+  currency?: string;
   discount?: number;
   discountedPrice?: number;
+  showPricing?: boolean; // When true, prices are visible to viewers. When false/omitted, displays as "Price on request"
   dates?: any;
   seasonalPricing?: PricingTier[];
   groupPricing?: any;
@@ -386,7 +387,7 @@ export interface Package extends BaseDocument {
   inclusionsRich?: RichInclusionExclusion[];
   exclusionsRich?: RichInclusionExclusion[];
   packageFaqs?: { question: string; answer: string; category?: string; order?: number }[];
-  pricing: PackagePricing;
+  pricing?: PackagePricing;
   media: PackageMedia;
   itineraryPDF?: string;
   // E1 Editorial Package Fields
@@ -1240,7 +1241,7 @@ export interface PackageFormData {
   duration: string;
   maxTravelers: number;
   status: 'draft' | 'active' | 'archived';
-  pricing: PackagePricing;
+  pricing?: PackagePricing;
   media: PackageMedia;
 }
 
